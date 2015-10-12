@@ -13,9 +13,12 @@
 	<include package="nti.invitations" file="meta.zcml" />
 	<include package="nti.invitations" />
 
+	<!-- Utilities -->
 	<utility factory=".views._TrivialDefaultInvitations"
 			 provides="nti.invitations.interfaces.IInvitations" />
 
+	<utility factory=".invitation.InvitationEntityFinder" />
+	
 	<!--
 		Basic testing invitation. Note that entities is a space
 		separated list of usernames and/or NTIIDs (for DFLs).

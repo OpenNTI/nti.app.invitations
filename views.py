@@ -28,6 +28,7 @@ from nti.appserver.pyramid_authorization import is_writable
 from nti.invitations.interfaces import IInvitations
 from nti.invitations.utility import ZcmlInvitations
 from nti.invitations.utility import accept_invitations
+from nti.invitations.invitation import JoinEntitiesInvitation
 from nti.invitations.interfaces import InvitationValidationError
 
 from nti.dataserver import authorization as nauth
@@ -42,7 +43,7 @@ from nti.app.externalization import internalization as obj_io
 from nti.app.externalization.error import handle_validation_error
 from nti.app.externalization.error import handle_possible_validation_error
 
-from .invitation import JoinEntitiesInvitation
+
 
 #: The link relationship type to which an authenticated
 #: user can ``POST`` data to accept outstanding invitations. Also the name of a
