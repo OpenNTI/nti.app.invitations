@@ -31,6 +31,8 @@
 		factory=".views.DFLGetInvitationLinkProvider"
 		provides="nti.externalization.interfaces.IExternalMappingDecorator"/>
 
+	<include package="nti.appserver.link_providers" file="meta.zcml" />
+	
 	<!-- Additional links for logged-in users -->
 	<link:userLink named=".views.REL_ACCEPT_INVITATIONS"
 				   view_named=".views.REL_ACCEPT_INVITATIONS" />
