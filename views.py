@@ -14,24 +14,21 @@ logger = __import__('logging').getLogger(__name__)
 from zope import component
 from zope import interface
 
-from zope.intid import IIntIds
+from zope.intid.interfaces import IIntIds
 
 from pyramid import httpexceptions as hexc
 
-from pyramid.view import view_config
 from pyramid.interfaces import IRequest
+
+from pyramid.view import view_config
+
+from nti.app.externalization import internalization as obj_io
+from nti.app.externalization.error import handle_validation_error
+from nti.app.externalization.error import handle_possible_validation_error
 
 from nti.app.renderers.decorators import AbstractTwoStateViewLinkDecorator
 
 from nti.appserver.pyramid_authorization import is_writable
-
-from nti.invitations.utility import ZcmlInvitations
-from nti.invitations.utility import accept_invitations
-
-from nti.invitations.invitation import JoinEntitiesInvitation
-
-from nti.invitations.interfaces import IInvitations
-from nti.invitations.interfaces import InvitationValidationError
 
 from nti.dataserver import authorization as nauth
 
@@ -39,11 +36,16 @@ from nti.dataserver.interfaces import IUser
 from nti.dataserver.interfaces import IDynamicSharingTargetFriendsList
 
 from nti.externalization import integer_strings
+from nti.externalization.interfaces import LocatedExternalDict
 from nti.externalization.interfaces import IExternalMappingDecorator
 
-from nti.app.externalization import internalization as obj_io
-from nti.app.externalization.error import handle_validation_error
-from nti.app.externalization.error import handle_possible_validation_error
+from nti.invitations.interfaces import IInvitations
+from nti.invitations.interfaces import InvitationValidationError
+
+from nti.invitations.invitation import JoinEntitiesInvitation
+
+from nti.invitations.utility import ZcmlInvitations
+from nti.invitations.utility import accept_invitations
 
 #: The link relationship type to which an authenticated
 #: user can ``POST`` data to accept outstanding invitations. Also the name of a
@@ -137,7 +139,7 @@ class _TrivialDefaultInvitations(ZcmlInvitations):
 def get_default_trivial_invitation_code(request):
 	invitations = component.getUtility(IInvitations)
 	code = invitations._getDefaultInvitationCode(request.context)
-	return {'invitation_code': code}
+	return LocatedExternalDict({'invitation_code': code})
 
 @interface.implementer(IExternalMappingDecorator)
 @component.adapter(IDynamicSharingTargetFriendsList, IRequest)

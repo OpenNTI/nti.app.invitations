@@ -11,8 +11,9 @@ logger = __import__('logging').getLogger(__name__)
 
 from zope import interface
 
-from nti.dataserver.users import Entity
 from nti.dataserver.interfaces import IEntity
+
+from nti.dataserver.users import Entity
 
 from nti.invitations.interfaces import IInvitationEntityFinder
 

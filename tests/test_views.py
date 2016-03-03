@@ -23,12 +23,14 @@ import anyjson as json
 from nti.app.invitations.views import REL_TRIVIAL_DEFAULT_INVITATION_CODE
 
 from nti.dataserver import users
-from nti.dataserver.tests import mock_dataserver
+
+from nti.app.testing.application_webtest import ApplicationLayerTest
+
+from nti.app.testing.decorators import WithSharedApplicationMockDS
 
 from nti.app.testing.webtest import TestApp
 
-from nti.app.testing.decorators import WithSharedApplicationMockDS
-from nti.app.testing.application_webtest import ApplicationLayerTest
+from nti.dataserver.tests import mock_dataserver
 
 class TestApplicationInvitationUserViews(ApplicationLayerTest):
 
@@ -156,7 +158,6 @@ class TestApplicationInvitationDFLViews(ApplicationLayerTest):
 
 		res = testapp.get(path + '/@@' + str(REL_TRIVIAL_DEFAULT_INVITATION_CODE),
 						  extra_environ=self._make_extra_environ())
-
 
 		assert_that(res.json_body, has_entry('invitation_code', is_(basestring)))
 
