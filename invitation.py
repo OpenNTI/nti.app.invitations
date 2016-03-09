@@ -69,7 +69,7 @@ class _TrivialDefaultInvitations(ZcmlInvitations):
             try:
                 dfl = self._getObjectByCode(code)
                 if IDynamicSharingTargetFriendsList.providedBy(dfl):
-                    invite = _DefaultJoinEntityInvitation(code, dfl)
+                    invite = _DefaultJoinEntityInvitation(code, (dfl,))
                     invite.creator = dfl.creator
             except (KeyError, ValueError, AttributeError):
                 return None
