@@ -11,6 +11,8 @@ __docformat__ = "restructuredtext en"
 
 logger = __import__('logging').getLogger(__name__)
 
+import six
+
 from zope import component
 from zope import interface
 
@@ -75,6 +77,8 @@ def accept_invitations_view(request):
 
 	try:
 		invite_codes = json_body['invitation_codes']
+		if isinstance(invite_codes, six.string_types):
+			invite_codes = invite_codes.split()
 		if invite_codes:
 			accept_invitations(request.context, invite_codes)
 	except InvitationValidationError as e:
