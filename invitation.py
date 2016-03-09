@@ -46,11 +46,6 @@ class InvitationEntityFinder(object):
 #: alright because the accept view and the link provider are also tied to the
 #: IDynamicSharingTargetFriendsList
 
-class _DefaultJoinEntityInvitation(JoinEntitiesInvitation):
-
-    def _iter_entities(self):
-        yield self.entities
-
 class _TrivialDefaultInvitations(ZcmlInvitations):
 
     def _getDefaultInvitationCode(self, dfl):
@@ -69,7 +64,7 @@ class _TrivialDefaultInvitations(ZcmlInvitations):
             try:
                 dfl = self._getObjectByCode(code)
                 if IDynamicSharingTargetFriendsList.providedBy(dfl):
-                    invite = _DefaultJoinEntityInvitation(code, (dfl,))
+                    invite = JoinEntitiesInvitation(code, (dfl,))
                     invite.creator = dfl.creator
             except (KeyError, ValueError, AttributeError):
                 return None
