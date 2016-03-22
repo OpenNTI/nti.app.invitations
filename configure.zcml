@@ -19,9 +19,11 @@
 
 	<utility factory=".invitation.InvitationEntityFinder" />
 	
-	<invite:joinCommunities	
-				code="MATHCOUNTS"
-				entities="MATHCOUNTS" />
+	<configure zcml:condition="installed nti.app.sites.mathcounts">
+		<invite:joinCommunities	
+					code="MATHCOUNTS"
+					entities="MATHCOUNTS" />
+	</configure>
 
 	<subscriber	factory=".views.DFLGetInvitationLinkProvider"
 				provides="nti.externalization.interfaces.IExternalMappingDecorator"/>
