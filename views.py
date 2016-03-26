@@ -7,7 +7,6 @@ Views relating to working with invitations.
 """
 
 from __future__ import print_function, unicode_literals, absolute_import, division
-from nti.app.base.abstract_views import AbstractAuthenticatedView
 __docformat__ = "restructuredtext en"
 
 logger = __import__('logging').getLogger(__name__)
@@ -23,7 +22,10 @@ from pyramid.interfaces import IRequest
 
 from pyramid.view import view_config
 
+from nti.app.base.abstract_views import AbstractAuthenticatedView
+
 from nti.app.externalization import internalization as obj_io
+
 from nti.app.externalization.error import handle_validation_error
 from nti.app.externalization.error import handle_possible_validation_error
 
@@ -78,21 +80,23 @@ class AcceptInvitationsView(AbstractAuthenticatedView):
 			result = result.split()
 		return result
 
-	def __call__(self):
-		"""
-		Implementation of :const:`REL_ACCEPT_INVITATIONS`.
-		"""
+	def _do_call(self):
 		request = self.request
 		invite_codes = self.get_invite_codes()	
 		try:
 			if invite_codes:
-				accept_invitations(request.context, invite_codes)
+				return accept_invitations(request.context, invite_codes)
 		except InvitationValidationError as e:
 			e.field = 'invitation_codes'
 			handle_validation_error(request, e)
 		except Exception as e:  # pragma: no cover
 			handle_possible_validation_error(request, e)
-	
+
+	def __call__(self):
+		"""
+		Implementation of :const:`REL_ACCEPT_INVITATIONS`.
+		"""
+		self._do_call()
 		return hexc.HTTPNoContent()
 
 @view_config(route_name='objects.generic.traversal',
