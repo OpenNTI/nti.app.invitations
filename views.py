@@ -7,6 +7,7 @@ Views relating to working with invitations.
 """
 
 from __future__ import print_function, unicode_literals, absolute_import, division
+from nti.app.base.abstract_views import AbstractAuthenticatedView
 __docformat__ = "restructuredtext en"
 
 logger = __import__('logging').getLogger(__name__)
@@ -66,28 +67,33 @@ REL_TRIVIAL_DEFAULT_INVITATION_CODE = 'default-trivial-invitation-code'
 			 permission=nauth.ACT_UPDATE,
 			 request_method='POST',
 			 name=REL_ACCEPT_INVITATIONS)
-def accept_invitations_view(request):
-	"""
-	Implementation of :const:`REL_ACCEPT_INVITATIONS`.
-	"""
+class AcceptInvitationsView(AbstractAuthenticatedView):
 
-	json_body = obj_io.read_body_as_external_object(request)
-	if 'invitation_codes' not in json_body:
-		raise hexc.HTTPBadRequest()
+	def get_invite_codes(self):
+		json_body = obj_io.read_body_as_external_object(self.request)
+		if 'invitation_codes' not in json_body:
+			raise hexc.HTTPBadRequest()
+		result = json_body['invitation_codes']
+		if isinstance(result, six.string_types):
+			result = result.split()
+		return result
 
-	try:
-		invite_codes = json_body['invitation_codes']
-		if isinstance(invite_codes, six.string_types):
-			invite_codes = invite_codes.split()
-		if invite_codes:
-			accept_invitations(request.context, invite_codes)
-	except InvitationValidationError as e:
-		e.field = 'invitation_codes'
-		handle_validation_error(request, e)
-	except Exception as e:  # pragma: no cover
-		handle_possible_validation_error(request, e)
-
-	return hexc.HTTPNoContent()
+	def __call__(self):
+		"""
+		Implementation of :const:`REL_ACCEPT_INVITATIONS`.
+		"""
+		request = self.request
+		invite_codes = self.get_invite_codes()	
+		try:
+			if invite_codes:
+				accept_invitations(request.context, invite_codes)
+		except InvitationValidationError as e:
+			e.field = 'invitation_codes'
+			handle_validation_error(request, e)
+		except Exception as e:  # pragma: no cover
+			handle_possible_validation_error(request, e)
+	
+		return hexc.HTTPNoContent()
 
 @view_config(route_name='objects.generic.traversal',
 			 renderer='rest',
