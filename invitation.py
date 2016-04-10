@@ -14,13 +14,13 @@ from zope import interface
 
 from zope.intid.interfaces import IIntIds
 
+from nti.common import integer_strings
+
 from nti.dataserver.interfaces import IEntity
 
 from nti.dataserver.users import Entity
 
 from nti.dataserver.interfaces import IDynamicSharingTargetFriendsList
-
-from nti.externalization import integer_strings
 
 from nti.invitations.interfaces import IInvitationEntityFinder
 
