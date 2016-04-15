@@ -29,6 +29,9 @@ from nti.app.externalization import internalization as obj_io
 from nti.app.externalization.error import handle_validation_error
 from nti.app.externalization.error import handle_possible_validation_error
 
+from nti.app.invitations import REL_ACCEPT_INVITATIONS
+from nti.app.invitations import REL_TRIVIAL_DEFAULT_INVITATION_CODE
+
 from nti.app.renderers.decorators import AbstractTwoStateViewLinkDecorator
 
 from nti.appserver.pyramid_authorization import is_writable
@@ -45,23 +48,6 @@ from nti.invitations.interfaces import IInvitations
 from nti.invitations.interfaces import InvitationValidationError
 
 from nti.invitations.utility import accept_invitations
-
-#: The link relationship type to which an authenticated
-#: user can ``POST`` data to accept outstanding invitations. Also the name of a
-#: view to handle this feedback: :func:`accept_invitations_view`
-#: The data should be an dictionary containing the key ``invitation_codes``
-#: whose value is an array of strings naming codes.
-#: See also :func:`nti.appserver.account_creation_views.account_create_view`
-REL_ACCEPT_INVITATIONS = 'accept-invitations'
-
-#: The link relationship type that will be exposed to the creator of a
-#: :class:`nti.dataserver.users.friends_lists.DynamicFriendsList`. A ``GET``
-#: to this link will return the invitation code corresponding to the default invitation
-#: to join that group, in the form of a dictionary: ``{invitation_code: "thecode"}``
-#: If the invitation does not exist, one will be created; at most one such code can exist at a time.
-#: There is no way to disable the code at this time (in the future that could be done with a
-#: ``DELETE`` to this link type). See also :func:`get_default_trivial_invitation_code`
-REL_TRIVIAL_DEFAULT_INVITATION_CODE = 'default-trivial-invitation-code'
 
 @view_config(route_name='objects.generic.traversal',
 			 renderer='rest',

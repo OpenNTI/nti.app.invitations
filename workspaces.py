@@ -14,6 +14,10 @@ from zope import interface
 
 from zope.container.contained import Contained
 
+from zope.location.interfaces import ILocation
+
+from nti.app.invitations import REL_ACCEPT_INVITATIONS
+
 from nti.app.invitations.interfaces import IInvitationsWorkspace
 from nti.app.invitations.interfaces import IUserInvitationsLinkProvider
 
@@ -23,6 +27,10 @@ from nti.appserver.workspaces.interfaces import IContainerCollection
 
 from nti.common.property import Lazy
 from nti.common.property import alias
+
+from nti.dataserver.interfaces import IUser
+
+from nti.links.links import Link
 
 @interface.implementer(IInvitationsWorkspace)
 class _InvitationsWorkspace(Contained):
@@ -81,7 +89,7 @@ class _InvitationsCollection(object):
 		for provider in component.subscribers((self._user,), IUserInvitationsLinkProvider):
 			links = provider.links(self.__parent__)
 			result.extend(links or ())
-		return result
+		return tuple(result)
 
 	@property
 	def container(self):
@@ -90,3 +98,21 @@ class _InvitationsCollection(object):
 	@property
 	def accepts(self):
 		return ()
+
+@component.adapter(IUser)
+@interface.implementer(IUserInvitationsLinkProvider)
+class _DefaultUserInvitationsLinkProvider(object):
+		
+	def __init__(self, user=None):
+		self.user = user
+
+	@property
+	def links(self):
+		link = Link(self.user, 
+					method="POST",
+					rel=REL_ACCEPT_INVITATIONS, 
+					elements=('@@' + REL_ACCEPT_INVITATIONS,))
+		link.__name__ = REL_ACCEPT_INVITATIONS
+		link.__parent__ = self.user
+		interface.alsoProvides(link, ILocation)
+		return (link,)

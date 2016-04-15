@@ -41,4 +41,7 @@
 	<adapter factory=".workspaces.InvitationsWorkspace"
 			 provides=".interfaces.IInvitationsWorkspace" />
 
+	<subscriber	factory=".workspaces._DefaultUserInvitationsLinkProvider"
+				provides=".interfaces.IUserInvitationsLinkProvider"/>
+				
 </configure>
