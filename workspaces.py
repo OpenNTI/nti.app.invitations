@@ -81,7 +81,7 @@ class _InvitationsCollection(object):
 
 	@property
 	def _user(self):
-		self.__parent__.user
+		return self.__parent__.user
 
 	@property
 	def links(self):
@@ -106,8 +106,7 @@ class _DefaultUserInvitationsLinkProvider(object):
 	def __init__(self, user=None):
 		self.user = user
 
-	@property
-	def links(self):
+	def links(self, workspace):
 		link = Link(self.user, 
 					method="POST",
 					rel=REL_ACCEPT_INVITATIONS, 
