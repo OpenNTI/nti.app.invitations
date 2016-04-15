@@ -34,4 +34,11 @@
 	<link:userLink named=".views.REL_ACCEPT_INVITATIONS"
 				   view_named=".views.REL_ACCEPT_INVITATIONS" />
 
+	<!-- Workspaces -->
+	<subscriber factory=".workspaces.InvitationsWorkspace"
+				provides=".interfaces.IInvitationsWorkspace" />
+
+	<adapter factory=".workspaces.InvitationsWorkspace"
+			 provides=".interfaces.IInvitationsWorkspace" />
+
 </configure>
