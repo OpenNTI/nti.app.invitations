@@ -66,6 +66,12 @@ class AcceptInvitationsView(AbstractAuthenticatedView):
 			result = result.split()
 		return result
 
+	def handle_validation_error(self, request, e):
+		handle_validation_error(request, e)
+
+	def handle_possible_validation_error(self, request, e):
+		handle_possible_validation_error(request, e)
+		
 	def _do_call(self):
 		request = self.request
 		invite_codes = self.get_invite_codes()	
@@ -74,9 +80,9 @@ class AcceptInvitationsView(AbstractAuthenticatedView):
 				return accept_invitations(request.context, invite_codes)
 		except InvitationValidationError as e:
 			e.field = 'invitation_codes'
-			handle_validation_error(request, e)
+			self.handle_validation_error(request, e)
 		except Exception as e:  # pragma: no cover
-			handle_possible_validation_error(request, e)
+			self.handle_possible_validation_error(request, e)
 
 	def __call__(self):
 		"""
