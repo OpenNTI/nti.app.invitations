@@ -17,6 +17,10 @@ logger = __import__('logging').getLogger(__name__)
 REL_ACCEPT_INVITATION = 'accept-invitation'
 
 #: The link relationship type to which an authenticated
+#: user can ``GET`` the outstanding invitations.
+REL_PENDING_INVITATIONS = 'pending-invitations'
+
+#: The link relationship type to which an authenticated
 #: user can ``POST`` data to accept outstanding invitations. Also the name of a
 #: view to handle this feedback: :func:`accept_invitations_view`
 #: The data should be an dictionary containing the key ``invitation_codes``

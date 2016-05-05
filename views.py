@@ -26,28 +26,45 @@ from nti.app.base.abstract_views import AbstractAuthenticatedView
 
 from nti.app.externalization import internalization as obj_io
 
+from nti.app.externalization.error import raise_json_error
+
+from nti.app.externalization.view_mixins import ModeledContentUploadRequestUtilsMixin
+
 from nti.app.externalization.error import handle_validation_error
 from nti.app.externalization.error import handle_possible_validation_error
 
+from nti.app.invitations import REL_ACCEPT_INVITATION
 from nti.app.invitations import REL_ACCEPT_INVITATIONS
+from nti.app.invitations import REL_PENDING_INVITATIONS
 from nti.app.invitations import REL_TRIVIAL_DEFAULT_INVITATION_CODE
 
 from nti.app.renderers.decorators import AbstractTwoStateViewLinkDecorator
 
 from nti.appserver.pyramid_authorization import is_writable
 
+from nti.common.maps import CaseInsensitiveDict
+
 from nti.dataserver import authorization as nauth
 
 from nti.dataserver.interfaces import IUser
 from nti.dataserver.interfaces import IDynamicSharingTargetFriendsList
 
+from nti.dataserver.users.interfaces import IUserProfile
+
 from nti.externalization.interfaces import LocatedExternalDict
+from nti.externalization.interfaces import StandardExternalFields
 from nti.externalization.interfaces import IExternalMappingDecorator
 
 from nti.invitations.interfaces import IInvitations
+from nti.invitations.interfaces import IInvitationsContainer
 from nti.invitations.interfaces import InvitationValidationError
 
 from nti.invitations.utility import accept_invitations
+
+from nti.invitations.utils import accept_invitation
+from nti.invitations.utils import get_pending_invitations
+
+ITEMS = StandardExternalFields.ITEMS
 
 @view_config(route_name='objects.generic.traversal',
 			 renderer='rest',
@@ -110,3 +127,115 @@ class DFLGetInvitationLinkProvider(AbstractTwoStateViewLinkDecorator):
 
 	def link_predicate(self, context, username):
 		return is_writable(context, self.request) and not context.Locked
+
+# new views
+
+@view_config(route_name='objects.generic.traversal',
+			 renderer='rest',
+			 context=IUser,
+			 permission=nauth.ACT_UPDATE,
+			 request_method='POST',
+			 name=REL_ACCEPT_INVITATION)
+class AcceptInvitationView(AbstractAuthenticatedView,
+						   ModeledContentUploadRequestUtilsMixin):
+
+	def readInput(self, value=None):
+		result = ModeledContentUploadRequestUtilsMixin.readInput(self, value=value)
+		result = CaseInsensitiveDict(result)
+		return result
+
+	def get_invite_code(self):
+		values = self.readInput()
+		result = 	values.get('code') \
+				or	values.get('invitation') \
+				or 	values.get('invitation_code')
+		return result
+	
+	def handle_validation_error(self, request, e):
+		handle_validation_error(request, e)
+
+	def handle_possible_validation_error(self, request, e):
+		handle_possible_validation_error(request, e)
+		
+	def _do_call(self):
+		request = self.request
+		invite_code = self.get_invite_codes()	
+		if not invite_code:
+			raise_json_error(
+					request,
+					hexc.HTTPUnprocessableEntity,
+					{
+						u'message': _("Missing invitation code"),
+						u'code': 'MissingInvitationCode',
+					},
+					None)
+		invitations = component.getUtility(IInvitationsContainer)
+		if not invite_code in invitations:
+			raise_json_error(
+					request,
+					hexc.HTTPUnprocessableEntity,
+					{
+						u'message': _("Invalid invitation code"),
+						u'code': 'InvalidInvitationCode',
+					},
+					None)
+		invitation = invitations[invite_code]
+		if invitation.is_accepted():
+			raise_json_error(
+					request,
+					hexc.HTTPUnprocessableEntity,
+					{
+						u'message': _("Invitation already accepted"),
+						u'code': 'InvitationAlreadyAccepted',
+					},
+					None)
+
+		profile = IUserProfile(self.context, None)
+		email = getattr(profile, 'email', None) or u''
+		receiver = invitation.receiver.lower()
+		if receiver not in (self.context.username.lower(), email.lower()):
+			raise_json_error(
+					request,
+					hexc.HTTPUnprocessableEntity,
+					{
+						u'message': _("Invitation is not for this user"),
+						u'code': 'InvitationIsNotForUser',
+					},
+					None)
+		try:
+			accept_invitation(self.context, invitation)
+		except InvitationValidationError as e:
+			e.field = 'invitation'
+			self.handle_validation_error(request, e)
+		except Exception as e:  # pragma: no cover
+			self.handle_possible_validation_error(request, e)
+
+	def __call__(self):
+		"""
+		Implementation of :const:`REL_ACCEPT_INVITATION`.
+		"""
+		self._do_call()
+		return hexc.HTTPNoContent()
+
+@view_config(route_name='objects.generic.traversal',
+			 renderer='rest',
+			 context=IUser,
+			 permission=nauth.ACT_UPDATE,
+			 request_method='GET',
+			 name=REL_PENDING_INVITATIONS)
+class GetPendingInvitationsView(AbstractAuthenticatedView):
+		
+	def _do_call(self):
+		result = LocatedExternalDict()
+		email = getattr(IUserProfile(self.context, None), 'email', None)
+		receivers = (self.context.username, email)
+		result[ITEMS] = get_pending_invitations(receivers)
+		result.__name__ = self.request.view_name
+		result.__parent__ = self.request.context
+		return result
+
+	def __call__(self):
+		"""
+		Implementation of :const:`REL_PENDING_INVITATIONS`.
+		"""
+		return self._do_call()
