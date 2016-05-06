@@ -14,7 +14,7 @@
 
 	<utility factory=".invitation.InvitationEntityFinder" />
 
-	<subscriber	factory=".views.DFLGetInvitationLinkProvider"
+	<subscriber	factory=".decorators.DFLGetInvitationLinkProvider"
 				provides="nti.externalization.interfaces.IExternalMappingDecorator"/>
 	
 	<!-- ACL -->

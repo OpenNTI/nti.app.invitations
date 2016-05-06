@@ -14,11 +14,8 @@ logger = __import__('logging').getLogger(__name__)
 import six
 
 from zope import component
-from zope import interface
 
 from pyramid import httpexceptions as hexc
-
-from pyramid.interfaces import IRequest
 
 from pyramid.view import view_config
 
@@ -38,10 +35,6 @@ from nti.app.invitations import REL_ACCEPT_INVITATIONS
 from nti.app.invitations import REL_PENDING_INVITATIONS
 from nti.app.invitations import REL_TRIVIAL_DEFAULT_INVITATION_CODE
 
-from nti.app.renderers.decorators import AbstractTwoStateViewLinkDecorator
-
-from nti.appserver.pyramid_authorization import is_writable
-
 from nti.common.maps import CaseInsensitiveDict
 
 from nti.dataserver import authorization as nauth
@@ -53,7 +46,6 @@ from nti.dataserver.users.interfaces import IUserProfile
 
 from nti.externalization.interfaces import LocatedExternalDict
 from nti.externalization.interfaces import StandardExternalFields
-from nti.externalization.interfaces import IExternalMappingDecorator
 
 from nti.invitations.interfaces import IInvitations
 from nti.invitations.interfaces import IInvitationsContainer
@@ -118,15 +110,6 @@ def get_default_trivial_invitation_code(request):
 	invitations = component.getUtility(IInvitations)
 	code = invitations._getDefaultInvitationCode(request.context)
 	return LocatedExternalDict({'invitation_code': code})
-
-@interface.implementer(IExternalMappingDecorator)
-@component.adapter(IDynamicSharingTargetFriendsList, IRequest)
-class DFLGetInvitationLinkProvider(AbstractTwoStateViewLinkDecorator):
-
-	true_view = REL_TRIVIAL_DEFAULT_INVITATION_CODE
-
-	def link_predicate(self, context, username):
-		return is_writable(context, self.request) and not context.Locked
 
 # new views
 
