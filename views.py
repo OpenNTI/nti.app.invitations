@@ -156,8 +156,8 @@ class AcceptInvitationView(AbstractAuthenticatedView,
 
 	def handle_possible_validation_error(self, request, e):
 		handle_possible_validation_error(request, e)
-		
-	def _do_call(self):
+	
+	def _do_validation(self):
 		request = self.request
 		invite_code = self.get_invite_codes()	
 		if not invite_code:
@@ -202,6 +202,11 @@ class AcceptInvitationView(AbstractAuthenticatedView,
 						u'code': 'InvitationIsNotForUser',
 					},
 					None)
+		return invitation
+
+	def _do_call(self):
+		request = self.request
+		invitation = self._do_validation()
 		try:
 			accept_invitation(self.context, invitation)
 		except InvitationValidationError as e:
