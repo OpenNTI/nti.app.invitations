@@ -1,41 +1,24 @@
 <!-- -*- mode: nxml -*- -->
 <configure	xmlns="http://namespaces.zope.org/zope"
 			xmlns:i18n="http://namespaces.zope.org/i18n"
-			xmlns:zcml="http://namespaces.zope.org/zcml"
-			xmlns:invite="http://nextthought.com/ntp/invite"
-			xmlns:link="http://nextthought.com/ntp/link_providers">
+			xmlns:zcml="http://namespaces.zope.org/zcml">
 
 	<include package="zope.component" file="meta.zcml" />
 	<include package="zope.security" file="meta.zcml" />
 	<include package="zope.component" />
 	<include package="zope.security" />
 
-	<include package="nti.invitations" file="meta.zcml" />
-	<include package="nti.invitations" />
-
 	<!-- Utilities -->
 	<utility factory=".invitation._TrivialDefaultInvitations"
 			 provides="nti.invitations.interfaces.IInvitations" />
 
 	<utility factory=".invitation.InvitationEntityFinder" />
-	
-	<configure zcml:condition="installed nti.app.sites.mathcounts">
-		<invite:joinCommunities	
-					code="MATHCOUNTS"
-					entities="MATHCOUNTS" />
-	</configure>
 
 	<subscriber	factory=".views.DFLGetInvitationLinkProvider"
 				provides="nti.externalization.interfaces.IExternalMappingDecorator"/>
-
-	<include package="nti.appserver.link_providers" file="meta.zcml" />
 	
 	<!-- ACL -->
 	<adapter factory=".acl.InvitationACLProvider" />
-	
-	<!-- Additional links for logged-in users -->
-	<link:userLink named=".views.REL_ACCEPT_INVITATIONS"
-				   view_named=".views.REL_ACCEPT_INVITATIONS" />
 
 	<!-- Workspaces -->
 	<subscriber factory=".workspaces.InvitationsWorkspace"

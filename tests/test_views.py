@@ -35,21 +35,6 @@ from nti.dataserver.tests import mock_dataserver
 class TestApplicationInvitationUserViews(ApplicationLayerTest):
 
 	@WithSharedApplicationMockDS
-	def test_link_in_user(self):
-
-		with mock_dataserver.mock_db_trans(self.ds):
-			_ = self._create_user()
-
-		testapp = TestApp(self.app)
-
-		res = testapp.get('/dataserver2/ResolveUser/sjohnson@nextthought.com',
-							extra_environ=self._make_extra_environ())
-
-		assert_that(res.json_body['Items'][0], has_entry('Links', has_item(has_entries('rel', 'accept-invitations',
-																					   'href', '/dataserver2/users/sjohnson%40nextthought.com/@@accept-invitations'))))
-
-
-	@WithSharedApplicationMockDS
 	def test_invalid_invitation_code(self):
 
 		with mock_dataserver.mock_db_trans(self.ds):
