@@ -28,6 +28,7 @@ from nti.dataserver.interfaces import ALL_PERMISSIONS
 from nti.dataserver.interfaces import IUser
 from nti.dataserver.interfaces import IACLProvider
 
+from nti.dataserver.users import User
 from nti.dataserver.users import get_entity_catalog
 
 from nti.dataserver.users.index import IX_EMAIL
@@ -45,6 +46,18 @@ class InvitationACLProvider(object):
 	def __parent__(self):
 		return self.context.__parent__
 
+	@classmethod
+	def _get_usernames_by_email(cls, email):
+		result = set()
+		catalog = get_entity_catalog()
+		intids = component.getUtility(IIntIds)
+		doc_ids = catalog[IX_EMAIL].apply((email,email))
+		for uid in doc_ids or ():
+			user = IUser(intids.queryObject(uid), None)
+			result.add(getattr(user, 'username', None))
+		result.discard(None)
+		return tuple(result)
+
 	@Lazy
 	def __acl__(self):
 		aces = [ace_allowing(ROLE_ADMIN, ALL_PERMISSIONS, type(self))]
@@ -52,14 +65,10 @@ class InvitationACLProvider(object):
 
 		receiver = self.context.receiver
 		if self.context.is_email():
-			catalog = get_entity_catalog()
-			doc_ids = list(catalog[IX_EMAIL].apply({'any_of': (receiver,)}) or ())
-			if len(doc_ids) != 1:
-				receiver = None
-			else:
-				intids = component.getUtility(IIntIds)
-				user = IUser(intids.queryObject(doc_ids[0]), None)
-				receiver = getattr(user, 'username', None)
+			user = User.get_user(receiver)
+			if user is None:
+				usernames = self._get_usernames_by_email(receiver)
+				receiver = usernames[0] if len(usernames) == 1 else None
 
 		if receiver:
 			aces.append(ace_allowing(receiver, ACT_READ, type(self)))
