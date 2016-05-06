@@ -69,7 +69,6 @@ class InvitationACLProvider(object):
 			if user is None:
 				usernames = self._get_usernames_by_email(receiver)
 				receiver = usernames[0] if len(usernames) == 1 else None
-
 		if receiver:
 			aces.append(ace_allowing(receiver, ACT_READ, type(self)))
 			aces.append(ace_allowing(receiver, ACT_UPDATE, type(self)))

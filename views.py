@@ -208,7 +208,7 @@ class AcceptInvitationView(AbstractAuthenticatedView,
 @view_config(route_name='objects.generic.traversal',
 			 renderer='rest',
 			 context=IUser,
-			 permission=nauth.ACT_UPDATE,
+			 permission=nauth.ACT_READ,
 			 request_method='GET',
 			 name=REL_PENDING_INVITATIONS)
 class GetPendingInvitationsView(AbstractAuthenticatedView):
