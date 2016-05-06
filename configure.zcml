@@ -30,6 +30,9 @@
 
 	<include package="nti.appserver.link_providers" file="meta.zcml" />
 	
+	<!-- ACL -->
+	<adapter factory=".acl.InvitationACLProvider" />
+	
 	<!-- Additional links for logged-in users -->
 	<link:userLink named=".views.REL_ACCEPT_INVITATIONS"
 				   view_named=".views.REL_ACCEPT_INVITATIONS" />
