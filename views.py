@@ -30,10 +30,12 @@ from nti.app.externalization.view_mixins import ModeledContentUploadRequestUtils
 from nti.app.externalization.error import handle_validation_error
 from nti.app.externalization.error import handle_possible_validation_error
 
-from nti.app.invitations import REL_ACCEPT_INVITATION
+from nti.app.invitations import REL_ACCEPT_INVITATION, REL_DECLINE_INVITATION
 from nti.app.invitations import REL_ACCEPT_INVITATIONS
 from nti.app.invitations import REL_PENDING_INVITATIONS
 from nti.app.invitations import REL_TRIVIAL_DEFAULT_INVITATION_CODE
+
+from nti.common.property import Lazy
 
 from nti.common.maps import CaseInsensitiveDict
 
@@ -80,10 +82,10 @@ class AcceptInvitationsView(AbstractAuthenticatedView):
 
 	def handle_possible_validation_error(self, request, e):
 		handle_possible_validation_error(request, e)
-		
+
 	def _do_call(self):
 		request = self.request
-		invite_codes = self.get_invite_codes()	
+		invite_codes = self.get_invite_codes()
 		try:
 			if invite_codes:
 				return accept_invitations(request.context, invite_codes)
@@ -94,16 +96,13 @@ class AcceptInvitationsView(AbstractAuthenticatedView):
 			self.handle_possible_validation_error(request, e)
 
 	def __call__(self):
-		"""
-		Implementation of :const:`REL_ACCEPT_INVITATIONS`.
-		"""
 		self._do_call()
 		return hexc.HTTPNoContent()
 
 @view_config(route_name='objects.generic.traversal',
 			 renderer='rest',
 			 context=IDynamicSharingTargetFriendsList,
-			 permission=nauth.ACT_UPDATE, # The creator only, not members who have read access
+			 permission=nauth.ACT_UPDATE,  # The creator only, not members who have read access
 			 request_method='GET',
 			 name=REL_TRIVIAL_DEFAULT_INVITATION_CODE)
 def get_default_trivial_invitation_code(request):
@@ -133,16 +132,20 @@ class AcceptInvitationView(AbstractAuthenticatedView,
 				or	values.get('invitation') \
 				or 	values.get('invitation_code')
 		return result
-	
+
 	def handle_validation_error(self, request, e):
 		handle_validation_error(request, e)
 
 	def handle_possible_validation_error(self, request, e):
 		handle_possible_validation_error(request, e)
-	
+
+	@Lazy
+	def invitations(self):
+		return component.getUtility(IInvitationsContainer)
+
 	def _do_validation(self):
 		request = self.request
-		invite_code = self.get_invite_codes()	
+		invite_code = self.get_invite_codes()
 		if not invite_code:
 			raise_json_error(
 					request,
@@ -152,8 +155,8 @@ class AcceptInvitationView(AbstractAuthenticatedView,
 						u'code': 'MissingInvitationCode',
 					},
 					None)
-		invitations = component.getUtility(IInvitationsContainer)
-		if not invite_code in invitations:
+
+		if not invite_code in self.invitations:
 			raise_json_error(
 					request,
 					hexc.HTTPUnprocessableEntity,
@@ -162,7 +165,7 @@ class AcceptInvitationView(AbstractAuthenticatedView,
 						u'code': 'InvalidInvitationCode',
 					},
 					None)
-		invitation = invitations[invite_code]
+		invitation = self.invitations[invite_code]
 		if invitation.is_accepted():
 			raise_json_error(
 					request,
@@ -199,11 +202,21 @@ class AcceptInvitationView(AbstractAuthenticatedView,
 			self.handle_possible_validation_error(request, e)
 
 	def __call__(self):
-		"""
-		Implementation of :const:`REL_ACCEPT_INVITATION`.
-		"""
 		self._do_call()
 		return hexc.HTTPNoContent()
+
+@view_config(route_name='objects.generic.traversal',
+			 renderer='rest',
+			 context=IUser,
+			 permission=nauth.ACT_UPDATE,
+			 request_method='POST',
+			 name=REL_DECLINE_INVITATION)
+class DeclineInvitationView(AcceptInvitationView):
+
+	def _do_call(self):
+		invitation = self._do_validation()
+		self.invitations.remove(invitation)
+		return True
 
 @view_config(route_name='objects.generic.traversal',
 			 renderer='rest',
@@ -212,7 +225,7 @@ class AcceptInvitationView(AbstractAuthenticatedView,
 			 request_method='GET',
 			 name=REL_PENDING_INVITATIONS)
 class GetPendingInvitationsView(AbstractAuthenticatedView):
-		
+
 	def _do_call(self):
 		result = LocatedExternalDict()
 		email = getattr(IUserProfile(self.context, None), 'email', None)
@@ -223,7 +236,4 @@ class GetPendingInvitationsView(AbstractAuthenticatedView):
 		return result
 
 	def __call__(self):
-		"""
-		Implementation of :const:`REL_PENDING_INVITATIONS`.
-		"""
 		return self._do_call()

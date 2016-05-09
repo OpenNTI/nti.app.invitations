@@ -17,6 +17,10 @@ logger = __import__('logging').getLogger(__name__)
 REL_ACCEPT_INVITATION = 'accept-invitation'
 
 #: The link relationship type to which an authenticated
+#: user can ``POST`` data to decline outstanding invitations.
+REL_DECLINE_INVITATION = 'decline-invitation'
+
+#: The link relationship type to which an authenticated
 #: user can ``GET`` the outstanding invitations.
 REL_PENDING_INVITATIONS = 'pending-invitations'
 
