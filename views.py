@@ -12,6 +12,7 @@ __docformat__ = "restructuredtext en"
 logger = __import__('logging').getLogger(__name__)
 
 import six
+import time
 import urllib
 
 from zope import component
@@ -21,6 +22,8 @@ from zope.container.contained import Contained
 
 from zope.event import notify
 
+from zope.intid.interfaces import IIntIds
+
 from zope.traversing.interfaces import IPathAdapter
 
 from pyramid import httpexceptions as hexc
@@ -28,6 +31,7 @@ from pyramid import httpexceptions as hexc
 from pyramid.interfaces import IRequest
 
 from pyramid.view import view_config
+from pyramid.view import view_defaults
 
 from nti.app.base.abstract_views import AbstractAuthenticatedView
 
@@ -48,9 +52,12 @@ from nti.app.invitations import REL_DECLINE_INVITATION
 from nti.app.invitations import REL_PENDING_INVITATIONS
 from nti.app.invitations import REL_TRIVIAL_DEFAULT_INVITATION_CODE
 
-from nti.common.property import Lazy
+from nti.common.integer_strings import to_external_string
+from nti.common.integer_strings import from_external_string
 
 from nti.common.maps import CaseInsensitiveDict
+
+from nti.common.property import Lazy
 
 from nti.dataserver import authorization as nauth
 
@@ -67,7 +74,6 @@ from nti.externalization.interfaces import LocatedExternalDict
 from nti.externalization.interfaces import StandardExternalFields
 
 from nti.invitations.interfaces import IInvitation
-from nti.invitations.interfaces import IInvitations
 from nti.invitations.interfaces import InvitationSentEvent
 from nti.invitations.interfaces import IInvitationsContainer
 from nti.invitations.interfaces import InvitationValidationError
@@ -99,9 +105,6 @@ class InvitationsPathAdapter(Contained):
 		if result is not None:
 			return result
 		raise KeyError(invitation_id)
-
-def invitations_path_adapter(dataserver, request):
-	return component.getUtility(IInvitationsContainer)
 
 @view_config(route_name='objects.generic.traversal',
 			 renderer='rest',
@@ -142,18 +145,21 @@ class AcceptInvitationsView(AbstractAuthenticatedView):
 		self._do_call()
 		return hexc.HTTPNoContent()
 
+# new views
+
 @view_config(route_name='objects.generic.traversal',
 			 renderer='rest',
 			 context=IDynamicSharingTargetFriendsList,
 			 permission=nauth.ACT_UPDATE,  # The creator only, not members who have read access
 			 request_method='GET',
 			 name=REL_TRIVIAL_DEFAULT_INVITATION_CODE)
-def get_default_trivial_invitation_code(request):
-	invitations = component.getUtility(IInvitations)
-	code = invitations._getDefaultInvitationCode(request.context)
-	return LocatedExternalDict({'invitation_code': code})
+class GetDefaultTrivialInvitationCode(AbstractAuthenticatedView):
 
-# new views
+	def __call__(self):
+		intids = component.getUtility(IIntIds)
+		iid = intids.getId(self.context)
+		code = to_external_string(iid)
+		return LocatedExternalDict({'invitation_code': code})
 
 class AcceptInvitationMixin(AbstractAuthenticatedView):
 
@@ -222,12 +228,12 @@ class AcceptInvitationMixin(AbstractAuthenticatedView):
 		self._do_call()
 		return hexc.HTTPNoContent()
 
-@view_config(route_name='objects.generic.traversal',
-			 renderer='rest',
-			 context=IUser,
-			 permission=nauth.ACT_UPDATE,
-			 request_method='POST',
-			 name=REL_ACCEPT_INVITATION)
+@view_config(name=REL_ACCEPT_INVITATION)
+@view_defaults(route_name='objects.generic.traversal',
+			   renderer='rest',
+			   context=IUser,
+			   request_method='POST',
+			   permission=nauth.ACT_UPDATE)
 class AcceptInvitationByCodeView(AcceptInvitationMixin,
 						   		 ModeledContentUploadRequestUtilsMixin):
 
@@ -235,13 +241,39 @@ class AcceptInvitationByCodeView(AcceptInvitationMixin,
 		values = CaseInsensitiveDict(self.readInput())
 		result = 	values.get('code') \
 				or	values.get('invitation') \
-				or 	values.get('invitation_code')
+				or 	values.get('invitation_code') \
+				or 	values.get('invitation_codes')  # legacy (should only be one)
+		if isinstance(result, (list,tuple)) and result:
+			result = result[0]
 		return result
+
+	def get_legacy_dfl(self, code):
+		try:
+			iid = from_external_string(code)
+			result = component.getUtility(IIntIds).queryObject(iid)
+			return result if IDynamicSharingTargetFriendsList.providedBy(result) else None
+		except Exception:  # pragma no cover
+			return None
+
+	def handle_legacy_dfl(self, code):
+		dfl = self.get_legacy_dfl(code)
+		if dfl is not None:
+			creator = dfl.creator
+			invitation = JoinEntityInvitation()
+			invitation.sent = time.time()
+			invitation.entity = dfl.username
+			invitation.receiver = self.remoteUser.username
+			invitation.sender = getattr(creator, 'username', creator)
+			self.invitations.add(invitation)
+			return invitation
+		return None
 
 	def _do_call(self):
 		request = self.request
 		code = self.get_invite_code()
-		invitation = self._do_validation(code)
+		invitation = self.handle_legacy_dfl(code)
+		if invitation is None:
+			invitation = self._do_validation(code)
 		try:
 			accept_invitation(self.context, invitation)
 		except InvitationValidationError as e:
@@ -358,7 +390,9 @@ class SendDFLInvitationView(AbstractAuthenticatedView,
 		result = []
 		for username in set(usernames):
 			user = User.get_user(username)
-			if IUser.providedBy(user) and user not in self.context:
+			if 		IUser.providedBy(user) \
+				and user not in self.context \
+				and username != self.remoteUser.username:
 				result.append(user.username)
 
 		if not result:
