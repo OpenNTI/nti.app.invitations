@@ -9,11 +9,15 @@
 	<include package="zope.component" />
 	<include package="zope.security" />
 
-	<!-- Adapters -->
-	<adapter name="Invitations"
-			 factory=".views.InvitationsPathAdapter"
+	<!-- Traversal -->
+	<adapter factory=".views.invitations_path_adapter"
+			 for="nti.dataserver.interfaces.IDataserverFolder pyramid.interfaces.IRequest"
 			 provides="zope.traversing.interfaces.IPathAdapter"
-			 for="nti.dataserver.interfaces.IDataserverFolder pyramid.interfaces.IRequest" />
+			 name="Invitations" />
+			 
+	<adapter factory="nti.traversal.traversal.ContainerAdapterTraversable"
+			 for="nti.invitations.interfaces.IInvitationsContainer pyramid.interfaces.IRequest"
+			 provides="zope.traversing.interfaces.ITraversable" />
 
 	<!-- Utilities -->
 	<utility factory=".invitation._TrivialDefaultInvitations"
