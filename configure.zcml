@@ -1,8 +1,7 @@
 <!-- -*- mode: nxml -*- -->
 <configure	xmlns="http://namespaces.zope.org/zope"
 			xmlns:i18n="http://namespaces.zope.org/i18n"
-			xmlns:zcml="http://namespaces.zope.org/zcml"
-			xmlns:link="http://nextthought.com/ntp/link_providers">
+			xmlns:zcml="http://namespaces.zope.org/zcml">
 
 	<include package="zope.component" file="meta.zcml" />
 	<include package="zope.security" file="meta.zcml" />
@@ -20,9 +19,6 @@
 
 	<utility factory=".invitation.InvitationEntityFinder" />
 
-	<subscriber	factory=".decorators.DFLGetInvitationLinkProvider"
-				provides="nti.externalization.interfaces.IExternalMappingDecorator"/>
-	
 	<!-- ACL -->
 	<adapter factory=".acl.InvitationACLProvider" />
 
@@ -35,9 +31,15 @@
 
 	<subscriber	factory=".workspaces._DefaultUserInvitationsLinksProvider"
 				provides=".interfaces.IUserInvitationsLinkProvider"/>
-	
-	<!-- Additional links for logged-in users (Deprecated) -->
-	<link:userLink named=".REL_ACCEPT_INVITATIONS"
-				   view_named=".REL_ACCEPT_INVITATIONS" />
 
+	<!-- Decorators -->
+
+	<subscriber	factory=".decorators.DFLGetInvitationLinkProvider"
+				provides="nti.externalization.interfaces.IExternalMappingDecorator"/>
+
+	<subscriber factory=".decorators.LegacyAcceptInvitationsLinkProvider"
+				provides="nti.externalization.interfaces.IExternalMappingDecorator"
+				for="nti.dataserver.interfaces.IUser
+					 pyramid.interfaces.IRequest"/>
+	
 </configure>
