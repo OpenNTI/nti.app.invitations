@@ -14,6 +14,11 @@ logger = __import__('logging').getLogger(__name__)
 import six
 
 from zope import component
+from zope import interface
+
+from zope.container.contained import Contained
+
+from zope.traversing.interfaces import IPathAdapter
 
 from pyramid import httpexceptions as hexc
 
@@ -30,6 +35,7 @@ from nti.app.externalization.view_mixins import ModeledContentUploadRequestUtils
 from nti.app.externalization.error import handle_validation_error
 from nti.app.externalization.error import handle_possible_validation_error
 
+from nti.app.invitations import INVITATIONS
 from nti.app.invitations import REL_ACCEPT_INVITATION 
 from nti.app.invitations import REL_ACCEPT_INVITATIONS
 from nti.app.invitations import REL_DECLINE_INVITATION
@@ -60,6 +66,14 @@ from nti.invitations.utils import accept_invitation
 from nti.invitations.utils import get_pending_invitations
 
 ITEMS = StandardExternalFields.ITEMS
+
+@interface.implementer(IPathAdapter)
+class InvitationsPathAdapter(Contained):
+
+	def __init__(self, parent, request):
+		self.request = request
+		self.__parent__ = parent
+		self.__name__ = INVITATIONS
 
 @view_config(route_name='objects.generic.traversal',
 			 renderer='rest',

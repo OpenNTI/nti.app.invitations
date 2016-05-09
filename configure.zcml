@@ -9,6 +9,12 @@
 	<include package="zope.component" />
 	<include package="zope.security" />
 
+	<!-- Adapters -->
+	<adapter name="Invitations"
+			 factory=".views.InvitationsPathAdapter"
+			 provides="zope.traversing.interfaces.IPathAdapter"
+			 for="nti.dataserver.interfaces.IDataserverFolder pyramid.interfaces.IRequest" />
+
 	<!-- Utilities -->
 	<utility factory=".invitation._TrivialDefaultInvitations"
 			 provides="nti.invitations.interfaces.IInvitations" />
@@ -34,5 +40,5 @@
 	<!-- Additional links for logged-in users (Deprecated) -->
 	<link:userLink named=".REL_ACCEPT_INVITATIONS"
 				   view_named=".REL_ACCEPT_INVITATIONS" />
-			
+
 </configure>
