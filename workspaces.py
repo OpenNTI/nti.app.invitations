@@ -115,7 +115,7 @@ class _DefaultUserInvitationsLinksProvider(object):
 		self.user = user
 
 	def links(self, workspace):
-		links = []
+		result = []
 		for name in (REL_ACCEPT_INVITATIONS, REL_ACCEPT_INVITATION,  REL_DECLINE_INVITATION):
 			link = Link(self.user, 
 						method="POST",
@@ -124,7 +124,7 @@ class _DefaultUserInvitationsLinksProvider(object):
 			link.__name__ = name
 			link.__parent__ = self.user
 			interface.alsoProvides(link, ILocation)
-			links.append(links)
+			result.append(link)
 			
 		username = self.user.username
 		email = getattr(IUserProfile(self.user, None), 'email', None)
@@ -136,5 +136,5 @@ class _DefaultUserInvitationsLinksProvider(object):
 			link.__name__ = name
 			link.__parent__ = self.user
 			interface.alsoProvides(link, ILocation)
-			links.append(links)
-		return links
+			result.append(link)
+		return result

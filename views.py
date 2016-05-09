@@ -50,6 +50,7 @@ from nti.dataserver.users.interfaces import IUserProfile
 from nti.externalization.interfaces import LocatedExternalDict
 from nti.externalization.interfaces import StandardExternalFields
 
+from nti.invitations.interfaces import IInvitation
 from nti.invitations.interfaces import IInvitations
 from nti.invitations.interfaces import IInvitationsContainer
 from nti.invitations.interfaces import InvitationValidationError
@@ -116,26 +117,7 @@ def get_default_trivial_invitation_code(request):
 
 # new views
 
-@view_config(route_name='objects.generic.traversal',
-			 renderer='rest',
-			 context=IUser,
-			 permission=nauth.ACT_UPDATE,
-			 request_method='POST',
-			 name=REL_ACCEPT_INVITATION)
-class AcceptInvitationView(AbstractAuthenticatedView,
-						   ModeledContentUploadRequestUtilsMixin):
-
-	def readInput(self, value=None):
-		result = ModeledContentUploadRequestUtilsMixin.readInput(self, value=value)
-		result = CaseInsensitiveDict(result)
-		return result
-
-	def get_invite_code(self):
-		values = self.readInput()
-		result = 	values.get('code') \
-				or	values.get('invitation') \
-				or 	values.get('invitation_code')
-		return result
+class AcceptInvitationMixin(AbstractAuthenticatedView):
 
 	def handle_validation_error(self, request, e):
 		handle_validation_error(request, e)
@@ -147,29 +129,8 @@ class AcceptInvitationView(AbstractAuthenticatedView,
 	def invitations(self):
 		return component.getUtility(IInvitationsContainer)
 
-	def _do_validation(self):
+	def _validate_invitation(self, invitation):
 		request = self.request
-		invite_code = self.get_invite_codes()
-		if not invite_code:
-			raise_json_error(
-					request,
-					hexc.HTTPUnprocessableEntity,
-					{
-						u'message': _("Missing invitation code"),
-						u'code': 'MissingInvitationCode',
-					},
-					None)
-
-		if not invite_code in self.invitations:
-			raise_json_error(
-					request,
-					hexc.HTTPUnprocessableEntity,
-					{
-						u'message': _("Invalid invitation code"),
-						u'code': 'InvalidInvitationCode',
-					},
-					None)
-		invitation = self.invitations[invite_code]
 		if invitation.is_accepted():
 			raise_json_error(
 					request,
@@ -194,16 +155,30 @@ class AcceptInvitationView(AbstractAuthenticatedView,
 					None)
 		return invitation
 
-	def _do_call(self):
+	def _do_validation(self, invite_code):
 		request = self.request
-		invitation = self._do_validation()
-		try:
-			accept_invitation(self.context, invitation)
-		except InvitationValidationError as e:
-			e.field = 'invitation'
-			self.handle_validation_error(request, e)
-		except Exception as e:  # pragma: no cover
-			self.handle_possible_validation_error(request, e)
+		invite_code = self.get_invite_codes()
+		if not invite_code:
+			raise_json_error(
+					request,
+					hexc.HTTPUnprocessableEntity,
+					{
+						u'message': _("Missing invitation code"),
+						u'code': 'MissingInvitationCode',
+					},
+					None)
+
+		if not invite_code in self.invitations:
+			raise_json_error(
+					request,
+					hexc.HTTPUnprocessableEntity,
+					{
+						u'message': _("Invalid invitation code"),
+						u'code': 'InvalidInvitationCode',
+					},
+					None)
+		invitation = self.invitations[invite_code]
+		return self._validate_invitation(invitation)
 
 	def __call__(self):
 		self._do_call()
@@ -214,14 +189,75 @@ class AcceptInvitationView(AbstractAuthenticatedView,
 			 context=IUser,
 			 permission=nauth.ACT_UPDATE,
 			 request_method='POST',
-			 name=REL_DECLINE_INVITATION)
-class DeclineInvitationView(AcceptInvitationView):
+			 name=REL_ACCEPT_INVITATION)
+class AcceptInvitationByCodeView(AcceptInvitationMixin,
+						   		 ModeledContentUploadRequestUtilsMixin):
+
+	def get_invite_code(self):
+		values = CaseInsensitiveDict(self.readInput())
+		result = 	values.get('code') \
+				or	values.get('invitation') \
+				or 	values.get('invitation_code')
+		return result
 
 	def _do_call(self):
-		invitation = self._do_validation()
+		request = self.request
+		code = self.get_invite_code()
+		invitation = self._do_validation(code)
+		try:
+			accept_invitation(self.context, invitation)
+		except InvitationValidationError as e:
+			e.field = 'invitation'
+			self.handle_validation_error(request, e)
+		except Exception as e:  # pragma: no cover
+			self.handle_possible_validation_error(request, e)
+
+@view_config(route_name='objects.generic.traversal',
+			 renderer='rest',
+			 context=IInvitation,
+			 permission=nauth.ACT_UPDATE,
+			 request_method='POST',
+			 name='accept')
+class AcceptInvitationView(AcceptInvitationMixin):
+
+	def _do_call(self):
+		request = self.request
+		invitation = self._validate_invitation(self.context)
+		try:
+			accept_invitation(self.context, invitation)
+		except InvitationValidationError as e:
+			e.field = 'invitation'
+			self.handle_validation_error(request, e)
+		except Exception as e:  # pragma: no cover
+			self.handle_possible_validation_error(request, e)
+
+@view_config(route_name='objects.generic.traversal',
+			 renderer='rest',
+			 context=IUser,
+			 permission=nauth.ACT_UPDATE,
+			 request_method='POST',
+			 name=REL_DECLINE_INVITATION)
+class DeclineInvitationByCodeView(AcceptInvitationByCodeView):
+
+	def _do_call(self):
+		code = self.get_invite_code()
+		invitation = self._do_validation(code)
 		self.invitations.remove(invitation)
 		return True
 
+@view_config(route_name='objects.generic.traversal',
+			 renderer='rest',
+			 context=IInvitation,
+			 permission=nauth.ACT_UPDATE,
+			 request_method='POST',
+			 name='decline')
+class DeclineInvitationView(AcceptInvitationView):
+
+	def _do_call(self):
+		invitation = self._validate_invitation(self.context)
+		self.invitations.remove(invitation)
+		return True
+	
 @view_config(route_name='objects.generic.traversal',
 			 renderer='rest',
 			 context=IUser,
