@@ -21,7 +21,7 @@ from nti.app.base.abstract_views import AbstractAuthenticatedView
 from nti.app.externalization.internalization import read_body_as_external_object
 from nti.app.externalization.view_mixins import ModeledContentUploadRequestUtilsMixin
 
-from nti.app.invitations import REL_EXPIRED_INVITATIONS
+from nti.app.invitations.views import InvitationsPathAdapter
 
 from nti.common.maps import CaseInsensitiveDict
 
@@ -38,17 +38,15 @@ from nti.invitations.utils import delete_expired_invitations
 ITEMS = StandardExternalFields.ITEMS
 
 @view_config(context=IDataserverFolder)
+@view_config(context=InvitationsPathAdapter)
 @view_defaults(route_name='objects.generic.traversal',
 			   renderer='rest',
 			   permission=nauth.ACT_READ,
 			   request_method='GET',
-			   name=REL_EXPIRED_INVITATIONS)
+			   name='ExpiredInvitations')
 class GetExpiredInvitationsView(AbstractAuthenticatedView):
 
 	def __call__(self):
-		"""
-		Implementation of :const:`REL_EXPIRED_INVITATIONS`.
-		"""
 		values = CaseInsensitiveDict(self.request.params)
 		usernames = values.get('username') or values.get('usernames')
 		if isinstance(usernames, six.string_types):
@@ -60,13 +58,13 @@ class GetExpiredInvitationsView(AbstractAuthenticatedView):
 		result.__parent__ = self.request.context
 		return result
 
-@view_config(name='DeleteExpiredInvitations')
-@view_config(name='delete_expired_invitations')
+@view_config(context=IDataserverFolder)
+@view_config(context=InvitationsPathAdapter)
 @view_defaults(route_name='objects.generic.traversal',
 			   renderer='rest',
 			   permission=nauth.ACT_READ,
 			   request_method='POST',
-			   context=IDataserverFolder)
+			   name='DeleteExpiredInvitations')
 class DeleteExpiredInvitationsView(AbstractAuthenticatedView,
 								   ModeledContentUploadRequestUtilsMixin):
 

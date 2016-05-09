@@ -32,10 +32,6 @@ REL_SEND_INVITATION = 'send-invitation'
 REL_PENDING_INVITATIONS = 'pending-invitations'
 
 #: The link relationship type to which an authenticated
-#: user can ``GET`` the outstanding invitations.
-REL_EXPIRED_INVITATIONS = 'expired-invitations'
-
-#: The link relationship type to which an authenticated
 #: user can ``POST`` data to accept outstanding invitations. Also the name of a
 #: view to handle this feedback: :func:`accept_invitations_view`
 #: The data should be an dictionary containing the key ``invitation_codes``
