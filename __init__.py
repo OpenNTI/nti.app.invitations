@@ -24,6 +24,10 @@ REL_ACCEPT_INVITATION = 'accept-invitation'
 REL_DECLINE_INVITATION = 'decline-invitation'
 
 #: The link relationship type to which an authenticated
+#: user can ``POST`` data to send an invitation.
+REL_SEND_INVITATION = 'send-invitation'
+
+#: The link relationship type to which an authenticated
 #: user can ``GET`` the outstanding invitations.
 REL_PENDING_INVITATIONS = 'pending-invitations'
 

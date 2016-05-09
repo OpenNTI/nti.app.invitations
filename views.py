@@ -12,10 +12,20 @@ __docformat__ = "restructuredtext en"
 logger = __import__('logging').getLogger(__name__)
 
 import six
+import urllib
 
 from zope import component
+from zope import interface
+
+from zope.container.contained import Contained
+
+from zope.event import notify
+
+from zope.traversing.interfaces import IPathAdapter
 
 from pyramid import httpexceptions as hexc
+
+from pyramid.interfaces import IRequest
 
 from pyramid.view import view_config
 
@@ -30,7 +40,9 @@ from nti.app.externalization.view_mixins import ModeledContentUploadRequestUtils
 from nti.app.externalization.error import handle_validation_error
 from nti.app.externalization.error import handle_possible_validation_error
 
-from nti.app.invitations import REL_ACCEPT_INVITATION 
+from nti.app.invitations import INVITATIONS
+from nti.app.invitations import REL_SEND_INVITATION
+from nti.app.invitations import REL_ACCEPT_INVITATION
 from nti.app.invitations import REL_ACCEPT_INVITATIONS
 from nti.app.invitations import REL_DECLINE_INVITATION
 from nti.app.invitations import REL_PENDING_INVITATIONS
@@ -43,8 +55,12 @@ from nti.common.maps import CaseInsensitiveDict
 from nti.dataserver import authorization as nauth
 
 from nti.dataserver.interfaces import IUser
+from nti.dataserver.interfaces import IDataserverFolder
 from nti.dataserver.interfaces import IDynamicSharingTargetFriendsList
 
+from nti.dataserver.invitations import JoinEntityInvitation
+
+from nti.dataserver.users import User
 from nti.dataserver.users.interfaces import IUserProfile
 
 from nti.externalization.interfaces import LocatedExternalDict
@@ -52,6 +68,7 @@ from nti.externalization.interfaces import StandardExternalFields
 
 from nti.invitations.interfaces import IInvitation
 from nti.invitations.interfaces import IInvitations
+from nti.invitations.interfaces import InvitationSentEvent
 from nti.invitations.interfaces import IInvitationsContainer
 from nti.invitations.interfaces import InvitationValidationError
 
@@ -61,6 +78,27 @@ from nti.invitations.utils import accept_invitation
 from nti.invitations.utils import get_pending_invitations
 
 ITEMS = StandardExternalFields.ITEMS
+
+@interface.implementer(IPathAdapter)
+@component.adapter(IDataserverFolder, IRequest)
+class InvitationsPathAdapter(Contained):
+
+	def __init__(self, dataserver, request):
+		self.__parent__ = dataserver
+		self.__name__ = INVITATIONS
+
+	@Lazy
+	def invitations(self):
+		return component.getUtility(IInvitationsContainer)
+
+	def __getitem__(self, invitation_id):
+		if not invitation_id:
+			raise hexc.HTTPNotFound()
+		invitation_id = urllib.unquote(invitation_id)
+		result = self.invitations.get(invitation_id)
+		if result is not None:
+			return result
+		raise KeyError(invitation_id)
 
 def invitations_path_adapter(dataserver, request):
 	return component.getUtility(IInvitationsContainer)
@@ -257,7 +295,7 @@ class DeclineInvitationView(AcceptInvitationView):
 		invitation = self._validate_invitation(self.context)
 		self.invitations.remove(invitation)
 		return True
-	
+
 @view_config(route_name='objects.generic.traversal',
 			 renderer='rest',
 			 context=IUser,
@@ -273,6 +311,88 @@ class GetPendingInvitationsView(AbstractAuthenticatedView):
 		result[ITEMS] = get_pending_invitations(receivers)
 		result.__name__ = self.request.view_name
 		result.__parent__ = self.request.context
+		return result
+
+	def __call__(self):
+		return self._do_call()
+
+@view_config(route_name='objects.generic.traversal',
+			 renderer='rest',
+			 context=IDynamicSharingTargetFriendsList,
+			 permission=nauth.ACT_UPDATE,  # The creator only, not members who have read access
+			 request_method='POST',
+			 name=REL_SEND_INVITATION)
+class SendDFLInvitationView(AbstractAuthenticatedView,
+							ModeledContentUploadRequestUtilsMixin):
+
+	def readInput(self, value=None):
+		result = ModeledContentUploadRequestUtilsMixin.readInput(self, value=value)
+		result = CaseInsensitiveDict(result)
+		return result
+
+	def get_usernames(self, values):
+		result = 	values.get('usernames') \
+				or	values.get('username') \
+				or 	values.get('users') \
+				or 	values.get('user')
+		if isinstance(result, six.string_types):
+			result = result.split(',')
+		return result
+
+	@Lazy
+	def invitations(self):
+		return component.getUtility(IInvitationsContainer)
+
+	def _do_validation(self, values):
+		request = self.request
+		usernames = self.get_usernames(values)
+		if not usernames:
+			raise_json_error(
+					request,
+					hexc.HTTPUnprocessableEntity,
+					{
+						u'message': _("Must specify a username."),
+						u'code': 'MissingUsername',
+					},
+					None)
+		result = []
+		for username in set(usernames):
+			user = User.get_user(username)
+			if IUser.providedBy(user) and user not in self.context:
+				result.append(user.username)
+
+		if not result:
+			raise_json_error(
+					request,
+					hexc.HTTPUnprocessableEntity,
+					{
+						u'message': _("No valid users to send invitation to."),
+						u'code': 'NoValidInvitationUsers',
+					},
+					None)
+		return result
+
+	def _do_call(self):
+		values = self.readInput()
+		users = self._do_validation(values)
+		message = values.get('message')
+
+		result = LocatedExternalDict()
+		result[ITEMS] = items = []
+		result.__name__ = self.request.view_name
+		result.__parent__ = self.request.context
+
+		entity = self.context.username
+		for username in users:
+			invitation = JoinEntityInvitation()
+			invitation.entity = entity
+			invitation.message = message
+			invitation.receiver = username
+			invitation.sender = self.remoteUser.username
+			self.invitations.add(invitation)
+			items.append(invitation)
+			notify(InvitationSentEvent(invitation, username))
+
 		return result
 
 	def __call__(self):

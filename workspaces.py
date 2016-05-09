@@ -17,7 +17,7 @@ from zope.container.contained import Contained
 from zope.location.interfaces import ILocation
 
 from nti.app.invitations import INVITATIONS
-from nti.app.invitations import REL_ACCEPT_INVITATION 
+from nti.app.invitations import REL_ACCEPT_INVITATION
 from nti.app.invitations import REL_DECLINE_INVITATION
 from nti.app.invitations import REL_ACCEPT_INVITATIONS
 from nti.app.invitations import REL_PENDING_INVITATIONS
@@ -110,28 +110,30 @@ class _InvitationsCollection(object):
 @component.adapter(IUser)
 @interface.implementer(IUserInvitationsLinkProvider)
 class _DefaultUserInvitationsLinksProvider(object):
-		
+
 	def __init__(self, user=None):
 		self.user = user
 
 	def links(self, workspace):
 		result = []
-		for name in (REL_ACCEPT_INVITATIONS, REL_ACCEPT_INVITATION,  REL_DECLINE_INVITATION):
-			link = Link(self.user, 
+		for name in (REL_ACCEPT_INVITATIONS,
+					 REL_ACCEPT_INVITATION,
+					 REL_DECLINE_INVITATION):
+			link = Link(self.user,
 						method="POST",
-						rel=name, 
+						rel=name,
 						elements=('@@' + name,))
 			link.__name__ = name
 			link.__parent__ = self.user
 			interface.alsoProvides(link, ILocation)
 			result.append(link)
-			
+
 		username = self.user.username
 		email = getattr(IUserProfile(self.user, None), 'email', None)
 		if has_pending_invitations(receivers=(username, email)):
-			link = Link(self.user, 
+			link = Link(self.user,
 						method="GET",
-						rel=REL_PENDING_INVITATIONS, 
+						rel=REL_PENDING_INVITATIONS,
 						elements=('@@' + REL_PENDING_INVITATIONS,))
 			link.__name__ = name
 			link.__parent__ = self.user
