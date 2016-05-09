@@ -38,7 +38,7 @@
 	<adapter factory=".workspaces.InvitationsWorkspace"
 			 provides=".interfaces.IInvitationsWorkspace" />
 
-	<subscriber	factory=".workspaces._DefaultUserInvitationsLinkProvider"
+	<subscriber	factory=".workspaces._DefaultUserInvitationsLinksProvider"
 				provides=".interfaces.IUserInvitationsLinkProvider"/>
 	
 	<!-- Additional links for logged-in users (Deprecated) -->

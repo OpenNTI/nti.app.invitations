@@ -16,7 +16,11 @@ from zope.container.contained import Contained
 
 from zope.location.interfaces import ILocation
 
+from nti.app.invitations import INVITATIONS
+from nti.app.invitations import REL_ACCEPT_INVITATION 
+from nti.app.invitations import REL_DECLINE_INVITATION
 from nti.app.invitations import REL_ACCEPT_INVITATIONS
+from nti.app.invitations import REL_PENDING_INVITATIONS
 
 from nti.app.invitations.interfaces import IInvitationsWorkspace
 from nti.app.invitations.interfaces import IUserInvitationsLinkProvider
@@ -30,12 +34,16 @@ from nti.common.property import alias
 
 from nti.dataserver.interfaces import IUser
 
+from nti.dataserver.users.interfaces import IUserProfile
+
+from nti.invitations.utils import has_pending_invitations
+
 from nti.links.links import Link
 
 @interface.implementer(IInvitationsWorkspace)
 class _InvitationsWorkspace(Contained):
 
-	__name__ = 'Invitations'
+	__name__ = INVITATIONS
 	name = alias('__name__', __name__)
 
 	links = ()
@@ -71,7 +79,7 @@ def InvitationsWorkspace(user_service):
 @interface.implementer(IContainerCollection)
 class _InvitationsCollection(object):
 
-	name = 'Invitations'
+	name = INVITATIONS
 
 	__name__ = u''
 	__parent__ = None
@@ -101,17 +109,32 @@ class _InvitationsCollection(object):
 
 @component.adapter(IUser)
 @interface.implementer(IUserInvitationsLinkProvider)
-class _DefaultUserInvitationsLinkProvider(object):
+class _DefaultUserInvitationsLinksProvider(object):
 		
 	def __init__(self, user=None):
 		self.user = user
 
 	def links(self, workspace):
-		link = Link(self.user, 
-					method="POST",
-					rel=REL_ACCEPT_INVITATIONS, 
-					elements=('@@' + REL_ACCEPT_INVITATIONS,))
-		link.__name__ = REL_ACCEPT_INVITATIONS
-		link.__parent__ = self.user
-		interface.alsoProvides(link, ILocation)
-		return (link,)
+		links = []
+		for name in (REL_ACCEPT_INVITATIONS, REL_ACCEPT_INVITATION,  REL_DECLINE_INVITATION):
+			link = Link(self.user, 
+						method="POST",
+						rel=name, 
+						elements=('@@' + name,))
+			link.__name__ = name
+			link.__parent__ = self.user
+			interface.alsoProvides(link, ILocation)
+			links.append(links)
+			
+		username = self.user.username
+		email = getattr(IUserProfile(self.user, None), 'email', None)
+		if has_pending_invitations(receivers=(username, email)):
+			link = Link(self.user, 
+						method="GET",
+						rel=REL_PENDING_INVITATIONS, 
+						elements=('@@' + REL_PENDING_INVITATIONS,))
+			link.__name__ = name
+			link.__parent__ = self.user
+			interface.alsoProvides(link, ILocation)
+			links.append(links)
+		return links
