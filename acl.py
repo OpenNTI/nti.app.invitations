@@ -5,6 +5,7 @@
 """
 
 from __future__ import print_function, unicode_literals, absolute_import, division
+from zope.security.interfaces import IPrincipal
 __docformat__ = "restructuredtext en"
 
 logger = __import__('logging').getLogger(__name__)
@@ -61,15 +62,18 @@ class InvitationACLProvider(object):
 	@Lazy
 	def __acl__(self):
 		aces = [ace_allowing(ROLE_ADMIN, ALL_PERMISSIONS, type(self))]
-		aces.append(ace_allowing(self.context.sender, ALL_PERMISSIONS, type(self)))
+		aces.append(ace_allowing(IPrincipal(self.context.sender), 
+								 ALL_PERMISSIONS, 
+								 type(self)))
 
-		receiver = self.context.receiver
+		receiver = self.context.receiver.lower()
 		if self.context.is_email():
 			user = User.get_user(receiver)
 			if user is None:
 				usernames = self._get_usernames_by_email(receiver)
 				receiver = usernames[0] if len(usernames) == 1 else None
 		if receiver:
+			receiver = IPrincipal(receiver.lower())
 			aces.append(ace_allowing(receiver, ACT_READ, type(self)))
 			aces.append(ace_allowing(receiver, ACT_UPDATE, type(self)))
 
