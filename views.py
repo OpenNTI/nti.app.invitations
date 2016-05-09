@@ -30,8 +30,9 @@ from nti.app.externalization.view_mixins import ModeledContentUploadRequestUtils
 from nti.app.externalization.error import handle_validation_error
 from nti.app.externalization.error import handle_possible_validation_error
 
-from nti.app.invitations import REL_ACCEPT_INVITATION, REL_DECLINE_INVITATION
+from nti.app.invitations import REL_ACCEPT_INVITATION 
 from nti.app.invitations import REL_ACCEPT_INVITATIONS
+from nti.app.invitations import REL_DECLINE_INVITATION
 from nti.app.invitations import REL_PENDING_INVITATIONS
 from nti.app.invitations import REL_TRIVIAL_DEFAULT_INVITATION_CODE
 
