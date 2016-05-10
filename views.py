@@ -277,7 +277,7 @@ class DeclineInvitationByCodeView(AcceptInvitationByCodeView):
 		code = self.get_invite_code()
 		invitation = self._do_validation(code)
 		self.invitations.remove(invitation)
-		return True
+		return invitation
 
 @view_config(route_name='objects.generic.traversal',
 			 renderer='rest',

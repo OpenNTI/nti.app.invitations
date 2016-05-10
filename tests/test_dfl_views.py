@@ -12,6 +12,7 @@ from hamcrest import is_not
 from hamcrest import has_item
 from hamcrest import ends_with
 from hamcrest import has_entry
+from hamcrest import has_length
 from hamcrest import assert_that
 from hamcrest import has_entries
 does_not = is_not
@@ -19,6 +20,7 @@ does_not = is_not
 import urllib
 import anyjson as json
 
+from nti.app.invitations.views import REL_SEND_INVITATION
 from nti.app.invitations.views import REL_TRIVIAL_DEFAULT_INVITATION_CODE
 
 from nti.dataserver import users
@@ -32,6 +34,48 @@ from nti.app.testing.webtest import TestApp
 from nti.dataserver.tests import mock_dataserver
 
 class TestApplicationInvitationDFLViews(ApplicationLayerTest):
+
+	@WithSharedApplicationMockDS
+	def test_send_dfl_invitation(self):
+
+		with mock_dataserver.mock_db_trans(self.ds):
+			owner = self._create_user()
+			owner_username = owner.username
+			member_user = self._create_user('member@foo')
+			member_user_username = member_user.username
+
+			fl1 = users.DynamicFriendsList(username='Friends')
+			fl1.creator = owner  # Creator must be set
+			owner.addContainedObject(fl1)
+
+			dfl_ntiid = fl1.NTIID
+
+		testapp = TestApp(self.app)
+
+		# The owner is the only one that has the link
+		path = '/dataserver2/Objects/' + dfl_ntiid
+		path = str(path)
+		path = urllib.quote(path)
+
+		# And the owner is the only one that can fetch it
+		res = testapp.post(path + '/@@' + str(REL_SEND_INVITATION),
+						   json.dumps({'username': member_user_username}),
+						   extra_environ=self._make_extra_environ(username=owner_username),
+						   status=200)
+		assert_that(res.json_body, has_entry('Items', has_length(1)))
+		code = res.json_body['Items'][0]['code']
+
+		res = testapp.get('/dataserver2/Invitations/%s' % code,
+				    	  extra_environ=self._make_extra_environ(username=member_user_username),
+				    	  status=200)
+		assert_that(res.json_body, has_entry('Class', "JoinEntityInvitation"))
+		assert_that(res.json_body, has_entry('MimeType', "application/vnd.nextthought.joinentityinvitation"))
+		assert_that(res.json_body, has_entry('Creator', "sjohnson@nextthought.com"))
+		assert_that(res.json_body, has_entry('sender', "sjohnson@nextthought.com"))
+		assert_that(res.json_body, has_entry('accepted', is_(False)))
+		assert_that(res.json_body, has_entry('code', is_(code)))
+		assert_that(res.json_body, has_entry('expiryTime', is_(0)))
+		assert_that(res.json_body, has_entry('receiver', is_("member@foo")))
 
 	@WithSharedApplicationMockDS
 	def test_link_in_dfl(self):

@@ -10,6 +10,7 @@ __docformat__ = "restructuredtext en"
 from hamcrest import is_not
 from hamcrest import has_entry
 from hamcrest import assert_that
+from hamcrest import has_length
 from hamcrest import contains_string
 does_not = is_not
 
@@ -83,3 +84,31 @@ class TestApplicationInvitationUserViews(ApplicationLayerTest):
 					  json.dumps({'code': code}),
 					  extra_environ=self._make_extra_environ(),
 					  status=204)
+		
+	@WithSharedApplicationMockDS
+	def test_pending_invitations(self):
+
+		with mock_dataserver.mock_db_trans(self.ds):
+			self._create_user()
+			comm = Community.create_community(username='Bankai')
+			invitation = JoinCommunityInvitation()
+			invitation.entity = comm.username
+			invitation.receiver = 'sjohnson@nextthought.com'
+			component.getUtility(IInvitationsContainer).add(invitation)
+			code = invitation.code
+
+		testapp = TestApp(self.app)
+		res = testapp.get('/dataserver2/users/sjohnson@nextthought.com/@@pending-invitations',
+					 	  extra_environ=self._make_extra_environ(),
+					 	  status=200)
+		assert_that(res.json_body, has_entry('Items', has_length(1)))
+		
+		testapp.post('/dataserver2/users/sjohnson@nextthought.com/@@decline-invitation',
+					  json.dumps({'code': code}),
+					  extra_environ=self._make_extra_environ(),
+					  status=204)
+
+		res = testapp.get('/dataserver2/users/sjohnson@nextthought.com/@@pending-invitations',
+					 	  extra_environ=self._make_extra_environ(),
+					 	  status=200)
+		assert_that(res.json_body, has_entry('Items', has_length(0)))
