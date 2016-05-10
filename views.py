@@ -227,6 +227,9 @@ class AcceptInvitationByCodeView(AcceptInvitationMixin,
 			return invitation
 		return None
 
+	def accept_invitation(self, user, invitation):
+		return accept_invitation(self.context, invitation)
+
 	def _do_call(self):
 		request = self.request
 		code = self.get_invite_code()
@@ -234,7 +237,7 @@ class AcceptInvitationByCodeView(AcceptInvitationMixin,
 		if invitation is None:
 			invitation = self._do_validation(code)
 		try:
-			accept_invitation(self.context, invitation)
+			self.accept_invitation(self.context, invitation)
 		except InvitationValidationError as e:
 			e.field = 'invitation'
 			self.handle_validation_error(request, e)
