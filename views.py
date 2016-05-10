@@ -44,6 +44,8 @@ from nti.app.externalization.view_mixins import ModeledContentUploadRequestUtils
 from nti.app.externalization.error import handle_validation_error
 from nti.app.externalization.error import handle_possible_validation_error
 
+from nti.app.invitations import MessageFactory as _
+
 from nti.app.invitations import INVITATIONS
 from nti.app.invitations import REL_SEND_INVITATION
 from nti.app.invitations import REL_ACCEPT_INVITATION
@@ -180,8 +182,8 @@ class AcceptInvitationMixin(AbstractAuthenticatedView):
 					request,
 					hexc.HTTPUnprocessableEntity,
 					{
-						u'message': _("Invitation already accepted"),
-						u'code': 'InvitationAlreadyAccepted',
+						u'message': _("Invitation already accepted."),
+						u'code': 'InvitationIsNotForUser',
 					},
 					None)
 
@@ -193,7 +195,7 @@ class AcceptInvitationMixin(AbstractAuthenticatedView):
 					request,
 					hexc.HTTPUnprocessableEntity,
 					{
-						u'message': _("Invitation is not for this user"),
+						u'message': _("Invitation is not for this user."),
 						u'code': 'InvitationIsNotForUser',
 					},
 					None)
@@ -206,7 +208,7 @@ class AcceptInvitationMixin(AbstractAuthenticatedView):
 					request,
 					hexc.HTTPUnprocessableEntity,
 					{
-						u'message': _("Missing invitation code"),
+						u'message': _("Missing invitation code."),
 						u'code': 'MissingInvitationCode',
 					},
 					None)
@@ -216,7 +218,7 @@ class AcceptInvitationMixin(AbstractAuthenticatedView):
 					request,
 					hexc.HTTPUnprocessableEntity,
 					{
-						u'message': _("Invalid invitation code"),
+						u'message': _("Invalid invitation code."),
 						u'code': 'InvalidInvitationCode',
 					},
 					None)
