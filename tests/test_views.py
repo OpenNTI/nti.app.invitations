@@ -15,6 +15,14 @@ does_not = is_not
 
 import anyjson as json
 
+from zope import component
+
+from nti.dataserver.invitations import JoinCommunityInvitation
+
+from nti.dataserver.users import Community
+
+from nti.invitations.interfaces import IInvitationsContainer
+
 from nti.app.testing.application_webtest import ApplicationLayerTest
 
 from nti.app.testing.decorators import WithSharedApplicationMockDS
@@ -33,16 +41,15 @@ class TestApplicationInvitationUserViews(ApplicationLayerTest):
 
 		testapp = TestApp(self.app)
 
-		res = testapp.post('/dataserver2/users/sjohnson@nextthought.com/@@accept-invitations',
-							json.dumps({'invitation_codes': ['foobar']}),
+		res = testapp.post('/dataserver2/users/sjohnson@nextthought.com/@@accept-invitation',
+							json.dumps({'code': 'foobar'}),
 							extra_environ=self._make_extra_environ(),
 							status=422)
 
-		assert_that(res.json_body, has_entry('field', 'invitation_codes'))
-		assert_that(res.json_body, has_entry('code', 'InvitationCodeError'))
+		assert_that(res.json_body, has_entry('field', 'code'))
 		assert_that(res.json_body, has_entry('value', 'foobar'))
-		assert_that(res.json_body, has_entry('message', contains_string('The invitation code is not valid.')))
-
+		assert_that(res.json_body, has_entry('code', 'InvalidInvitationCode'))
+		assert_that(res.json_body, has_entry('message', contains_string('Invalid invitation code.')))
 
 	@WithSharedApplicationMockDS
 	def test_wrong_user(self):
@@ -53,7 +60,7 @@ class TestApplicationInvitationUserViews(ApplicationLayerTest):
 
 		testapp = TestApp(self.app)
 
-		testapp.post('/dataserver2/users/sjohnson@nextthought.com/@@accept-invitations',
+		testapp.post('/dataserver2/users/sjohnson@nextthought.com/@@accept-invitation',
 					  json.dumps({'invitation_codes': ['foobar']}),
 					  extra_environ=self._make_extra_environ(username='ossmkitty'),
 					  status=403)
@@ -63,23 +70,16 @@ class TestApplicationInvitationUserViews(ApplicationLayerTest):
 
 		with mock_dataserver.mock_db_trans(self.ds):
 			self._create_user()
+			comm = Community.create_community(username='Bankai')
+			invitation = JoinCommunityInvitation()
+			invitation.entity = comm.username
+			invitation.receiver = 'sjohnson@nextthought.com'
+			component.getUtility(IInvitationsContainer).add(invitation)
+			code = invitation.code
 
 		testapp = TestApp(self.app)
 
 		testapp.post('/dataserver2/users/sjohnson@nextthought.com/@@accept-invitations',
-					  json.dumps({'invitation_codes': ['MATHCOUNTS']}),
+					  json.dumps({'code': code}),
 					  extra_environ=self._make_extra_environ(),
 					  status=204)
-
-	@WithSharedApplicationMockDS
-	def test_invalid_request(self):
-
-		with mock_dataserver.mock_db_trans(self.ds):
-			self._create_user()
-
-		testapp = TestApp(self.app)
-
-		testapp.post('/dataserver2/users/sjohnson@nextthought.com/@@accept-invitations',
-					  json.dumps({'invitation_codes2': ['MATHCOUNTS']}),
-					  extra_environ=self._make_extra_environ(),
-					  status=400)

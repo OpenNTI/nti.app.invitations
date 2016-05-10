@@ -35,8 +35,6 @@ from pyramid.view import view_defaults
 
 from nti.app.base.abstract_views import AbstractAuthenticatedView
 
-from nti.app.externalization import internalization as obj_io
-
 from nti.app.externalization.error import raise_json_error
 
 from nti.app.externalization.view_mixins import ModeledContentUploadRequestUtilsMixin
@@ -80,8 +78,6 @@ from nti.invitations.interfaces import InvitationSentEvent
 from nti.invitations.interfaces import IInvitationsContainer
 from nti.invitations.interfaces import InvitationValidationError
 
-from nti.invitations.utility import accept_invitations
-
 from nti.invitations.utils import accept_invitation
 from nti.invitations.utils import get_pending_invitations
 
@@ -107,47 +103,6 @@ class InvitationsPathAdapter(Contained):
 		if result is not None:
 			return result
 		raise KeyError(invitation_id)
-
-@view_config(route_name='objects.generic.traversal',
-			 renderer='rest',
-			 context=IUser,
-			 permission=nauth.ACT_UPDATE,
-			 request_method='POST',
-			 name=REL_ACCEPT_INVITATIONS)
-class AcceptInvitationsView(AbstractAuthenticatedView):
-
-	def get_invite_codes(self):
-		json_body = obj_io.read_body_as_external_object(self.request)
-		if 'invitation_codes' not in json_body:
-			raise hexc.HTTPBadRequest()
-		result = json_body['invitation_codes']
-		if isinstance(result, six.string_types):
-			result = result.split()
-		return result
-
-	def handle_validation_error(self, request, e):
-		handle_validation_error(request, e)
-
-	def handle_possible_validation_error(self, request, e):
-		handle_possible_validation_error(request, e)
-
-	def _do_call(self):
-		request = self.request
-		invite_codes = self.get_invite_codes()
-		try:
-			if invite_codes:
-				return accept_invitations(request.context, invite_codes)
-		except InvitationValidationError as e:
-			e.field = 'invitation_codes'
-			self.handle_validation_error(request, e)
-		except Exception as e:  # pragma: no cover
-			self.handle_possible_validation_error(request, e)
-
-	def __call__(self):
-		self._do_call()
-		return hexc.HTTPNoContent()
-
-# new views
 
 @view_config(route_name='objects.generic.traversal',
 			 renderer='rest',
@@ -220,6 +175,8 @@ class AcceptInvitationMixin(AbstractAuthenticatedView):
 					{
 						u'message': _("Invalid invitation code."),
 						u'code': 'InvalidInvitationCode',
+						u'field': 'code',
+						u'value': invite_code
 					},
 					None)
 		invitation = self.invitations[invite_code]
@@ -230,6 +187,7 @@ class AcceptInvitationMixin(AbstractAuthenticatedView):
 		return hexc.HTTPNoContent()
 
 @view_config(name=REL_ACCEPT_INVITATION)
+@view_config(name=REL_ACCEPT_INVITATIONS)
 @view_defaults(route_name='objects.generic.traversal',
 			   renderer='rest',
 			   context=IUser,
