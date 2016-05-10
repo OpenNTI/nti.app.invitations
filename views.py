@@ -280,6 +280,7 @@ class AcceptInvitationByCodeView(AcceptInvitationMixin,
 			self.handle_validation_error(request, e)
 		except Exception as e:  # pragma: no cover
 			self.handle_possible_validation_error(request, e)
+		return invitation
 
 @view_config(route_name='objects.generic.traversal',
 			 renderer='rest',
@@ -299,6 +300,7 @@ class AcceptInvitationView(AcceptInvitationMixin):
 			self.handle_validation_error(request, e)
 		except Exception as e:  # pragma: no cover
 			self.handle_possible_validation_error(request, e)
+		return invitation
 
 @view_config(route_name='objects.generic.traversal',
 			 renderer='rest',
@@ -325,7 +327,7 @@ class DeclineInvitationView(AcceptInvitationView):
 	def _do_call(self):
 		invitation = self._validate_invitation(self.context)
 		self.invitations.remove(invitation)
-		return True
+		return invitation
 
 @view_config(route_name='objects.generic.traversal',
 			 renderer='rest',
