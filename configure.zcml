@@ -13,12 +13,6 @@
 			 factory=".views.InvitationsPathAdapter"
 			 provides="zope.traversing.interfaces.IPathAdapter" />
 
-	<!-- Utilities -->
-	<utility factory=".invitation._TrivialDefaultInvitations"
-			 provides="nti.invitations.interfaces.IInvitations" />
-
-	<utility factory=".invitation.InvitationEntityFinder" />
-
 	<!-- ACL -->
 	<adapter factory=".acl.InvitationACLProvider" />
 
