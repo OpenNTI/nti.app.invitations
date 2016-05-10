@@ -252,7 +252,7 @@ class AcceptInvitationByCodeView(AcceptInvitationMixin,
 			iid = from_external_string(code)
 			result = component.getUtility(IIntIds).queryObject(iid)
 			return result if IDynamicSharingTargetFriendsList.providedBy(result) else None
-		except Exception:  # pragma no cover
+		except (TypeError, ValueError):  # pragma no cover
 			return None
 
 	def handle_legacy_dfl(self, code):
@@ -261,7 +261,7 @@ class AcceptInvitationByCodeView(AcceptInvitationMixin,
 			creator = dfl.creator
 			invitation = JoinEntityInvitation()
 			invitation.sent = time.time()
-			invitation.entity = dfl.username
+			invitation.entity = dfl.NTIID
 			invitation.receiver = self.remoteUser.username
 			invitation.sender = getattr(creator, 'username', creator)
 			self.invitations.add(invitation)
