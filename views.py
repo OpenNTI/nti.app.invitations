@@ -201,7 +201,6 @@ class AcceptInvitationMixin(AbstractAuthenticatedView):
 
 	def _do_validation(self, invite_code):
 		request = self.request
-		invite_code = self.get_invite_codes()
 		if not invite_code:
 			raise_json_error(
 					request,
