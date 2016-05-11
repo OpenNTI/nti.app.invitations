@@ -43,7 +43,9 @@ class TestApplicationInvitationDFLViews(ApplicationLayerTest):
 			owner_username = owner.username
 			member_user = self._create_user('member@foo')
 			member_user_username = member_user.username
-
+			other_user = self._create_user('other@foo')
+			other_user_username = other_user.username
+			
 			fl1 = users.DynamicFriendsList(username='Friends')
 			fl1.creator = owner  # Creator must be set
 			owner.addContainedObject(fl1)
@@ -76,9 +78,13 @@ class TestApplicationInvitationDFLViews(ApplicationLayerTest):
 		assert_that(res.json_body, has_entry('code', is_(code)))
 		assert_that(res.json_body, has_entry('expiryTime', is_(0)))
 		assert_that(res.json_body, has_entry('receiver', is_("member@foo")))
+		
+		testapp.get('/dataserver2/Invitations/%s' % code,
+				    extra_environ=self._make_extra_environ(username=other_user_username),
+				    status=403)
 
 	@WithSharedApplicationMockDS
-	def test_link_in_dfl(self):
+	def xtest_link_in_dfl(self):
 
 		with mock_dataserver.mock_db_trans(self.ds):
 			owner = self._create_user()

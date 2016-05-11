@@ -24,6 +24,7 @@ from nti.dataserver.authorization import ROLE_ADMIN
 from nti.dataserver.authorization_acl import ace_allowing
 from nti.dataserver.authorization_acl import acl_from_aces
 
+from nti.dataserver.interfaces import ACE_DENY_ALL
 from nti.dataserver.interfaces import ALL_PERMISSIONS
 
 from nti.dataserver.interfaces import IUser
@@ -42,10 +43,6 @@ class InvitationACLProvider(object):
 
 	def __init__(self, context):
 		self.context = context
-
-	@property
-	def __parent__(self):
-		return self.context.__parent__
 
 	@classmethod
 	def _get_usernames_by_email(cls, email):
@@ -76,6 +73,6 @@ class InvitationACLProvider(object):
 			receiver = IPrincipal(receiver.lower())
 			aces.append(ace_allowing(receiver, ACT_READ, type(self)))
 			aces.append(ace_allowing(receiver, ACT_UPDATE, type(self)))
-
+		aces.append(ACE_DENY_ALL)
 		result = acl_from_aces(aces)
 		return result
