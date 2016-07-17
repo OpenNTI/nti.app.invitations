@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-Views relating to working with invitations.
-
 .. $Id$
 """
 
@@ -41,8 +39,8 @@ ITEMS = StandardExternalFields.ITEMS
 @view_config(context=InvitationsPathAdapter)
 @view_defaults(route_name='objects.generic.traversal',
 			   renderer='rest',
-			   permission=nauth.ACT_READ,
 			   request_method='GET',
+			   permission=nauth.ACT_NTI_ADMIN,
 			   name='ExpiredInvitations')
 class GetExpiredInvitationsView(AbstractAuthenticatedView):
 
@@ -62,8 +60,7 @@ class GetExpiredInvitationsView(AbstractAuthenticatedView):
 @view_config(context=InvitationsPathAdapter)
 @view_defaults(route_name='objects.generic.traversal',
 			   renderer='rest',
-			   permission=nauth.ACT_READ,
-			   request_method='POST',
+			   permission=nauth.ACT_NTI_ADMIN,
 			   name='DeleteExpiredInvitations')
 class DeleteExpiredInvitationsView(AbstractAuthenticatedView,
 								   ModeledContentUploadRequestUtilsMixin):
