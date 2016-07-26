@@ -52,9 +52,6 @@ from nti.app.invitations import REL_DECLINE_INVITATION
 from nti.app.invitations import REL_PENDING_INVITATIONS
 from nti.app.invitations import REL_TRIVIAL_DEFAULT_INVITATION_CODE
 
-from nti.common.integer_strings import to_external_string
-from nti.common.integer_strings import from_external_string
-
 from nti.common.maps import CaseInsensitiveDict
 
 from nti.common.property import Lazy
@@ -69,6 +66,9 @@ from nti.dataserver.invitations import JoinEntityInvitation
 
 from nti.dataserver.users import User
 from nti.dataserver.users.interfaces import IUserProfile
+
+from nti.externalization.integer_strings import to_external_string
+from nti.externalization.integer_strings import from_external_string
 
 from nti.externalization.interfaces import LocatedExternalDict
 from nti.externalization.interfaces import StandardExternalFields
