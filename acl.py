@@ -5,7 +5,6 @@
 """
 
 from __future__ import print_function, unicode_literals, absolute_import, division
-from zope.security.interfaces import IPrincipal
 __docformat__ = "restructuredtext en"
 
 logger = __import__('logging').getLogger(__name__)
@@ -15,7 +14,7 @@ from zope import interface
 
 from zope.intid.interfaces import IIntIds
 
-from nti.common.property import Lazy
+from zope.security.interfaces import IPrincipal
 
 from nti.dataserver.authorization import ACT_READ
 from nti.dataserver.authorization import ACT_UPDATE
@@ -36,6 +35,8 @@ from nti.dataserver.users import get_entity_catalog
 from nti.dataserver.users.index import IX_EMAIL
 
 from nti.invitations.interfaces import IInvitation
+
+from nti.property.property import Lazy
 
 @component.adapter(IInvitation)
 @interface.implementer(IACLProvider)

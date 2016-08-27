@@ -54,8 +54,6 @@ from nti.app.invitations import REL_TRIVIAL_DEFAULT_INVITATION_CODE
 
 from nti.common.maps import CaseInsensitiveDict
 
-from nti.common.property import Lazy
-
 from nti.dataserver import authorization as nauth
 
 from nti.dataserver.interfaces import IUser
@@ -80,6 +78,8 @@ from nti.invitations.interfaces import InvitationValidationError
 
 from nti.invitations.utils import accept_invitation
 from nti.invitations.utils import get_pending_invitations
+
+from nti.property.property import Lazy
 
 ITEMS = StandardExternalFields.ITEMS
 

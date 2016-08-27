@@ -29,9 +29,6 @@ from nti.appserver.workspaces.interfaces import IUserService
 from nti.appserver.workspaces.interfaces import IUserWorkspace
 from nti.appserver.workspaces.interfaces import IContainerCollection
 
-from nti.common.property import Lazy
-from nti.common.property import alias
-
 from nti.dataserver.interfaces import IUser
 
 from nti.dataserver.users.interfaces import IUserProfile
@@ -39,6 +36,9 @@ from nti.dataserver.users.interfaces import IUserProfile
 from nti.invitations.utils import has_pending_invitations
 
 from nti.links.links import Link
+
+from nti.property.property import Lazy
+from nti.property.property import alias
 
 @interface.implementer(IInvitationsWorkspace)
 class _InvitationsWorkspace(Contained):
