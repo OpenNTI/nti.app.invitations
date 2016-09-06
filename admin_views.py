@@ -72,7 +72,7 @@ class DeleteExpiredInvitationsView(AbstractAuthenticatedView,
 		if self.request.body:
 			result = CaseInsensitiveDict(read_body_as_external_object(self.request))
 		else:
-			result = CaseInsensitiveDict()
+			result = CaseInsensitiveDict(self.request.params)
 		return result
 
 	def __call__(self):
