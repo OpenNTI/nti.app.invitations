@@ -34,6 +34,8 @@ from nti.invitations.utils import get_expired_invitations
 from nti.invitations.utils import delete_expired_invitations
 
 ITEMS = StandardExternalFields.ITEMS
+TOTAL = StandardExternalFields.TOTAL
+ITEM_COUNT = StandardExternalFields.ITEM_COUNT
 
 @view_config(context=IDataserverFolder)
 @view_config(context=InvitationsPathAdapter)
@@ -51,7 +53,8 @@ class GetExpiredInvitationsView(AbstractAuthenticatedView):
 			usernames = usernames.split(",")
 		usernames = None if not usernames else set(usernames)
 		result = LocatedExternalDict()
-		result[ITEMS] = get_expired_invitations(usernames)
+		items = result[ITEMS] = get_expired_invitations(usernames)
+		result[TOTAL] = result[ITEM_COUNT] = len(items)
 		result.__name__ = self.request.view_name
 		result.__parent__ = self.request.context
 		return result
@@ -79,7 +82,8 @@ class DeleteExpiredInvitationsView(AbstractAuthenticatedView,
 			usernames = usernames.split(",")
 		usernames = None if not usernames else set(usernames)
 		result = LocatedExternalDict()
-		result[ITEMS] = delete_expired_invitations(usernames)
+		items = result[ITEMS] = delete_expired_invitations(usernames)
+		result[TOTAL] = result[ITEM_COUNT] = len(items)
 		result.__name__ = self.request.view_name
 		result.__parent__ = self.request.context
 		return result
