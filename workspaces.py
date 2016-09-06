@@ -94,7 +94,8 @@ class _InvitationsCollection(object):
 	@property
 	def links(self):
 		result = []
-		for provider in component.subscribers((self._user,), IUserInvitationsLinkProvider):
+		for provider in list(component.subscribers((self._user,), 
+												   IUserInvitationsLinkProvider)):
 			links = provider.links(self.__parent__)
 			result.extend(links or ())
 		return tuple(result)

@@ -82,6 +82,8 @@ from nti.invitations.utils import get_pending_invitations
 from nti.property.property import Lazy
 
 ITEMS = StandardExternalFields.ITEMS
+TOTAL = StandardExternalFields.TOTAL
+ITEM_COUNT = StandardExternalFields.ITEM_COUNT
 
 @interface.implementer(IPathAdapter)
 @component.adapter(IDataserverFolder, IRequest)
@@ -304,7 +306,8 @@ class GetPendingInvitationsView(AbstractAuthenticatedView):
 		result = LocatedExternalDict()
 		email = getattr(IUserProfile(self.context, None), 'email', None)
 		receivers = (self.context.username, email)
-		result[ITEMS] = get_pending_invitations(receivers)
+		items = result[ITEMS] = get_pending_invitations(receivers)
+		result[TOTAL] = result[ITEM_COUNT] = len(items)
 		result.__name__ = self.request.view_name
 		result.__parent__ = self.request.context
 		return result
@@ -391,6 +394,7 @@ class SendDFLInvitationView(AbstractAuthenticatedView,
 			items.append(invitation)
 			notify(InvitationSentEvent(invitation, username))
 
+		result[TOTAL] = result[ITEM_COUNT] = len(items)
 		return result
 
 	def __call__(self):
