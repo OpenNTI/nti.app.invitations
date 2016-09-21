@@ -50,7 +50,7 @@ class InvitationACLProvider(object):
 		result = set()
 		catalog = get_entity_catalog()
 		intids = component.getUtility(IIntIds)
-		doc_ids = catalog[IX_EMAIL].apply((email,email))
+		doc_ids = catalog[IX_EMAIL].apply((email, email))
 		for uid in doc_ids or ():
 			user = IUser(intids.queryObject(uid), None)
 			result.add(getattr(user, 'username', None))
@@ -60,8 +60,8 @@ class InvitationACLProvider(object):
 	@Lazy
 	def __acl__(self):
 		aces = [ace_allowing(ROLE_ADMIN, ALL_PERMISSIONS, type(self))]
-		aces.append(ace_allowing(IPrincipal(self.context.sender), 
-								 ALL_PERMISSIONS, 
+		aces.append(ace_allowing(IPrincipal(self.context.sender),
+								 ALL_PERMISSIONS,
 								 type(self)))
 
 		receiver = self.context.receiver.lower()

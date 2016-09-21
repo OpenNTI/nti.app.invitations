@@ -53,10 +53,10 @@ class GetExpiredInvitationsView(AbstractAuthenticatedView):
 			usernames = usernames.split(",")
 		usernames = None if not usernames else set(usernames)
 		result = LocatedExternalDict()
-		items = result[ITEMS] = get_expired_invitations(usernames)
-		result[TOTAL] = result[ITEM_COUNT] = len(items)
 		result.__name__ = self.request.view_name
 		result.__parent__ = self.request.context
+		items = result[ITEMS] = get_expired_invitations(usernames)
+		result[TOTAL] = result[ITEM_COUNT] = len(items)
 		return result
 
 @view_config(context=IDataserverFolder)
@@ -82,8 +82,8 @@ class DeleteExpiredInvitationsView(AbstractAuthenticatedView,
 			usernames = usernames.split(",")
 		usernames = None if not usernames else set(usernames)
 		result = LocatedExternalDict()
-		items = result[ITEMS] = delete_expired_invitations(usernames)
-		result[TOTAL] = result[ITEM_COUNT] = len(items)
 		result.__name__ = self.request.view_name
 		result.__parent__ = self.request.context
+		items = result[ITEMS] = delete_expired_invitations(usernames)
+		result[TOTAL] = result[ITEM_COUNT] = len(items)
 		return result

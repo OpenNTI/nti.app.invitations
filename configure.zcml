@@ -28,7 +28,6 @@
 				provides=".interfaces.IUserInvitationsLinkProvider"/>
 
 	<!-- Decorators -->
-
 	<subscriber	factory=".decorators.DFLGetInvitationLinkProvider"
 				provides="nti.externalization.interfaces.IExternalMappingDecorator"/>
 
