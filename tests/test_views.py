@@ -32,83 +32,86 @@ from nti.app.testing.webtest import TestApp
 
 from nti.dataserver.tests import mock_dataserver
 
+
 class TestApplicationInvitationUserViews(ApplicationLayerTest):
 
-	@WithSharedApplicationMockDS
-	def test_invalid_invitation_code(self):
+    @WithSharedApplicationMockDS
+    def test_invalid_invitation_code(self):
 
-		with mock_dataserver.mock_db_trans(self.ds):
-			_ = self._create_user()
+        with mock_dataserver.mock_db_trans(self.ds):
+            _ = self._create_user()
 
-		testapp = TestApp(self.app)
+        testapp = TestApp(self.app)
 
-		res = testapp.post('/dataserver2/users/sjohnson@nextthought.com/@@accept-invitation',
-							json.dumps({'code': 'foobar'}),
-							extra_environ=self._make_extra_environ(),
-							status=422)
+        res = testapp.post('/dataserver2/users/sjohnson@nextthought.com/@@accept-invitation',
+                           json.dumps({'code': 'foobar'}),
+                           extra_environ=self._make_extra_environ(),
+                           status=422)
 
-		assert_that(res.json_body, has_entry('field', 'code'))
-		assert_that(res.json_body, has_entry('value', 'foobar'))
-		assert_that(res.json_body, has_entry('code', 'InvalidInvitationCode'))
-		assert_that(res.json_body, has_entry('message', contains_string('Invalid invitation code.')))
+        assert_that(res.json_body, has_entry('field', 'code'))
+        assert_that(res.json_body, has_entry('value', 'foobar'))
+        assert_that(res.json_body, has_entry('code', 'InvalidInvitationCode'))
+        assert_that(res.json_body,
+                    has_entry('message',
+                              contains_string('Invalid invitation code.')))
 
-	@WithSharedApplicationMockDS
-	def test_wrong_user(self):
-		
-		with mock_dataserver.mock_db_trans(self.ds):
-			self._create_user()
-			self._create_user('ossmkitty')
+    @WithSharedApplicationMockDS
+    def test_wrong_user(self):
 
-		testapp = TestApp(self.app)
+        with mock_dataserver.mock_db_trans(self.ds):
+            self._create_user()
+            self._create_user('ossmkitty')
 
-		testapp.post('/dataserver2/users/sjohnson@nextthought.com/@@accept-invitation',
-					  json.dumps({'invitation_codes': ['foobar']}),
-					  extra_environ=self._make_extra_environ(username='ossmkitty'),
-					  status=403)
+        testapp = TestApp(self.app)
 
-	@WithSharedApplicationMockDS
-	def test_valid_code(self):
+        testapp.post('/dataserver2/users/sjohnson@nextthought.com/@@accept-invitation',
+                     json.dumps({'invitation_codes': ['foobar']}),
+                     extra_environ=self._make_extra_environ(username='ossmkitty'),
+                     status=403)
 
-		with mock_dataserver.mock_db_trans(self.ds):
-			self._create_user()
-			comm = Community.create_community(username='Bankai')
-			invitation = JoinCommunityInvitation()
-			invitation.entity = comm.username
-			invitation.receiver = 'sjohnson@nextthought.com'
-			component.getUtility(IInvitationsContainer).add(invitation)
-			code = invitation.code
+    @WithSharedApplicationMockDS
+    def test_valid_code(self):
 
-		testapp = TestApp(self.app)
+        with mock_dataserver.mock_db_trans(self.ds):
+            self._create_user()
+            comm = Community.create_community(username='Bankai')
+            invitation = JoinCommunityInvitation()
+            invitation.entity = comm.username
+            invitation.receiver = 'sjohnson@nextthought.com'
+            component.getUtility(IInvitationsContainer).add(invitation)
+            code = invitation.code
 
-		testapp.post('/dataserver2/users/sjohnson@nextthought.com/@@accept-invitations',
-					  json.dumps({'code': code}),
-					  extra_environ=self._make_extra_environ(),
-					  status=204)
-		
-	@WithSharedApplicationMockDS
-	def test_pending_invitations(self):
+        testapp = TestApp(self.app)
 
-		with mock_dataserver.mock_db_trans(self.ds):
-			self._create_user()
-			comm = Community.create_community(username='Bankai')
-			invitation = JoinCommunityInvitation()
-			invitation.entity = comm.username
-			invitation.receiver = 'sjohnson@nextthought.com'
-			component.getUtility(IInvitationsContainer).add(invitation)
-			code = invitation.code
+        testapp.post('/dataserver2/users/sjohnson@nextthought.com/@@accept-invitations',
+                     json.dumps({'code': code}),
+                     extra_environ=self._make_extra_environ(),
+                     status=204)
 
-		testapp = TestApp(self.app)
-		res = testapp.get('/dataserver2/users/sjohnson@nextthought.com/@@pending-invitations',
-					 	  extra_environ=self._make_extra_environ(),
-					 	  status=200)
-		assert_that(res.json_body, has_entry('Items', has_length(1)))
-		
-		testapp.post('/dataserver2/users/sjohnson@nextthought.com/@@decline-invitation',
-					  json.dumps({'code': code}),
-					  extra_environ=self._make_extra_environ(),
-					  status=204)
+    @WithSharedApplicationMockDS
+    def test_pending_invitations(self):
 
-		res = testapp.get('/dataserver2/users/sjohnson@nextthought.com/@@pending-invitations',
-					 	  extra_environ=self._make_extra_environ(),
-					 	  status=200)
-		assert_that(res.json_body, has_entry('Items', has_length(0)))
+        with mock_dataserver.mock_db_trans(self.ds):
+            self._create_user()
+            comm = Community.create_community(username='Bankai')
+            invitation = JoinCommunityInvitation()
+            invitation.entity = comm.username
+            invitation.receiver = 'sjohnson@nextthought.com'
+            component.getUtility(IInvitationsContainer).add(invitation)
+            code = invitation.code
+
+        testapp = TestApp(self.app)
+        res = testapp.get('/dataserver2/users/sjohnson@nextthought.com/@@pending-invitations',
+                          extra_environ=self._make_extra_environ(),
+                          status=200)
+        assert_that(res.json_body, has_entry('Items', has_length(1)))
+
+        testapp.post('/dataserver2/users/sjohnson@nextthought.com/@@decline-invitation',
+                     json.dumps({'code': code}),
+                     extra_environ=self._make_extra_environ(),
+                     status=204)
+
+        res = testapp.get('/dataserver2/users/sjohnson@nextthought.com/@@pending-invitations',
+                          extra_environ=self._make_extra_environ(),
+                          status=200)
+        assert_that(res.json_body, has_entry('Items', has_length(0)))

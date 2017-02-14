@@ -25,17 +25,22 @@ from nti.app.testing.application_webtest import ApplicationLayerTest
 
 from nti.dataserver.tests import mock_dataserver
 
+
 class TestUserService(ApplicationLayerTest):
 
-	@mock_dataserver.WithMockDSTrans
-	def test_external(self):
-		user = User.create_user(dataserver=self.ds, username='sjohnson@nextthought.com')
-		service = UserService(user)
-		ext_object = toExternalObject(service)
+    @mock_dataserver.WithMockDSTrans
+    def test_external(self):
+        user = User.create_user(dataserver=self.ds,
+                                username='sjohnson@nextthought.com')
+        service = UserService(user)
+        ext_object = toExternalObject(service)
 
-		assert_that(ext_object['Items'], has_item(has_entry('Title', 'Invitations')))
-		invitations_wss = [x for x in ext_object['Items'] if x['Title'] == 'Invitations']
-		assert_that(invitations_wss, has_length(1))
-		invitations_wss, = invitations_wss
-		assert_that(invitations_wss['Items'],
-					has_item(has_entry('Links', has_length(greater_than(0)))))
+        assert_that(ext_object['Items'],
+                    has_item(has_entry('Title','Invitations')))
+        invitations_wss = [
+            x for x in ext_object['Items'] if x['Title'] == 'Invitations'
+        ]
+        assert_that(invitations_wss, has_length(1))
+        invitations_wss, = invitations_wss
+        assert_that(invitations_wss['Items'],
+                    has_item(has_entry('Links', has_length(greater_than(0)))))

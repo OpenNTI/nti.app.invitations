@@ -34,25 +34,28 @@ from nti.links.links import Link
 
 LINKS = StandardExternalFields.LINKS
 
+
 @interface.implementer(IExternalMappingDecorator)
 @component.adapter(IDynamicSharingTargetFriendsList, IRequest)
 class DFLGetInvitationLinkProvider(AbstractTwoStateViewLinkDecorator):
 
-	true_view = REL_TRIVIAL_DEFAULT_INVITATION_CODE
+    true_view = REL_TRIVIAL_DEFAULT_INVITATION_CODE
 
-	def link_predicate(self, context, username):
-		return is_writable(context, self.request) and not context.Locked
+    def link_predicate(self, context, username):
+        return is_writable(context, self.request) and not context.Locked
+
 
 @component.adapter(IUser, IRequest)
 @interface.implementer(IExternalMappingDecorator)
-class LegacyAcceptInvitationsLinkProvider(AbstractAuthenticatedRequestAwareDecorator):
+class LegacyAcceptInvitationsLinkProvider(
+        AbstractAuthenticatedRequestAwareDecorator):
 
-	accept = REL_ACCEPT_INVITATIONS
+    accept = REL_ACCEPT_INVITATIONS
 
-	def _do_decorate_external(self, context, result):
-		_links = result.setdefault(LINKS, [])
-		link = Link(context, rel=self.accept, elements=(self.accept,))
-		interface.alsoProvides(link, ILocation)
-		link.__parent__ = context
-		link.__name__ = self.accept
-		_links.append(link)
+    def _do_decorate_external(self, context, result):
+        _links = result.setdefault(LINKS, [])
+        link = Link(context, rel=self.accept, elements=(self.accept,))
+        interface.alsoProvides(link, ILocation)
+        link.__parent__ = context
+        link.__name__ = self.accept
+        _links.append(link)

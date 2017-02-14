@@ -13,14 +13,16 @@ from zope import interface
 
 from nti.appserver.workspaces.interfaces import IWorkspace
 
+
 class IInvitationsWorkspace(IWorkspace):
-	"""
-	A workspace containing data for invitations.
-	"""
+    """
+    A workspace containing data for invitations.
+    """
+
 
 class IUserInvitationsLinkProvider(interface.Interface):
-	
-	def links(workspace):
-		"""
-		return an interable of user invitation links
-		"""
+
+    def links(workspace):
+        """
+        return an interable of user invitation links
+        """
