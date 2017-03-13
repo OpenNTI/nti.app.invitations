@@ -47,8 +47,7 @@ class DFLGetInvitationLinkProvider(AbstractTwoStateViewLinkDecorator):
 
 @component.adapter(IUser, IRequest)
 @interface.implementer(IExternalMappingDecorator)
-class LegacyAcceptInvitationsLinkProvider(
-        AbstractAuthenticatedRequestAwareDecorator):
+class LegacyAcceptInvitationsLinkProvider(AbstractAuthenticatedRequestAwareDecorator):
 
     accept = REL_ACCEPT_INVITATIONS
 
