@@ -20,6 +20,8 @@ from requests.structures import CaseInsensitiveDict
 from zope import component
 from zope import interface
 
+from zope.cachedescriptors.property import Lazy
+
 from zope.container.contained import Contained
 
 from zope.event import notify
@@ -78,8 +80,6 @@ from nti.invitations.interfaces import InvitationValidationError
 
 from nti.invitations.utils import accept_invitation
 from nti.invitations.utils import get_pending_invitations
-
-from nti.property.property import Lazy
 
 ITEMS = StandardExternalFields.ITEMS
 TOTAL = StandardExternalFields.TOTAL

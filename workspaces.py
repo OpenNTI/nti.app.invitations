@@ -12,6 +12,8 @@ logger = __import__('logging').getLogger(__name__)
 from zope import component
 from zope import interface
 
+from zope.cachedescriptors.property import Lazy
+
 from zope.container.contained import Contained
 
 from zope.location.interfaces import ILocation
@@ -37,7 +39,6 @@ from nti.invitations.utils import has_pending_invitations
 
 from nti.links.links import Link
 
-from nti.property.property import Lazy
 from nti.property.property import alias
 
 

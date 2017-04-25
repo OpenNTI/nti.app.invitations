@@ -12,6 +12,8 @@ logger = __import__('logging').getLogger(__name__)
 from zope import component
 from zope import interface
 
+from zope.cachedescriptors.property import Lazy
+
 from zope.intid.interfaces import IIntIds
 
 from zope.security.interfaces import IPrincipal
@@ -35,8 +37,6 @@ from nti.dataserver.users import get_entity_catalog
 from nti.dataserver.users.index import IX_EMAIL
 
 from nti.invitations.interfaces import IInvitation
-
-from nti.property.property import Lazy
 
 
 @component.adapter(IInvitation)
