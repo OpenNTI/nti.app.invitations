@@ -6,7 +6,7 @@ Views relating to working with invitations.
 .. $Id$
 """
 
-from __future__ import print_function, unicode_literals, absolute_import, division
+from __future__ import print_function, absolute_import, division
 __docformat__ = "restructuredtext en"
 
 logger = __import__('logging').getLogger(__name__)
@@ -142,8 +142,8 @@ class AcceptInvitationMixin(AbstractAuthenticatedView):
                 request,
                 hexc.HTTPUnprocessableEntity,
                 {
-                    u'message': _("Invitation already accepted."),
-                    u'code': 'InvitationIsNotForUser',
+                    'message': _(u"Invitation already accepted."),
+                    'code': 'InvitationIsNotForUser',
                 },
                 None)
 
@@ -155,8 +155,8 @@ class AcceptInvitationMixin(AbstractAuthenticatedView):
                 request,
                 hexc.HTTPUnprocessableEntity,
                 {
-                    u'message': _("Invitation is not for this user."),
-                    u'code': 'InvitationIsNotForUser',
+                    'message': _(u"Invitation is not for this user."),
+                    'code': 'InvitationIsNotForUser',
                 },
                 None)
         return invitation
@@ -168,8 +168,8 @@ class AcceptInvitationMixin(AbstractAuthenticatedView):
                 request,
                 hexc.HTTPUnprocessableEntity,
                 {
-                    u'message': _("Missing invitation code."),
-                    u'code': 'MissingInvitationCode',
+                    'message': _(u"Missing invitation code."),
+                    'code': 'MissingInvitationCode',
                 },
                 None)
 
@@ -178,10 +178,10 @@ class AcceptInvitationMixin(AbstractAuthenticatedView):
                 request,
                 hexc.HTTPUnprocessableEntity,
                 {
-                    u'message': _("Invalid invitation code."),
-                    u'code': 'InvalidInvitationCode',
-                    u'field': 'code',
-                    u'value': invite_code
+                    'message': _(u"Invalid invitation code."),
+                    'code': 'InvalidInvitationCode',
+                    'field': 'code',
+                    'value': invite_code
                 },
                 None)
         invitation = self.invitations[invite_code]
@@ -205,9 +205,9 @@ class AcceptInvitationByCodeView(AcceptInvitationMixin,
     def get_invite_code(self):
         values = CaseInsensitiveDict(self.readInput())
         result =  values.get('code') \
-              or values.get('invitation') \
-              or values.get('invitation_code') \
-              or values.get('invitation_codes')  # legacy (should only be one)
+               or values.get('invitation') \
+               or values.get('invitation_code') \
+               or values.get('invitation_codes')  # legacy (should only be one)
         if isinstance(result, (list, tuple)) and result:
             result = result[0]
         return result
@@ -216,8 +216,9 @@ class AcceptInvitationByCodeView(AcceptInvitationMixin,
         try:
             iid = from_external_string(code)
             result = component.getUtility(IIntIds).queryObject(iid)
-            return result if IDynamicSharingTargetFriendsList.providedBy(
-                result) else None
+            if IDynamicSharingTargetFriendsList.providedBy(result):
+                return result
+            return None
         except (TypeError, ValueError):  # pragma no cover
             return None
 
@@ -246,7 +247,7 @@ class AcceptInvitationByCodeView(AcceptInvitationMixin,
         try:
             self.accept_invitation(self.context, invitation)
         except InvitationValidationError as e:
-            e.field = 'invitation'
+            e.field = u'invitation'
             self.handle_validation_error(request, e)
         except Exception as e:  # pragma: no cover
             self.handle_possible_validation_error(request, e)
@@ -267,7 +268,7 @@ class AcceptInvitationView(AcceptInvitationMixin):
         try:
             accept_invitation(self.context, invitation)
         except InvitationValidationError as e:
-            e.field = 'invitation'
+            e.field = u'invitation'
             self.handle_validation_error(request, e)
         except Exception as e:  # pragma: no cover
             self.handle_possible_validation_error(request, e)
@@ -336,9 +337,7 @@ class SendDFLInvitationView(AbstractAuthenticatedView,
                             ModeledContentUploadRequestUtilsMixin):
 
     def readInput(self, value=None):
-        result = ModeledContentUploadRequestUtilsMixin.readInput(
-            self,
-            value=value)
+        result = super(SendDFLInvitationView, self).readInput(value)
         result = CaseInsensitiveDict(result)
         return result
 
@@ -363,8 +362,8 @@ class SendDFLInvitationView(AbstractAuthenticatedView,
                 request,
                 hexc.HTTPUnprocessableEntity,
                 {
-                    u'message': _("Must specify a username."),
-                    u'code': 'MissingUsername',
+                    'message': _(u"Must specify a username."),
+                    'code': 'MissingUsername',
                 },
                 None)
         result = []
@@ -380,8 +379,8 @@ class SendDFLInvitationView(AbstractAuthenticatedView,
                 request,
                 hexc.HTTPUnprocessableEntity,
                 {
-                    u'message': _("No valid users to send invitation to."),
-                    u'code': 'NoValidInvitationUsers',
+                    'message': _(u"No valid users to send invitation to."),
+                    'code': 'NoValidInvitationUsers',
                 },
                 None)
         return result

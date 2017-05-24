@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from __future__ import print_function, unicode_literals, absolute_import, division
+from __future__ import print_function, absolute_import, division
 __docformat__ = "restructuredtext en"
 
 # disable: accessing protected members, too many methods
@@ -60,7 +60,7 @@ class TestApplicationInvitationUserViews(ApplicationLayerTest):
 
         with mock_dataserver.mock_db_trans(self.ds):
             self._create_user()
-            self._create_user('ossmkitty')
+            self._create_user(u'ossmkitty')
 
         testapp = TestApp(self.app)
 
@@ -74,10 +74,10 @@ class TestApplicationInvitationUserViews(ApplicationLayerTest):
 
         with mock_dataserver.mock_db_trans(self.ds):
             self._create_user()
-            comm = Community.create_community(username='Bankai')
+            comm = Community.create_community(username=u'Bankai')
             invitation = JoinCommunityInvitation()
             invitation.entity = comm.username
-            invitation.receiver = 'sjohnson@nextthought.com'
+            invitation.receiver = u'sjohnson@nextthought.com'
             component.getUtility(IInvitationsContainer).add(invitation)
             code = invitation.code
 
@@ -93,10 +93,10 @@ class TestApplicationInvitationUserViews(ApplicationLayerTest):
 
         with mock_dataserver.mock_db_trans(self.ds):
             self._create_user()
-            comm = Community.create_community(username='Bankai')
+            comm = Community.create_community(username=u'Bankai')
             invitation = JoinCommunityInvitation()
             invitation.entity = comm.username
-            invitation.receiver = 'sjohnson@nextthought.com'
+            invitation.receiver = u'sjohnson@nextthought.com'
             component.getUtility(IInvitationsContainer).add(invitation)
             code = invitation.code
 

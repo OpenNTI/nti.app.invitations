@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from __future__ import print_function, unicode_literals, absolute_import, division
+from __future__ import print_function, absolute_import, division
 __docformat__ = "restructuredtext en"
 
 # disable: accessing protected members, too many methods
@@ -42,12 +42,12 @@ class TestApplicationInvitationDFLViews(ApplicationLayerTest):
         with mock_dataserver.mock_db_trans(self.ds):
             owner = self._create_user()
             owner_username = owner.username
-            member_user = self._create_user('member@foo')
+            member_user = self._create_user(u'member@foo')
             member_user_username = member_user.username
-            other_user = self._create_user('other@foo')
+            other_user = self._create_user(u'other@foo')
             other_user_username = other_user.username
 
-            fl1 = users.DynamicFriendsList(username='Friends')
+            fl1 = users.DynamicFriendsList(username=u'Friends')
             fl1.creator = owner  # Creator must be set
             owner.addContainedObject(fl1)
 
@@ -95,12 +95,12 @@ class TestApplicationInvitationDFLViews(ApplicationLayerTest):
         with mock_dataserver.mock_db_trans(self.ds):
             owner = self._create_user()
             owner_username = owner.username
-            member_user = self._create_user('member@foo')
+            member_user = self._create_user(u'member@foo')
             member_user_username = member_user.username
-            other_user = self._create_user('otheruser@foo')
+            other_user = self._create_user(u'otheruser@foo')
             other_user_username = other_user.username
 
-            fl1 = users.DynamicFriendsList(username='Friends')
+            fl1 = users.DynamicFriendsList(username=u'Friends')
             fl1.creator = owner  # Creator must be set
             owner.addContainedObject(fl1)
             fl1.addFriend(member_user)

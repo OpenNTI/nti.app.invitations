@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from __future__ import print_function, unicode_literals, absolute_import, division
+from __future__ import print_function, absolute_import, division
 __docformat__ = "restructuredtext en"
 
 # disable: accessing protected members, too many methods
@@ -31,7 +31,7 @@ class TestUserService(ApplicationLayerTest):
     @mock_dataserver.WithMockDSTrans
     def test_external(self):
         user = User.create_user(dataserver=self.ds,
-                                username='sjohnson@nextthought.com')
+                                username=u'sjohnson@nextthought.com')
         service = UserService(user)
         ext_object = toExternalObject(service)
 

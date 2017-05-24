@@ -8,6 +8,8 @@
 	<include package="zope.component" />
 	<include package="zope.security" />
 
+	<include package="nti.invitations" />
+
 	<!-- Traversal -->
 	<adapter name="Invitations"
 			 factory=".views.InvitationsPathAdapter"

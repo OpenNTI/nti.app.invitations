@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from __future__ import print_function, unicode_literals, absolute_import, division
+from __future__ import print_function, absolute_import, division
 __docformat__ = "restructuredtext en"
 
 # disable: accessing protected members, too many methods
@@ -33,13 +33,13 @@ class TestAdminViews(ApplicationLayerTest):
 
         with mock_dataserver.mock_db_trans(self.ds):
             invitations = component.getUtility(IInvitationsContainer)
-            invitation = Invitation(receiver='ichigo',
-                                    sender='aizen',
+            invitation = Invitation(receiver=u'ichigo',
+                                    sender=u'aizen',
                                     expiryTime=180)
             invitations.add(invitation)
 
-            invitation = Invitation(receiver='ichigo',
-                                    sender='aizen')
+            invitation = Invitation(receiver=u'ichigo',
+                                    sender=u'aizen')
             invitations.add(invitation)
             assert_that(invitations, has_length(2))
 
