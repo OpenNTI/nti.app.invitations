@@ -9,8 +9,8 @@ __docformat__ = "restructuredtext en"
 
 from hamcrest import is_not
 from hamcrest import has_entry
-from hamcrest import assert_that
 from hamcrest import has_length
+from hamcrest import assert_that
 from hamcrest import contains_string
 does_not = is_not
 

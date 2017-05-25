@@ -28,6 +28,9 @@
 	<subscriber	factory=".workspaces._DefaultUserInvitationsLinksProvider"
 				provides=".interfaces.IUserInvitationsLinkProvider"/>
 
+	<!-- Subscriber -->
+	<subscriber handler=".subscribers._user_removed" />
+
 	<!-- Decorators -->
 	<subscriber	factory=".decorators.DFLGetInvitationLinkProvider"
 				provides="nti.externalization.interfaces.IExternalMappingDecorator"/>
