@@ -13,22 +13,26 @@ import six
 
 from requests.structures import CaseInsensitiveDict
 
+from zope import component
+
 from pyramid.view import view_config
 from pyramid.view import view_defaults
 
 from nti.app.base.abstract_views import AbstractAuthenticatedView
 
 from nti.app.externalization.internalization import read_body_as_external_object
+
+from nti.app.externalization.view_mixins import BatchingUtilsMixin
 from nti.app.externalization.view_mixins import ModeledContentUploadRequestUtilsMixin
 
 from nti.app.invitations.views import InvitationsPathAdapter
 
 from nti.dataserver import authorization as nauth
 
-from nti.dataserver.interfaces import IDataserverFolder
-
 from nti.externalization.interfaces import LocatedExternalDict
 from nti.externalization.interfaces import StandardExternalFields
+
+from nti.invitations.interfaces import IInvitationsContainer
 
 from nti.invitations.utils import get_expired_invitations
 from nti.invitations.utils import delete_expired_invitations
@@ -38,7 +42,29 @@ TOTAL = StandardExternalFields.TOTAL
 ITEM_COUNT = StandardExternalFields.ITEM_COUNT
 
 
-@view_config(context=IDataserverFolder)
+@view_config(context=InvitationsPathAdapter)
+@view_defaults(route_name='objects.generic.traversal',
+               renderer='rest',
+               request_method='GET',
+               permission=nauth.ACT_NTI_ADMIN,
+               name='AllInvitations')
+class AllInvitationsView(AbstractAuthenticatedView,
+                         BatchingUtilsMixin):
+
+    _DEFAULT_BATCH_SIZE = 20
+    _DEFAULT_BATCH_START = 0
+
+    def __call__(self):
+        result = LocatedExternalDict()
+        result.__name__ = self.request.view_name
+        result.__parent__ = self.request.context
+        invitations = component.getUtility(IInvitationsContainer)
+        items = list(invitations.values())
+        self._batch_items_iterable(result, items)
+        result[TOTAL] = len(items)
+        return result
+
+
 @view_config(context=InvitationsPathAdapter)
 @view_defaults(route_name='objects.generic.traversal',
                renderer='rest',
@@ -61,7 +87,6 @@ class GetExpiredInvitationsView(AbstractAuthenticatedView):
         return result
 
 
-@view_config(context=IDataserverFolder)
 @view_config(context=InvitationsPathAdapter)
 @view_defaults(route_name='objects.generic.traversal',
                renderer='rest',

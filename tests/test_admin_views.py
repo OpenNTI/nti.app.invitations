@@ -43,11 +43,15 @@ class TestAdminViews(ApplicationLayerTest):
             invitations.add(invitation)
             assert_that(invitations, has_length(2))
 
-        res = self.testapp.get('/dataserver2/@@ExpiredInvitations',
+        res = self.testapp.get('/dataserver2/Invitations/@@AllInvitations',
+                               status=200)
+        assert_that(res.json_body, has_entry('Items', has_length(2)))
+
+        res = self.testapp.get('/dataserver2/Invitations/@@ExpiredInvitations',
                                status=200)
         assert_that(res.json_body, has_entry('Items', has_length(1)))
 
-        res = self.testapp.post('/dataserver2/@@DeleteExpiredInvitations',
+        res = self.testapp.post('/dataserver2/Invitations/@@DeleteExpiredInvitations',
                                 status=200)
         assert_that(res.json_body, has_entry('Items', has_length(1)))
 
