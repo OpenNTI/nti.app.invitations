@@ -13,14 +13,10 @@ import six
 
 from requests.structures import CaseInsensitiveDict
 
-from zope import component
-
 from pyramid.view import view_config
 from pyramid.view import view_defaults
 
 from nti.app.base.abstract_views import AbstractAuthenticatedView
-
-from nti.app.externalization.internalization import read_body_as_external_object
 
 from nti.app.externalization.view_mixins import BatchingUtilsMixin
 from nti.app.externalization.view_mixins import ModeledContentUploadRequestUtilsMixin
@@ -32,8 +28,7 @@ from nti.dataserver import authorization as nauth
 from nti.externalization.interfaces import LocatedExternalDict
 from nti.externalization.interfaces import StandardExternalFields
 
-from nti.invitations.interfaces import IInvitationsContainer
-
+from nti.invitations.utils import get_invitations
 from nti.invitations.utils import get_expired_invitations
 from nti.invitations.utils import delete_expired_invitations
 
@@ -55,11 +50,13 @@ class AllInvitationsView(AbstractAuthenticatedView,
     _DEFAULT_BATCH_START = 0
 
     def __call__(self):
+        values = CaseInsensitiveDict(self.request.params)
+        senders = values.get('sender') or values.get('senders')
+        receivers = values.get('receiver') or values.get('receivers')
         result = LocatedExternalDict()
         result.__name__ = self.request.view_name
         result.__parent__ = self.request.context
-        invitations = component.getUtility(IInvitationsContainer)
-        items = list(invitations.values())
+        items = get_invitations(receivers=receivers, senders=senders)
         self._batch_items_iterable(result, items)
         result[TOTAL] = len(items)
         return result
@@ -97,7 +94,7 @@ class DeleteExpiredInvitationsView(AbstractAuthenticatedView,
 
     def readInput(self, value=None):
         if self.request.body:
-            result = read_body_as_external_object(self.request)
+            result = super(DeleteExpiredInvitationsView, self).readInput(value)
             result = CaseInsensitiveDict(result)
         else:
             result = CaseInsensitiveDict(self.request.params)
