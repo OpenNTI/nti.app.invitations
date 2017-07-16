@@ -120,7 +120,7 @@ class _DefaultUserInvitationsLinksProvider(object):
     def __init__(self, user=None):
         self.user = user
 
-    def links(self, workspace):
+    def links(self, unused_workspace):
         result = []
         for name in (REL_ACCEPT_INVITATIONS,
                      REL_ACCEPT_INVITATION,
