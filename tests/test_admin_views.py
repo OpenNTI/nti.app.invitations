@@ -7,6 +7,7 @@ __docformat__ = "restructuredtext en"
 # disable: accessing protected members, too many methods
 # pylint: disable=W0212,R0904
 
+from hamcrest import is_
 from hamcrest import is_not
 from hamcrest import has_entry
 from hamcrest import has_length
@@ -35,33 +36,40 @@ class TestAdminViews(ApplicationLayerTest):
             invitations = component.getUtility(IInvitationsContainer)
             invitation = Invitation(receiver=u'ichigo',
                                     sender=u'aizen',
-                                    expiryTime=180)
+                                    expiryTime=180,
+                                    code=u"ichigo-aizen")
             invitations.add(invitation)
 
-            invitation = Invitation(receiver=u'ichigo',
-                                    sender=u'aizen')
+            invitation = Invitation(receiver=u'toshiro',
+                                    sender=u'urahara',
+                                    code=u"toshiro-urahara")
             invitations.add(invitation)
-            
+
             invitation = Invitation(receiver=u'rukia',
-                                    sender=u'zaraki')
+                                    sender=u'zaraki',
+                                    code=u"rukia-zaraki")
             invitations.add(invitation)
 
         res = self.testapp.get('/dataserver2/Invitations/@@AllInvitations',
                                status=200)
         assert_that(res.json_body, has_entry('Items', has_length(3)))
-        
+
         res = self.testapp.get('/dataserver2/Invitations/@@AllInvitations?sender=zaraki',
                                status=200)
         assert_that(res.json_body, has_entry('Items', has_length(1)))
-        
+
         res = self.testapp.get('/dataserver2/Invitations/@@AllInvitations?receiver=rukia',
                                status=200)
         assert_that(res.json_body, has_entry('Items', has_length(1)))
-        
+
         res = self.testapp.get('/dataserver2/Invitations/@@AllInvitations?receiver=aizen',
                                status=200)
         assert_that(res.json_body, has_entry('Items', has_length(0)))
-        
+
+        res = self.testapp.get('/dataserver2/Invitations/@@PendingInvitations',
+                               status=200)
+        assert_that(res.json_body, has_entry('Items', has_length(2)))
+
     @WithSharedApplicationMockDS(users=True, testapp=True)
     def test_expired_invitations(self):
 
@@ -88,3 +96,21 @@ class TestAdminViews(ApplicationLayerTest):
         with mock_dataserver.mock_db_trans(self.ds):
             invitations = component.getUtility(IInvitationsContainer)
             assert_that(invitations, has_length(1))
+            
+    @WithSharedApplicationMockDS(users=True, testapp=True)
+    def test_rebuild_invitations_catalog(self):
+
+        with mock_dataserver.mock_db_trans(self.ds):
+            invitations = component.getUtility(IInvitationsContainer)
+            invitation = Invitation(receiver=u'ichigo',
+                                    sender=u'aizen',
+                                    expiryTime=180)
+            invitations.add(invitation)
+
+            invitation = Invitation(receiver=u'ichigo',
+                                    sender=u'aizen')
+            invitations.add(invitation)
+
+        res = self.testapp.post('/dataserver2/Invitations/@@RebuildInvitationsCatalog',
+                                status=200)
+        assert_that(res.json_body, has_entry('Total', is_(2)))
