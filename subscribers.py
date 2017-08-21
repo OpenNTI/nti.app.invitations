@@ -23,7 +23,7 @@ from nti.invitations.utils import get_sent_invitations
 
 
 @component.adapter(IUser, IBeforeIdRemovedEvent)
-def _user_removed(user, event):
+def _user_removed(user, unused_event):
     invitations = set()
     # check unaccepted invitations sent via username
     invitations.update(get_sent_invitations(user.username))

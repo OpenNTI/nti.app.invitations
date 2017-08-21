@@ -14,9 +14,8 @@ from zope import interface
 
 from zope.cachedescriptors.property import Lazy
 
-from zope.container.contained import Contained
-
 from zope.location.interfaces import ILocation
+from zope.location.interfaces import IContained
 
 from nti.app.invitations import INVITATIONS
 from nti.app.invitations import REL_ACCEPT_INVITATION
@@ -42,10 +41,12 @@ from nti.links.links import Link
 from nti.property.property import alias
 
 
-@interface.implementer(IInvitationsWorkspace)
-class _InvitationsWorkspace(Contained):
+@interface.implementer(IInvitationsWorkspace, IContained)
+class _InvitationsWorkspace(object):
 
+    __parent__ = None
     __name__ = INVITATIONS
+
     name = alias('__name__', __name__)
 
     links = ()

@@ -22,7 +22,7 @@ from zope import interface
 
 from zope.cachedescriptors.property import Lazy
 
-from zope.container.contained import Contained
+from zope.location.interfaces import IContained
 
 from zope.event import notify
 
@@ -86,13 +86,14 @@ TOTAL = StandardExternalFields.TOTAL
 ITEM_COUNT = StandardExternalFields.ITEM_COUNT
 
 
-@interface.implementer(IPathAdapter)
+@interface.implementer(IPathAdapter, IContained)
 @component.adapter(IDataserverFolder, IRequest)
-class InvitationsPathAdapter(Contained):
+class InvitationsPathAdapter(object):
 
-    def __init__(self, dataserver, request):
+    __name__ = INVITATIONS
+
+    def __init__(self, dataserver, unused_request):
         self.__parent__ = dataserver
-        self.__name__ = INVITATIONS
 
     @Lazy
     def invitations(self):
@@ -138,52 +139,48 @@ class AcceptInvitationMixin(AbstractAuthenticatedView):
     def _validate_invitation(self, invitation):
         request = self.request
         if invitation.is_accepted():
-            raise_json_error(
-                request,
-                hexc.HTTPUnprocessableEntity,
-                {
-                    'message': _(u"Invitation already accepted."),
-                    'code': 'InvitationIsNotForUser',
-                },
-                None)
+            raise_json_error(request,
+                             hexc.HTTPUnprocessableEntity,
+                             {
+                                 'message': _(u"Invitation already accepted."),
+                                 'code': 'InvitationIsNotForUser',
+                             },
+                             None)
 
         profile = IUserProfile(self.context, None)
         email = getattr(profile, 'email', None) or u''
         receiver = invitation.receiver.lower()
         if receiver not in (self.context.username.lower(), email.lower()):
-            raise_json_error(
-                request,
-                hexc.HTTPUnprocessableEntity,
-                {
-                    'message': _(u"Invitation is not for this user."),
-                    'code': 'InvitationIsNotForUser',
-                },
-                None)
+            raise_json_error(request,
+                             hexc.HTTPUnprocessableEntity,
+                             {
+                                 'message': _(u"Invitation is not for this user."),
+                                 'code': 'InvitationIsNotForUser',
+                             },
+                             None)
         return invitation
 
     def _do_validation(self, invite_code):
         request = self.request
         if not invite_code:
-            raise_json_error(
-                request,
-                hexc.HTTPUnprocessableEntity,
-                {
-                    'message': _(u"Missing invitation code."),
-                    'code': 'MissingInvitationCode',
-                },
-                None)
+            raise_json_error(request,
+                             hexc.HTTPUnprocessableEntity,
+                             {
+                                 'message': _(u"Missing invitation code."),
+                                 'code': 'MissingInvitationCode',
+                             },
+                             None)
 
         if not invite_code in self.invitations:
-            raise_json_error(
-                request,
-                hexc.HTTPUnprocessableEntity,
-                {
-                    'message': _(u"Invalid invitation code."),
-                    'code': 'InvalidInvitationCode',
-                    'field': 'code',
-                    'value': invite_code
-                },
-                None)
+            raise_json_error(request,
+                             hexc.HTTPUnprocessableEntity,
+                             {
+                                 'message': _(u"Invalid invitation code."),
+                                 'code': 'InvalidInvitationCode',
+                                 'field': 'code',
+                                 'value': invite_code
+                             },
+                             None)
         invitation = self.invitations[invite_code]
         return self._validate_invitation(invitation)
 
@@ -204,10 +201,10 @@ class AcceptInvitationByCodeView(AcceptInvitationMixin,
 
     def get_invite_code(self):
         values = CaseInsensitiveDict(self.readInput())
-        result =  values.get('code') \
-               or values.get('invitation') \
-               or values.get('invitation_code') \
-               or values.get('invitation_codes')  # legacy (should only be one)
+        result = values.get('code') \
+              or values.get('invitation') \
+              or values.get('invitation_code') \
+              or values.get('invitation_codes')  # legacy (should only be one)
         if isinstance(result, (list, tuple)) and result:
             result = result[0]
         return result
@@ -235,7 +232,7 @@ class AcceptInvitationByCodeView(AcceptInvitationMixin,
             return invitation
         return None
 
-    def accept_invitation(self, user, invitation):
+    def accept_invitation(self, unused_user, invitation):
         return accept_invitation(self.context, invitation)
 
     def _do_call(self):
@@ -358,14 +355,13 @@ class SendDFLInvitationView(AbstractAuthenticatedView,
         request = self.request
         usernames = self.get_usernames(values)
         if not usernames:
-            raise_json_error(
-                request,
-                hexc.HTTPUnprocessableEntity,
-                {
-                    'message': _(u"Must specify a username."),
-                    'code': 'MissingUsername',
-                },
-                None)
+            raise_json_error(request,
+                             hexc.HTTPUnprocessableEntity,
+                             {
+                                 'message': _(u"Must specify a username."),
+                                 'code': 'MissingUsername',
+                             },
+                             None)
         result = []
         for username in set(usernames):
             user = User.get_user(username)
@@ -375,14 +371,13 @@ class SendDFLInvitationView(AbstractAuthenticatedView,
                 result.append(user.username)
 
         if not result:
-            raise_json_error(
-                request,
-                hexc.HTTPUnprocessableEntity,
-                {
-                    'message': _(u"No valid users to send invitation to."),
-                    'code': 'NoValidInvitationUsers',
-                },
-                None)
+            raise_json_error(request,
+                             hexc.HTTPUnprocessableEntity,
+                             {
+                                 'message': _(u"No valid users to send invitation to."),
+                                 'code': 'NoValidInvitationUsers',
+                             },
+                             None)
         return result
 
     def _do_call(self):

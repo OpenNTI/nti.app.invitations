@@ -41,7 +41,7 @@ class DFLGetInvitationLinkProvider(AbstractTwoStateViewLinkDecorator):
 
     true_view = REL_TRIVIAL_DEFAULT_INVITATION_CODE
 
-    def link_predicate(self, context, username):
+    def link_predicate(self, context, unused_username):
         return is_writable(context, self.request) and not context.Locked
 
 
