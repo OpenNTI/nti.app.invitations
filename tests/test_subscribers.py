@@ -14,7 +14,7 @@ does_not = is_not
 
 from zope import component
 
-from nti.dataserver.users import User
+from nti.dataserver.users.users import User
 
 from nti.invitations.interfaces import IInvitationsContainer
 

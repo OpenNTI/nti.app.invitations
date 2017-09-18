@@ -31,10 +31,10 @@ from nti.dataserver.interfaces import ALL_PERMISSIONS
 from nti.dataserver.interfaces import IUser
 from nti.dataserver.interfaces import IACLProvider
 
-from nti.dataserver.users import User
-from nti.dataserver.users import get_entity_catalog
-
 from nti.dataserver.users.index import IX_EMAIL
+from nti.dataserver.users.index import get_entity_catalog
+
+from nti.dataserver.users.users import User
 
 from nti.invitations.interfaces import IInvitation
 

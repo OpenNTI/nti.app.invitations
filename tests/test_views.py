@@ -20,7 +20,7 @@ from zope import component
 
 from nti.dataserver.invitations import JoinCommunityInvitation
 
-from nti.dataserver.users import Community
+from nti.dataserver.users.communities import Community
 
 from nti.invitations.interfaces import IInvitationsContainer
 

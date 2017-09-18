@@ -64,8 +64,9 @@ from nti.dataserver.interfaces import IDynamicSharingTargetFriendsList
 
 from nti.dataserver.invitations import JoinEntityInvitation
 
-from nti.dataserver.users import User
 from nti.dataserver.users.interfaces import IUserProfile
+
+from nti.dataserver.users.users import User
 
 from nti.externalization.integer_strings import to_external_string
 from nti.externalization.integer_strings import from_external_string
