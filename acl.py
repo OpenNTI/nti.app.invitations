@@ -14,8 +14,6 @@ from zope import interface
 
 from zope.cachedescriptors.property import Lazy
 
-from zope.intid.interfaces import IIntIds
-
 from zope.security.interfaces import IPrincipal
 
 from nti.dataserver.authorization import ACT_READ
@@ -28,13 +26,11 @@ from nti.dataserver.authorization_acl import acl_from_aces
 from nti.dataserver.interfaces import ACE_DENY_ALL
 from nti.dataserver.interfaces import ALL_PERMISSIONS
 
-from nti.dataserver.interfaces import IUser
 from nti.dataserver.interfaces import IACLProvider
 
-from nti.dataserver.users.index import IX_EMAIL
-from nti.dataserver.users.index import get_entity_catalog
-
 from nti.dataserver.users.users import User
+
+from nti.dataserver.users.utils import get_users_by_email
 
 from nti.invitations.interfaces import IInvitation
 
@@ -48,14 +44,8 @@ class InvitationACLProvider(object):
 
     @classmethod
     def _get_usernames_by_email(cls, email):
-        result = set()
-        catalog = get_entity_catalog()
-        intids = component.getUtility(IIntIds)
-        doc_ids = catalog[IX_EMAIL].apply((email, email))
-        for uid in doc_ids or ():
-            user = IUser(intids.queryObject(uid), None)
-            result.add(getattr(user, 'username', None))
-        result.discard(None)
+        users = get_users_by_email(email)
+        result = {x.username for x in users or ()}
         return tuple(result)
 
     @Lazy
