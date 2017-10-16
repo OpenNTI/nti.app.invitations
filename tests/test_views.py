@@ -14,7 +14,7 @@ from hamcrest import assert_that
 from hamcrest import contains_string
 does_not = is_not
 
-import anyjson as json
+import simplejson as json
 
 from zope import component
 
