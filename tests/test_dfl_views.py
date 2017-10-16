@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from __future__ import print_function, absolute_import, division
-__docformat__ = "restructuredtext en"
+from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
 
 # disable: accessing protected members, too many methods
 # pylint: disable=W0212,R0904
@@ -17,8 +18,9 @@ from hamcrest import assert_that
 from hamcrest import has_entries
 does_not = is_not
 
-import urllib
-import anyjson as json
+from six.moves import urllib_parse
+
+import simplejson as json
 
 from nti.app.invitations.views import REL_SEND_INVITATION
 from nti.app.invitations.views import REL_TRIVIAL_DEFAULT_INVITATION_CODE
@@ -58,13 +60,13 @@ class TestApplicationInvitationDFLViews(ApplicationLayerTest):
         # The owner is the only one that has the link
         path = '/dataserver2/Objects/' + dfl_ntiid
         path = str(path)
-        path = urllib.quote(path)
+        path = urllib_parse.quote(path)
 
         # And the owner is the only one that can fetch it
         res = testapp.post(path + '/@@' + str(REL_SEND_INVITATION),
                            json.dumps({'username': member_user_username}),
                            extra_environ=self._make_extra_environ(username=owner_username),
-            status=200)
+                           status=200)
         assert_that(res.json_body, has_entry('Items', has_length(1)))
         code = res.json_body['Items'][0]['code']
 
@@ -120,7 +122,7 @@ class TestApplicationInvitationDFLViews(ApplicationLayerTest):
         # The owner is the only one that has the link
         path = '/dataserver2/Objects/' + dfl_ntiid
         path = str(path)
-        path = urllib.quote(path)
+        path = urllib_parse.quote(path)
 
         res = testapp.get(path, extra_environ=self._make_extra_environ())
         assert_that(res.json_body,

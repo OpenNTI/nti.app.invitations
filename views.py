@@ -6,14 +6,13 @@ Views relating to working with invitations.
 .. $Id$
 """
 
-from __future__ import print_function, absolute_import, division
-__docformat__ = "restructuredtext en"
-
-logger = __import__('logging').getLogger(__name__)
+from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
 
 import six
 import time
-import urllib
+from six.moves import urllib_parse
 
 from requests.structures import CaseInsensitiveDict
 
@@ -86,6 +85,8 @@ ITEMS = StandardExternalFields.ITEMS
 TOTAL = StandardExternalFields.TOTAL
 ITEM_COUNT = StandardExternalFields.ITEM_COUNT
 
+logger = __import__('logging').getLogger(__name__)
+
 
 @interface.implementer(IPathAdapter, IContained)
 @component.adapter(IDataserverFolder, IRequest)
@@ -103,7 +104,7 @@ class InvitationsPathAdapter(object):
     def __getitem__(self, invitation_id):
         if not invitation_id:
             raise hexc.HTTPNotFound()
-        invitation_id = urllib.unquote(invitation_id)
+        invitation_id = urllib_parse.unquote(invitation_id)
         result = self.invitations.get(invitation_id)
         if result is not None:
             return result
