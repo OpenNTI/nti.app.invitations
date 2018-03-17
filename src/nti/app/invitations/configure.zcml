@@ -10,6 +10,11 @@
 
 	<include package="nti.invitations" />
 
+	<!-- Generations -->
+	<utility factory=".generations.install._SchemaManager"
+			 name="nti.dataserver-app-invitations"
+			 provides="zope.generations.interfaces.IInstallableSchemaManager" />
+
 	<!-- Traversal -->
 	<adapter name="Invitations"
 			 factory=".views.InvitationsPathAdapter"
