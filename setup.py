@@ -3,6 +3,9 @@ from setuptools import setup
 from setuptools import find_packages
 
 entry_points = {
+    "z3c.autoinclude.plugin": [
+        'target = nti.app',
+    ],
     'console_scripts': [
     ],
 }
@@ -65,6 +68,7 @@ setup(
         'zope.cachedescriptors',
         'zope.component',
         'zope.event',
+        'zope.generations',
         'zope.i18nmessageid',
         'zope.intid',
         'zope.interface',
