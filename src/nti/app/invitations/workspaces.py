@@ -142,7 +142,7 @@ class _DefaultUserInvitationsLinksProvider(object):
                         method="GET",
                         rel=REL_PENDING_INVITATIONS,
                         elements=('@@' + REL_PENDING_INVITATIONS,))
-            link.__name__ = name
+            link.__name__ = REL_PENDING_INVITATIONS
             link.__parent__ = self.user
             interface.alsoProvides(link, ILocation)
             result.append(link)
