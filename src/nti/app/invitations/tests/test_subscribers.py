@@ -35,8 +35,8 @@ class TestSubscribers(ApplicationLayerTest):
     @WithSharedApplicationMockDS
     def test_user_deletion_event(self):
         with mock_dataserver.mock_db_trans(self.ds):
-            self._create_user(u"aizen")
-            self._create_user(u"ichigo")
+            self._create_user(u"aizen", external_value={'email': u"aizen@nti.com"})
+            self._create_user(u"ichigo", external_value={'email': u"ichigo@nti.com"})
             invitation = Invitation(code=u'bleach',
                                     receiver=u'ichigo',
                                     sender=u'aizen',
