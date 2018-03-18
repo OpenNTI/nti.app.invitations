@@ -15,6 +15,13 @@
 			 name="nti.dataserver-app-invitations"
 			 provides="zope.generations.interfaces.IInstallableSchemaManager" />
 
+	<!-- Predicates -->
+	<subscriber	factory=".predicates.SystemInvitationsObjects"
+				provides=".interfaces.IPrincipalMetadataObjects" />
+
+	<subscriber	factory=".predicates.UserInvitationsObjects"
+				provides=".interfaces.IPrincipalMetadataObjects" />
+
 	<!-- Traversal -->
 	<adapter name="Invitations"
 			 factory=".views.InvitationsPathAdapter"
