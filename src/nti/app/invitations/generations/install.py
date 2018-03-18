@@ -18,6 +18,8 @@ from zope.intid.interfaces import IIntIds
 
 from nti.invitations.index import install_invitations_catalog
 
+from nti.invitations.model import install_invitations_container
+
 generation = 1
 
 logger = __import__('logging').getLogger(__name__)
@@ -46,3 +48,4 @@ def evolve(context):
     lsm = dataserver_folder.getSiteManager()
     intids = lsm.getUtility(IIntIds)
     install_invitations_catalog(dataserver_folder, intids)
+    install_invitations_container(dataserver_folder, intids)
