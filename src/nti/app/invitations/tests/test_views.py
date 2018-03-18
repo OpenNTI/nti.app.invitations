@@ -20,17 +20,19 @@ import simplejson as json
 
 from zope import component
 
+from nti.app.invitations.invitations import JoinEntityInvitation
+
 from nti.app.testing.application_webtest import ApplicationLayerTest
 
 from nti.app.testing.decorators import WithSharedApplicationMockDS
 
 from nti.app.testing.webtest import TestApp
 
-from nti.dataserver.invitations import JoinCommunityInvitation
-
 from nti.dataserver.tests import mock_dataserver
 
 from nti.dataserver.users.communities import Community
+
+from nti.dataserver.users.friends_lists import FriendsList
 
 from nti.invitations.interfaces import IInvitationsContainer
 from nti.invitations.interfaces import InvitationValidationError
@@ -38,7 +40,7 @@ from nti.invitations.interfaces import InvitationValidationError
 from nti.invitations.model import Invitation
 
 
-class TestApplicationInvitationUserViews(ApplicationLayerTest):
+class TestInvitationViews(ApplicationLayerTest):
 
     @WithSharedApplicationMockDS
     def test_invalid_invitation_code(self):
@@ -77,9 +79,10 @@ class TestApplicationInvitationUserViews(ApplicationLayerTest):
 
         testapp.post('/dataserver2/users/sjohnson@nextthought.com/@@accept-invitation',
                      json.dumps({'invitation_codes': ['foobar']}),
-                     extra_environ=self._make_extra_environ(username='ossmkitty'),
+                     extra_environ=self._make_extra_environ(
+                         username='ossmkitty'),
                      status=403)
-        
+
     @WithSharedApplicationMockDS
     @fudge.patch('nti.app.invitations.views.accept_invitation')
     def test_validation_accept_invitation(self, mock_ai):
@@ -91,18 +94,17 @@ class TestApplicationInvitationUserViews(ApplicationLayerTest):
                                     accepted=True,
                                     code="accepted")
             invitations.add(invitation)
-            
+
             invitation = Invitation(receiver='ichigo',
                                     sender=self.default_username,
                                     code="123456")
             invitations.add(invitation)
-            
+
             invitation = Invitation(receiver='ossmkitty',
                                     sender=self.default_username,
                                     code="7890")
             invitations.add(invitation)
-            
-            
+
         with mock_dataserver.mock_db_trans(self.ds):
             self._create_user()
             self._create_user(u'ossmkitty')
@@ -112,48 +114,77 @@ class TestApplicationInvitationUserViews(ApplicationLayerTest):
 
         testapp.post('/dataserver2/users/ossmkitty/@@accept-invitation',
                      json.dumps({'invitation_codes': ['accepted']}),
-                     extra_environ=self._make_extra_environ(username='ossmkitty'),
+                     extra_environ=self._make_extra_environ(
+                         username='ossmkitty'),
                      status=422)
-        
+
         testapp.post('/dataserver2/users/ossmkitty/@@accept-invitation',
                      json.dumps({'invitation_codes': ['123456']}),
-                     extra_environ=self._make_extra_environ(username='ossmkitty'),
+                     extra_environ=self._make_extra_environ(
+                         username='ossmkitty'),
                      status=422)
-        
+
         mock_ai.is_callable().raises(ValueError())
         testapp.post('/dataserver2/users/ossmkitty/@@accept-invitation',
                      json.dumps({'invitation_codes': ['7890']}),
-                     extra_environ=self._make_extra_environ(username='ossmkitty'),
+                     extra_environ=self._make_extra_environ(
+                         username='ossmkitty'),
                      status=422)
         testapp.post('/dataserver2/Invitations/7890/@@accept',
-                     extra_environ=self._make_extra_environ(username='ossmkitty'),
+                     extra_environ=self._make_extra_environ(
+                         username='ossmkitty'),
                      status=422)
 
         mock_ai.is_callable().raises(InvitationValidationError())
         testapp.post('/dataserver2/users/ossmkitty/@@accept-invitation',
                      json.dumps({'invitation_codes': ['7890']}),
-                     extra_environ=self._make_extra_environ(username='ossmkitty'),
+                     extra_environ=self._make_extra_environ(
+                         username='ossmkitty'),
                      status=422)
-        
+
         testapp.post('/dataserver2/Invitations/7890/@@accept',
-                     extra_environ=self._make_extra_environ(username='ossmkitty'),
+                     extra_environ=self._make_extra_environ(
+                         username='ossmkitty'),
                      status=422)
-        
+
         mock_ai.is_callable().returns_fake()
         testapp.post('/dataserver2/Invitations/7890/@@accept',
-                     extra_environ=self._make_extra_environ(username='ossmkitty'),
+                     extra_environ=self._make_extra_environ(
+                         username='ossmkitty'),
                      status=204)
-        
 
     @WithSharedApplicationMockDS
-    def test_valid_code(self):
+    def test_valid_code_community(self):
 
         with mock_dataserver.mock_db_trans(self.ds):
             self._create_user()
             comm = Community.create_community(username=u'Bankai')
-            invitation = JoinCommunityInvitation()
+            invitation = JoinEntityInvitation()
             invitation.entity = comm.username
-            invitation.receiver = u'sjohnson@nextthought.com'
+            invitation.receiver = self.default_username
+            component.getUtility(IInvitationsContainer).add(invitation)
+            code = invitation.code
+
+        # pylint: disable=no-member
+        testapp = TestApp(self.app)
+
+        testapp.post('/dataserver2/users/sjohnson@nextthought.com/@@accept-invitations',
+                     json.dumps({'code': code}),
+                     extra_environ=self._make_extra_environ(),
+                     status=204)
+
+    @WithSharedApplicationMockDS
+    def test_valid_code_friends(self):
+
+        with mock_dataserver.mock_db_trans(self.ds):
+            self._create_user()
+            owner = self._create_user('ichigo')
+            fl = FriendsList(u'MyList')
+            fl.creator = owner
+            owner.addContainedObject(fl)
+            invitation = JoinEntityInvitation()
+            invitation.entity = fl.NTIID
+            invitation.receiver = self.default_username
             component.getUtility(IInvitationsContainer).add(invitation)
             code = invitation.code
 
@@ -171,7 +202,7 @@ class TestApplicationInvitationUserViews(ApplicationLayerTest):
         with mock_dataserver.mock_db_trans(self.ds):
             self._create_user()
             comm = Community.create_community(username=u'Bankai')
-            invitation = JoinCommunityInvitation()
+            invitation = JoinEntityInvitation()
             invitation.entity = comm.username
             invitation.receiver = u'sjohnson@nextthought.com'
             component.getUtility(IInvitationsContainer).add(invitation)

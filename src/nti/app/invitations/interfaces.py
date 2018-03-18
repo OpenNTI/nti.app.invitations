@@ -14,6 +14,11 @@ from zope import interface
 
 from nti.appserver.workspaces.interfaces import IWorkspace
 
+from nti.invitations.interfaces import IInvitation
+from nti.invitations.interfaces import IInvitationActor
+
+from nti.schema.field import DecodingValidTextLine as ValidTextLine
+
 
 class IInvitationsWorkspace(IWorkspace):
     """
@@ -27,3 +32,17 @@ class IUserInvitationsLinkProvider(interface.Interface):
         """
         return an interable of user invitation links
         """
+
+
+class IJoinEntityInvitation(IInvitation):
+    """
+    Interface for a invitation to join entities
+    """
+
+    entity = ValidTextLine(title=u"The entity username", required=True)
+
+
+class IJoinEntityInvitationActor(IInvitationActor):
+    """
+    Actor to join a user to an entity
+    """
