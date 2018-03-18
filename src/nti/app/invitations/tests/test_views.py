@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from __future__ import print_function, absolute_import, division
-__docformat__ = "restructuredtext en"
+from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
 
-# disable: accessing protected members, too many methods
-# pylint: disable=W0212,R0904
+# pylint: disable=protected-access,too-many-public-methods,arguments-differ
 
 from hamcrest import is_not
 from hamcrest import has_entry
@@ -18,19 +18,19 @@ import simplejson as json
 
 from zope import component
 
-from nti.dataserver.invitations import JoinCommunityInvitation
-
-from nti.dataserver.users.communities import Community
-
-from nti.invitations.interfaces import IInvitationsContainer
-
 from nti.app.testing.application_webtest import ApplicationLayerTest
 
 from nti.app.testing.decorators import WithSharedApplicationMockDS
 
 from nti.app.testing.webtest import TestApp
 
+from nti.dataserver.invitations import JoinCommunityInvitation
+
 from nti.dataserver.tests import mock_dataserver
+
+from nti.dataserver.users.communities import Community
+
+from nti.invitations.interfaces import IInvitationsContainer
 
 
 class TestApplicationInvitationUserViews(ApplicationLayerTest):
@@ -39,8 +39,9 @@ class TestApplicationInvitationUserViews(ApplicationLayerTest):
     def test_invalid_invitation_code(self):
 
         with mock_dataserver.mock_db_trans(self.ds):
-            _ = self._create_user()
+            self._create_user()
 
+        # pylint: disable=no-member
         testapp = TestApp(self.app)
 
         res = testapp.post('/dataserver2/users/sjohnson@nextthought.com/@@accept-invitation',
@@ -62,6 +63,7 @@ class TestApplicationInvitationUserViews(ApplicationLayerTest):
             self._create_user()
             self._create_user(u'ossmkitty')
 
+        # pylint: disable=no-member
         testapp = TestApp(self.app)
 
         testapp.post('/dataserver2/users/sjohnson@nextthought.com/@@accept-invitation',
@@ -81,6 +83,7 @@ class TestApplicationInvitationUserViews(ApplicationLayerTest):
             component.getUtility(IInvitationsContainer).add(invitation)
             code = invitation.code
 
+        # pylint: disable=no-member
         testapp = TestApp(self.app)
 
         testapp.post('/dataserver2/users/sjohnson@nextthought.com/@@accept-invitations',
@@ -100,6 +103,7 @@ class TestApplicationInvitationUserViews(ApplicationLayerTest):
             component.getUtility(IInvitationsContainer).add(invitation)
             code = invitation.code
 
+        # pylint: disable=no-member
         testapp = TestApp(self.app)
         res = testapp.get('/dataserver2/users/sjohnson@nextthought.com/@@pending-invitations',
                           extra_environ=self._make_extra_environ(),
