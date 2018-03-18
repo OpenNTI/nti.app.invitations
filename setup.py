@@ -53,7 +53,7 @@ setup(
     packages=find_packages('src'),
     package_dir={'': 'src'},
     include_package_data=True,
-    namespace_packages=['nti', 'app'],
+    namespace_packages=['nti', 'nti.app'],
     tests_require=TESTS_REQUIRE,
     install_requires=[
         'setuptools',
