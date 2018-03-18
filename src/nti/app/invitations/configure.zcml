@@ -17,10 +17,10 @@
 
 	<!-- Predicates -->
 	<subscriber	factory=".predicates.SystemInvitationsObjects"
-				provides=".interfaces.IPrincipalMetadataObjects" />
+				provides="nti.dataserver.metadata.interfaces.IPrincipalMetadataObjects" />
 
 	<subscriber	factory=".predicates.UserInvitationsObjects"
-				provides=".interfaces.IPrincipalMetadataObjects" />
+				provides="nti.dataserver.metadata.interfaces.IPrincipalMetadataObjects" />
 
 	<!-- Traversal -->
 	<adapter name="Invitations"
