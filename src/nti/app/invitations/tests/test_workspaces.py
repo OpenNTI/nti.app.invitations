@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from __future__ import print_function, absolute_import, division
-__docformat__ = "restructuredtext en"
+from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
 
-# disable: accessing protected members, too many methods
-# pylint: disable=W0212,R0904
+# pylint: disable=protected-access,too-many-public-methods,arguments-differ
 
 from hamcrest import is_not
 from hamcrest import has_item
@@ -15,15 +15,15 @@ from hamcrest import assert_that
 from hamcrest import greater_than
 does_not = is_not
 
+from nti.app.testing.application_webtest import ApplicationLayerTest
+
 from nti.appserver.workspaces import UserService
+
+from nti.dataserver.tests import mock_dataserver
 
 from nti.dataserver.users.users import User
 
 from nti.externalization.externalization import toExternalObject
-
-from nti.app.testing.application_webtest import ApplicationLayerTest
-
-from nti.dataserver.tests import mock_dataserver
 
 
 class TestUserService(ApplicationLayerTest):
@@ -36,7 +36,7 @@ class TestUserService(ApplicationLayerTest):
         ext_object = toExternalObject(service)
 
         assert_that(ext_object['Items'],
-                    has_item(has_entry('Title','Invitations')))
+                    has_item(has_entry('Title', 'Invitations')))
         invitations_wss = [
             x for x in ext_object['Items'] if x['Title'] == 'Invitations'
         ]
