@@ -55,13 +55,13 @@ from nti.app.invitations import REL_DECLINE_INVITATION
 from nti.app.invitations import REL_PENDING_INVITATIONS
 from nti.app.invitations import REL_TRIVIAL_DEFAULT_INVITATION_CODE
 
+from nti.app.invitations.invitations import JoinEntityInvitation
+
 from nti.dataserver import authorization as nauth
 
 from nti.dataserver.interfaces import IUser
 from nti.dataserver.interfaces import IDataserverFolder
 from nti.dataserver.interfaces import IDynamicSharingTargetFriendsList
-
-from nti.dataserver.invitations import JoinEntityInvitation
 
 from nti.dataserver.users.interfaces import IUserProfile
 

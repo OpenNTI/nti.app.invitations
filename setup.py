@@ -61,6 +61,7 @@ setup(
         'nti.invitations',
         'nti.links',
         'nti.property',
+        'nti.schema',
         'requests',
         'pyramid',
         'six',

@@ -52,4 +52,9 @@
 				for="nti.dataserver.interfaces.IUser
 					 pyramid.interfaces.IRequest"/>
 	
+	<!-- Invitations -->
+	<adapter factory=".invitations.JoinEntityInvitationActor"
+			 provides=".interfaces.IJoinEntityInvitationActor"
+			 for=".interfaces.IJoinEntityInvitation" />
+
 </configure>
