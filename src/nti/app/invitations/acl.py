@@ -44,7 +44,7 @@ class InvitationACLProvider(object):
         self.context = context
 
     @classmethod
-    def _get_usernames_by_email(cls, email):
+    def get_usernames_by_email(cls, email):
         users = get_users_by_email(email)
         result = {x.username for x in users or ()}
         return tuple(result)
@@ -60,7 +60,7 @@ class InvitationACLProvider(object):
         if self.context.is_email():
             user = User.get_user(receiver)
             if user is None:
-                usernames = self._get_usernames_by_email(receiver)
+                usernames = self.get_usernames_by_email(receiver)
                 receiver = usernames[0] if len(usernames) == 1 else None
         if receiver:
             receiver = IPrincipal(receiver.lower())
