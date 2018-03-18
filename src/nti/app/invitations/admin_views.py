@@ -4,21 +4,20 @@
 .. $Id$
 """
 
-from __future__ import print_function, absolute_import, division
-__docformat__ = "restructuredtext en"
-
-logger = __import__('logging').getLogger(__name__)
+from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
 
 import six
+
+from pyramid.view import view_config
+from pyramid.view import view_defaults
 
 from requests.structures import CaseInsensitiveDict
 
 from zope import component
 
 from zope.intid.interfaces import IIntIds
-
-from pyramid.view import view_config
-from pyramid.view import view_defaults
 
 from nti.app.base.abstract_views import AbstractAuthenticatedView
 
@@ -41,9 +40,13 @@ from nti.invitations.utils import get_expired_invitations
 from nti.invitations.utils import get_pending_invitations
 from nti.invitations.utils import delete_expired_invitations
 
+from nti.metadata import queue_add
+
 ITEMS = StandardExternalFields.ITEMS
 TOTAL = StandardExternalFields.TOTAL
 ITEM_COUNT = StandardExternalFields.ITEM_COUNT
+
+logger = __import__('logging').getLogger(__name__)
 
 
 @view_config(context=InvitationsPathAdapter)
@@ -156,13 +159,6 @@ class DeleteExpiredInvitationsView(AbstractAuthenticatedView,
                permission=nauth.ACT_NTI_ADMIN)
 class RebuildInvitationsCatalogView(AbstractAuthenticatedView):
 
-    def _process_meta(self, package):
-        try:
-            from nti.metadata import queue_add
-            queue_add(package)
-        except ImportError:
-            pass
-
     def __call__(self):
         count = 0
         intids = component.getUtility(IIntIds)
@@ -178,7 +174,7 @@ class RebuildInvitationsCatalogView(AbstractAuthenticatedView):
                 continue
             count += 1
             catalog.index_doc(doc_id, invitation)
-            self._process_meta(invitation)
+            queue_add(invitation)
         result = LocatedExternalDict()
         result[ITEM_COUNT] = result[TOTAL] = count
         return result
