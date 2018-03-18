@@ -332,15 +332,17 @@ class SendDFLInvitationView(AbstractAuthenticatedView,
                             ModeledContentUploadRequestUtilsMixin):
 
     def readInput(self, value=None):
-        result = super(SendDFLInvitationView, self).readInput(value)
-        result = CaseInsensitiveDict(result)
-        return result
+        result = None
+        if self.request.body:
+            result = super(SendDFLInvitationView, self).readInput(value)
+            result = CaseInsensitiveDict(result)
+        return result or {}
 
     def get_usernames(self, values):
         result = values.get('usernames') \
-            or values.get('username') \
-            or values.get('users') \
-            or values.get('user')
+              or values.get('username') \
+              or values.get('users') \
+              or values.get('user')
         if isinstance(result, six.string_types):
             result = result.split(',')
         return result
