@@ -2,6 +2,14 @@
  Reference
 ===========
 
+Generations
+===========
+
+.. toctree::
+	:maxdepth: 2
+
+	generations
+
 ACL
 ===
 

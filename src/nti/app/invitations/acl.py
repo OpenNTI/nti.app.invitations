@@ -4,10 +4,9 @@
 .. $Id$
 """
 
-from __future__ import print_function, absolute_import, division
-__docformat__ = "restructuredtext en"
-
-logger = __import__('logging').getLogger(__name__)
+from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
 
 from zope import component
 from zope import interface
@@ -33,6 +32,8 @@ from nti.dataserver.users.users import User
 from nti.dataserver.users.utils import get_users_by_email
 
 from nti.invitations.interfaces import IInvitation
+
+logger = __import__('logging').getLogger(__name__)
 
 
 @component.adapter(IInvitation)

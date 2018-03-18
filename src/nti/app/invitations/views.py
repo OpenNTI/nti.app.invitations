@@ -101,14 +101,13 @@ class InvitationsPathAdapter(object):
     def invitations(self):
         return component.getUtility(IInvitationsContainer)
 
-    def __getitem__(self, invitation_id):
-        if not invitation_id:
-            raise hexc.HTTPNotFound()
-        invitation_id = urllib_parse.unquote(invitation_id)
-        result = self.invitations.get(invitation_id)
+    def __getitem__(self, key):
+        # pylint: disable=no-member,too-many-function-args
+        key = urllib_parse.unquote(key)
+        result = self.invitations.get(key)
         if result is not None:
             return result
-        raise KeyError(invitation_id)
+        raise KeyError(key) if key else hexc.HTTPNotFound()
 
 
 @view_config(route_name='objects.generic.traversal',
@@ -152,6 +151,7 @@ class AcceptInvitationMixin(AbstractAuthenticatedView):
         profile = IUserProfile(self.context, None)
         email = getattr(profile, 'email', None) or u''
         receiver = invitation.receiver.lower()
+        # pylint: disable=no-member
         if receiver not in (self.context.username.lower(), email.lower()):
             raise_json_error(request,
                              hexc.HTTPUnprocessableEntity,
@@ -204,10 +204,10 @@ class AcceptInvitationByCodeView(AcceptInvitationMixin,
     def get_invite_code(self):
         values = CaseInsensitiveDict(self.readInput())
         result = values.get('code') \
-              or values.get('invitation') \
-              or values.get('invitation_code') \
-              or values.get('invitation_codes')  # legacy (should only be one)
-        if isinstance(result, (list, tuple)) and result:
+            or values.get('invitation') \
+            or values.get('invitation_code') \
+            or values.get('invitation_codes')  # legacy (should only be one)
+        if isinstance(result, (list, tuple)) and result:  # pragma: no cover
             result = result[0]
         return result
 
@@ -222,6 +222,7 @@ class AcceptInvitationByCodeView(AcceptInvitationMixin,
             return None
 
     def handle_legacy_dfl(self, code):
+        # pylint: disable=no-member
         dfl = self.get_legacy_dfl(code)
         if dfl is not None:
             creator = dfl.creator
@@ -248,7 +249,7 @@ class AcceptInvitationByCodeView(AcceptInvitationMixin,
         except InvitationValidationError as e:
             e.field = u'invitation'
             self.handle_validation_error(request, e)
-        except Exception as e:  # pragma: no cover
+        except Exception as e:  # pragma: no cover pylint: disable=broad-except 
             self.handle_possible_validation_error(request, e)
         return invitation
 
@@ -269,7 +270,7 @@ class AcceptInvitationView(AcceptInvitationMixin):
         except InvitationValidationError as e:
             e.field = u'invitation'
             self.handle_validation_error(request, e)
-        except Exception as e:  # pragma: no cover
+        except Exception as e:  # pragma: no cover pylint: disable=broad-except
             self.handle_possible_validation_error(request, e)
         return invitation
 
@@ -285,6 +286,7 @@ class DeclineInvitationByCodeView(AcceptInvitationByCodeView):
     def _do_call(self):
         code = self.get_invite_code()
         invitation = self._do_validation(code)
+        # pylint: disable=no-member
         self.invitations.remove(invitation)
         return invitation
 
@@ -299,6 +301,7 @@ class DeclineInvitationView(AcceptInvitationView):
 
     def _do_call(self):
         invitation = self._validate_invitation(self.context)
+        # pylint: disable=no-member
         self.invitations.remove(invitation)
         return invitation
 
@@ -314,6 +317,7 @@ class GetPendingInvitationsView(AbstractAuthenticatedView):
     def _do_call(self):
         result = LocatedExternalDict()
         email = getattr(IUserProfile(self.context, None), 'email', None)
+        # pylint: disable=no-member
         receivers = (self.context.username, email)
         items = result[ITEMS] = get_pending_invitations(receivers)
         result[TOTAL] = result[ITEM_COUNT] = len(items)
@@ -342,9 +346,9 @@ class SendDFLInvitationView(AbstractAuthenticatedView,
 
     def get_usernames(self, values):
         result = values.get('usernames') \
-              or values.get('username') \
-              or values.get('users') \
-              or values.get('user')
+            or values.get('username') \
+            or values.get('users') \
+            or values.get('user')
         if isinstance(result, six.string_types):
             result = result.split(',')
         return result
@@ -367,6 +371,7 @@ class SendDFLInvitationView(AbstractAuthenticatedView,
         result = []
         for username in set(usernames):
             user = User.get_user(username)
+            # pylint: disable=no-member,unsupported-membership-test
             if      IUser.providedBy(user) \
                 and user not in self.context \
                 and username != self.remoteUser.username:
@@ -392,6 +397,7 @@ class SendDFLInvitationView(AbstractAuthenticatedView,
         result.__name__ = self.request.view_name
         result.__parent__ = self.request.context
 
+        # pylint: disable=no-member
         entity = self.context.username
         for username in users:
             invitation = JoinEntityInvitation()

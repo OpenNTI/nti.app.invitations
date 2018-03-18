@@ -4,10 +4,9 @@
 .. $Id$
 """
 
-from __future__ import print_function, absolute_import, division
-__docformat__ = "restructuredtext en"
-
-logger = __import__('logging').getLogger(__name__)
+from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
 
 from zope import component
 from zope import interface
@@ -40,6 +39,8 @@ from nti.links.links import Link
 
 from nti.property.property import alias
 
+logger = __import__('logging').getLogger(__name__)
+
 
 @interface.implementer(IInvitationsWorkspace, IContained)
 class _InvitationsWorkspace(object):
@@ -59,10 +60,11 @@ class _InvitationsWorkspace(object):
         """
         Make us traversable to collections.
         """
+        # pylint: disable=not-an-iterable
         for i in self.collections:
             if i.__name__ == key:
                 return i
-        raise KeyError(key)
+        raise KeyError(key)  # pragma: no cover
 
     def __len__(self):
         return len(self.collections)

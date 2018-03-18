@@ -5,8 +5,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import absolute_import
 
-# disable: accessing protected members, too many methods
-# pylint: disable=W0212,R0904
+# pylint: disable=protected-access,too-many-public-methods,arguments-differ
 
 from hamcrest import is_
 from hamcrest import is_not
@@ -25,8 +24,6 @@ import simplejson as json
 from nti.app.invitations.views import REL_SEND_INVITATION
 from nti.app.invitations.views import REL_TRIVIAL_DEFAULT_INVITATION_CODE
 
-from nti.dataserver import users
-
 from nti.app.testing.application_webtest import ApplicationLayerTest
 
 from nti.app.testing.decorators import WithSharedApplicationMockDS
@@ -34,6 +31,10 @@ from nti.app.testing.decorators import WithSharedApplicationMockDS
 from nti.app.testing.webtest import TestApp
 
 from nti.dataserver.tests import mock_dataserver
+
+from nti.dataserver.users.friends_lists import DynamicFriendsList
+
+from nti.dataserver.users.users import User
 
 
 class TestApplicationInvitationDFLViews(ApplicationLayerTest):
@@ -49,12 +50,13 @@ class TestApplicationInvitationDFLViews(ApplicationLayerTest):
             other_user = self._create_user(u'other@foo')
             other_user_username = other_user.username
 
-            fl1 = users.DynamicFriendsList(username=u'Friends')
+            fl1 = DynamicFriendsList(username=u'Friends')
             fl1.creator = owner  # Creator must be set
             owner.addContainedObject(fl1)
 
             dfl_ntiid = fl1.NTIID
 
+        # pylint: disable=no-member
         testapp = TestApp(self.app)
 
         # The owner is the only one that has the link
@@ -65,13 +67,15 @@ class TestApplicationInvitationDFLViews(ApplicationLayerTest):
         # And the owner is the only one that can fetch it
         res = testapp.post(path + '/@@' + str(REL_SEND_INVITATION),
                            json.dumps({'username': member_user_username}),
-                           extra_environ=self._make_extra_environ(username=owner_username),
+                           extra_environ=self._make_extra_environ(
+                               username=owner_username),
                            status=200)
         assert_that(res.json_body, has_entry('Items', has_length(1)))
         code = res.json_body['Items'][0]['code']
 
         res = testapp.get('/dataserver2/Invitations/%s' % code,
-                          extra_environ=self._make_extra_environ(username=member_user_username),
+                          extra_environ=self._make_extra_environ(
+                              username=member_user_username),
                           status=200)
         assert_that(res.json_body, has_entry('Class', "JoinEntityInvitation"))
         assert_that(res.json_body,
@@ -88,7 +92,8 @@ class TestApplicationInvitationDFLViews(ApplicationLayerTest):
         assert_that(res.json_body, has_entry('receiver', is_("member@foo")))
 
         testapp.get('/dataserver2/Invitations/%s' % code,
-                    extra_environ=self._make_extra_environ(username=other_user_username),
+                    extra_environ=self._make_extra_environ(
+                        username=other_user_username),
                     status=403)
 
     @WithSharedApplicationMockDS
@@ -102,7 +107,7 @@ class TestApplicationInvitationDFLViews(ApplicationLayerTest):
             other_user = self._create_user(u'otheruser@foo')
             other_user_username = other_user.username
 
-            fl1 = users.DynamicFriendsList(username=u'Friends')
+            fl1 = DynamicFriendsList(username=u'Friends')
             fl1.creator = owner  # Creator must be set
             owner.addContainedObject(fl1)
             fl1.addFriend(member_user)
@@ -117,6 +122,7 @@ class TestApplicationInvitationDFLViews(ApplicationLayerTest):
             del other_user
             del fl1
 
+        # pylint: disable=no-member
         testapp = TestApp(self.app)
 
         # The owner is the only one that has the link
@@ -155,8 +161,8 @@ class TestApplicationInvitationDFLViews(ApplicationLayerTest):
                      extra_environ=self._make_extra_environ(username=other_user_username))
 
         with mock_dataserver.mock_db_trans(self.ds):
-            owner = users.User.get_user(owner_username)
-            member_user = users.User.get_user(member_user_username)
-            other_user = users.User.get_user(other_user_username)
+            owner = User.get_user(owner_username)
+            member_user = User.get_user(member_user_username)
+            other_user = User.get_user(other_user_username)
             dfl = owner.getContainedObject(fl1_containerId, fl1_id)
             assert_that(list(dfl), is_([member_user, other_user]))
