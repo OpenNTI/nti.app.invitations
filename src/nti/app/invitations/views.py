@@ -164,16 +164,7 @@ class AcceptInvitationMixin(AbstractAuthenticatedView):
 
     def _do_validation(self, invite_code):
         request = self.request
-        if not invite_code:
-            raise_json_error(request,
-                             hexc.HTTPUnprocessableEntity,
-                             {
-                                 'message': _(u"Missing invitation code."),
-                                 'code': 'MissingInvitationCode',
-                             },
-                             None)
-
-        if not invite_code in self.invitations:
+        if not invite_code or invite_code not in self.invitations:
             raise_json_error(request,
                              hexc.HTTPUnprocessableEntity,
                              {
@@ -204,22 +195,23 @@ class AcceptInvitationByCodeView(AcceptInvitationMixin,
     def get_invite_code(self):
         values = CaseInsensitiveDict(self.readInput())
         result = values.get('code') \
-            or values.get('invitation') \
-            or values.get('invitation_code') \
-            or values.get('invitation_codes')  # legacy (should only be one)
+              or values.get('invitation') \
+              or values.get('invitation_code') \
+              or values.get('invitation_codes')  # legacy (should only be one)
         if isinstance(result, (list, tuple)) and result:  # pragma: no cover
             result = result[0]
         return result
 
     def get_legacy_dfl(self, code):
+        result = None
         try:
             iid = from_external_string(code)
-            result = component.getUtility(IIntIds).queryObject(iid)
-            if IDynamicSharingTargetFriendsList.providedBy(result):
-                return result
-            return None
+            obj = component.getUtility(IIntIds).queryObject(iid)
+            if IDynamicSharingTargetFriendsList.providedBy(obj):
+                result = obj
         except (TypeError, ValueError):  # pragma no cover
-            return None
+            pass
+        return result
 
     def handle_legacy_dfl(self, code):
         # pylint: disable=no-member

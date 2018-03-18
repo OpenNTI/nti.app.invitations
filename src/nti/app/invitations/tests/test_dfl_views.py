@@ -67,8 +67,7 @@ class TestApplicationInvitationDFLViews(ApplicationLayerTest):
         # And the owner is the only one that can fetch it
         res = testapp.post(path + '/@@' + str(REL_SEND_INVITATION),
                            json.dumps({'username': member_user_username}),
-                           extra_environ=self._make_extra_environ(
-                               username=owner_username),
+                           extra_environ=self._make_extra_environ(username=owner_username),
                            status=200)
         assert_that(res.json_body, has_entry('Items', has_length(1)))
         code = res.json_body['Items'][0]['code']

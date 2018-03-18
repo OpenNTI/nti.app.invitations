@@ -21,7 +21,7 @@ logger = __import__('logging').getLogger(__name__)
 
 
 @component.adapter(ISystemUserPrincipal)
-class _SystemInvitationsObjects(BasePrincipalObjects):
+class SystemInvitationsObjects(BasePrincipalObjects):
 
     @property
     def invitations(self):
@@ -34,7 +34,7 @@ class _SystemInvitationsObjects(BasePrincipalObjects):
 
 
 @component.adapter(IUser)
-class _UserInvitationsObjects(BasePrincipalObjects):
+class UserInvitationsObjects(BasePrincipalObjects):
 
     @property
     def invitations(self):
