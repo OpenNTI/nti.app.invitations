@@ -203,14 +203,15 @@ class AcceptInvitationByCodeView(AcceptInvitationMixin,
         return result
 
     def get_legacy_dfl(self, code):
+        result = None
         try:
             iid = from_external_string(code)
-            result = component.getUtility(IIntIds).queryObject(iid)
-            if IDynamicSharingTargetFriendsList.providedBy(result):
-                return result
-            return None
+            obj = component.getUtility(IIntIds).queryObject(iid)
+            if IDynamicSharingTargetFriendsList.providedBy(obj):
+                result = object
         except (TypeError, ValueError):  # pragma no cover
-            return None
+            pass
+        return result
 
     def handle_legacy_dfl(self, code):
         # pylint: disable=no-member
