@@ -108,7 +108,7 @@ class _InvitationsCollection(object):
         return result
 
     @property
-    def container(self):
+    def container(self):  # pragma: no cover
         return ()
 
     @property

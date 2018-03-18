@@ -64,6 +64,17 @@ class TestApplicationInvitationDFLViews(ApplicationLayerTest):
         path = str(path)
         path = urllib_parse.quote(path)
 
+        # must pass users
+        testapp.post(path + '/@@' + str(REL_SEND_INVITATION),
+                     extra_environ=self._make_extra_environ(username=owner_username),
+                     status=422)
+
+        # must pass valid users
+        testapp.post(path + '/@@' + str(REL_SEND_INVITATION),
+                     json.dumps({'username': 'not_valid_user'}),
+                     extra_environ=self._make_extra_environ(username=owner_username),
+                     status=422)
+
         # And the owner is the only one that can fetch it
         res = testapp.post(path + '/@@' + str(REL_SEND_INVITATION),
                            json.dumps({'username': member_user_username}),
