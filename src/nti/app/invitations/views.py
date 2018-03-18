@@ -208,7 +208,7 @@ class AcceptInvitationByCodeView(AcceptInvitationMixin,
             iid = from_external_string(code)
             obj = component.getUtility(IIntIds).queryObject(iid)
             if IDynamicSharingTargetFriendsList.providedBy(obj):
-                result = object
+                result = obj
         except (TypeError, ValueError):  # pragma no cover
             pass
         return result
