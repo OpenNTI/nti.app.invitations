@@ -74,6 +74,7 @@ from nti.externalization.interfaces import LocatedExternalDict
 from nti.externalization.interfaces import StandardExternalFields
 
 from nti.invitations.interfaces import IInvitation
+from nti.invitations.interfaces import IDisabledInvitation
 from nti.invitations.interfaces import InvitationSentEvent
 from nti.invitations.interfaces import IInvitationsContainer
 from nti.invitations.interfaces import InvitationValidationError
@@ -147,6 +148,14 @@ class AcceptInvitationMixin(AbstractAuthenticatedView):
                                  'code': 'InvitationIsNotForUser',
                              },
                              None)
+        if IDisabledInvitation.providedBy(invitation):
+            raise_json_error(request,
+                             hexc.HTTPUnprocessableEntity,
+                             {
+                                 'message': _(u"Invitation code no longer valid."),
+                                 'code': 'InvalidInvitationCode',
+                             },
+                             None)
 
         profile = IUserProfile(self.context, None)
         email = getattr(profile, 'email', None) or u''
@@ -164,7 +173,8 @@ class AcceptInvitationMixin(AbstractAuthenticatedView):
 
     def _do_validation(self, invite_code):
         request = self.request
-        if not invite_code or invite_code not in self.invitations:
+        if     not invite_code \
+            or invite_code not in self.invitations:
             raise_json_error(request,
                              hexc.HTTPUnprocessableEntity,
                              {
@@ -241,7 +251,7 @@ class AcceptInvitationByCodeView(AcceptInvitationMixin,
         except InvitationValidationError as e:
             e.field = u'invitation'
             self.handle_validation_error(request, e)
-        except Exception as e:  # pragma: no cover pylint: disable=broad-except 
+        except Exception as e:  # pragma: no cover pylint: disable=broad-except
             self.handle_possible_validation_error(request, e)
         return invitation
 

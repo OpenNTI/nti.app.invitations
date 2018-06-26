@@ -19,6 +19,7 @@ import fudge
 import simplejson as json
 
 from zope import component
+from zope import interface
 
 from nti.app.invitations.invitations import JoinEntityInvitation
 
@@ -34,6 +35,7 @@ from nti.dataserver.users.communities import Community
 
 from nti.dataserver.users.friends_lists import FriendsList
 
+from nti.invitations.interfaces import IDisabledInvitation
 from nti.invitations.interfaces import IInvitationsContainer
 from nti.invitations.interfaces import InvitationValidationError
 
@@ -105,53 +107,57 @@ class TestInvitationViews(ApplicationLayerTest):
                                     code="7890")
             invitations.add(invitation)
 
+            invitation = Invitation(receiver='ossmkitty',
+                                    sender=self.default_username,
+                                    code="disabled123")
+            invitations.add(invitation)
+            interface.alsoProvides(invitation, IDisabledInvitation)
+
         with mock_dataserver.mock_db_trans(self.ds):
             self._create_user()
             self._create_user(u'ossmkitty')
 
         # pylint: disable=no-member
         testapp = TestApp(self.app)
+        kit_environ = self._make_extra_environ(username='ossmkitty')
 
         testapp.post('/dataserver2/users/ossmkitty/@@accept-invitation',
                      json.dumps({'invitation_codes': ['accepted']}),
-                     extra_environ=self._make_extra_environ(
-                         username='ossmkitty'),
+                     extra_environ=kit_environ,
                      status=422)
 
         testapp.post('/dataserver2/users/ossmkitty/@@accept-invitation',
                      json.dumps({'invitation_codes': ['123456']}),
-                     extra_environ=self._make_extra_environ(
-                         username='ossmkitty'),
+                     extra_environ=kit_environ,
                      status=422)
 
         mock_ai.is_callable().raises(ValueError())
         testapp.post('/dataserver2/users/ossmkitty/@@accept-invitation',
                      json.dumps({'invitation_codes': ['7890']}),
-                     extra_environ=self._make_extra_environ(
-                         username='ossmkitty'),
+                     extra_environ=kit_environ,
                      status=422)
         testapp.post('/dataserver2/Invitations/7890/@@accept',
-                     extra_environ=self._make_extra_environ(
-                         username='ossmkitty'),
+                     extra_environ=kit_environ,
                      status=422)
 
         mock_ai.is_callable().raises(InvitationValidationError())
         testapp.post('/dataserver2/users/ossmkitty/@@accept-invitation',
                      json.dumps({'invitation_codes': ['7890']}),
-                     extra_environ=self._make_extra_environ(
-                         username='ossmkitty'),
+                     extra_environ=kit_environ,
                      status=422)
 
         testapp.post('/dataserver2/Invitations/7890/@@accept',
-                     extra_environ=self._make_extra_environ(
-                         username='ossmkitty'),
+                     extra_environ=kit_environ,
                      status=422)
 
         mock_ai.is_callable().returns_fake()
         testapp.post('/dataserver2/Invitations/7890/@@accept',
-                     extra_environ=self._make_extra_environ(
-                         username='ossmkitty'),
+                     extra_environ=kit_environ,
                      status=204)
+
+        testapp.post('/dataserver2/Invitations/disabled123/@@accept',
+                     extra_environ=kit_environ,
+                     status=422)
 
     @WithSharedApplicationMockDS
     def test_valid_code_community(self):
@@ -224,7 +230,7 @@ class TestInvitationViews(ApplicationLayerTest):
                           extra_environ=self._make_extra_environ(),
                           status=200)
         assert_that(res.json_body, has_entry('Items', has_length(0)))
-        
+
     @WithSharedApplicationMockDS
     def test_decline_invitations(self):
 
