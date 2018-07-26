@@ -12,6 +12,7 @@ from zope import interface
 
 from nti.app.invitations.interfaces import IJoinEntityInvitation
 from nti.app.invitations.interfaces import IJoinEntityInvitationActor
+from nti.app.invitations.interfaces import IJoinEntityAndGrantPermissionInvitation
 
 from nti.dataserver.interfaces import ICommunity
 from nti.dataserver.interfaces import IFriendsList
@@ -31,6 +32,15 @@ class JoinEntityInvitation(Invitation):
 
     mimeType = mime_type = "application/vnd.nextthought.joinentityinvitation"
 JoinCommunityInvitation = JoinEntityInvitation
+
+# TODO: implement
+@interface.implementer(IJoinEntityInvitation)
+class JoinEntityAndGrantPermissionInvitation(JoinEntityInvitation):
+    createDirectFieldProperties(IJoinEntityAndGrantPermissionInvitation)
+
+    # TODO: That's a long mimetype...
+    mimeType = mime_type = "application/vnd.nextthought.joinentityandgrantpermissioninvitation"
+JoinSiteInvitation = JoinEntityAndGrantPermissionInvitation
 
 
 @interface.implementer(IJoinEntityInvitationActor)

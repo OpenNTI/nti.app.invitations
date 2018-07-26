@@ -10,11 +10,14 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import absolute_import
 
+import csv
+
 import six
 import time
 from six.moves import urllib_parse
 
 from requests.structures import CaseInsensitiveDict
+from z3c.schema.email import isValidMailAddress
 
 from zope import component
 from zope import interface
@@ -36,7 +39,7 @@ from pyramid.interfaces import IRequest
 from pyramid.view import view_config
 from pyramid.view import view_defaults
 
-from nti.app.base.abstract_views import AbstractAuthenticatedView
+from nti.app.base.abstract_views import AbstractAuthenticatedView, get_source
 
 from nti.app.externalization.error import raise_json_error
 
@@ -45,7 +48,7 @@ from nti.app.externalization.view_mixins import ModeledContentUploadRequestUtils
 from nti.app.externalization.error import handle_validation_error
 from nti.app.externalization.error import handle_possible_validation_error
 
-from nti.app.invitations import MessageFactory as _
+from nti.app.invitations import MessageFactory as _, REL_SEND_SITE_CSV_INVITATION, REL_SEND_SITE_INVITATION
 
 from nti.app.invitations import INVITATIONS
 from nti.app.invitations import REL_SEND_INVITATION
@@ -55,7 +58,7 @@ from nti.app.invitations import REL_DECLINE_INVITATION
 from nti.app.invitations import REL_PENDING_INVITATIONS
 from nti.app.invitations import REL_TRIVIAL_DEFAULT_INVITATION_CODE
 
-from nti.app.invitations.invitations import JoinEntityInvitation
+from nti.app.invitations.invitations import JoinEntityInvitation, JoinSiteInvitation
 
 from nti.dataserver import authorization as nauth
 
@@ -67,7 +70,7 @@ from nti.dataserver.users.interfaces import IUserProfile
 
 from nti.dataserver.users.users import User
 
-from nti.externalization.integer_strings import to_external_string
+from nti.externalization.integer_strings import to_external_string, translate
 from nti.externalization.integer_strings import from_external_string
 
 from nti.externalization.interfaces import LocatedExternalDict
@@ -103,6 +106,8 @@ class InvitationsPathAdapter(object):
         return component.getUtility(IInvitationsContainer)
 
     def __getitem__(self, key):
+        from IPython.terminal.debugger import set_trace;set_trace()
+
         # pylint: disable=no-member,too-many-function-args
         key = urllib_parse.unquote(key)
         result = self.invitations.get(key)
@@ -418,3 +423,144 @@ class SendDFLInvitationView(AbstractAuthenticatedView,
 
     def __call__(self):
         return self._do_call()
+
+
+@view_defaults(route_name='objects.generic.traversal',
+               renderer='rest',
+               context=IDataserverFolder,  # TODO: correct context?
+               permission=nauth.ACT_UPDATE,  # TODO: follow the DFL permissions?
+               request_method='POST',
+               name=REL_SEND_SITE_INVITATION)
+class SendSiteInvitationCode(AbstractAuthenticatedView,
+                             ModeledContentUploadRequestUtilsMixin):
+
+    def __init__(self):
+        super(SendSiteInvitationCode, self).__init__()
+        self.warnings = list()
+        self.invalid_emails = list()
+
+    # TODO: This closely resembles
+    # TODO: nti.app.products.courseware.views.course_invitation_views.CheckCourseInvitationsCSVView.parse_csv_users
+    def parse_csv(self):
+        result = []
+        source = get_source(self.request, 'csv', 'input', 'source')
+        if source is not None:
+            # Read in and split (to handle universal newlines).
+            # XXX: Generalize this?
+            source = source.read()
+            for idx, row in enumerate(csv.reader(source.splitlines())):
+                if not row or row[0].startswith("#"):
+                    continue
+                email = row[0]
+                email = email.strip() if email else email
+                realname = row[1] if len(row) > 1 else ''
+                if not email:
+                    msg = translate(_(u"Missing email in line ${line}.",
+                                    mapping={'line': idx + 1}))
+                    self.warnings.append(msg)
+                    continue
+                if not isValidMailAddress(email):
+                    self.invalid_emails.append(email)
+                    continue
+                result.append({'email': email, 'realname': realname})
+        else:
+            self.warnings.append(_(u"No CSV source found."))
+        return result
+
+    @view_config(name=REL_SEND_SITE_CSV_INVITATION)
+    def upload_csv_invitations(self):
+        values = {}
+        try:
+            values['invitations'] = self.parse_csv_users()
+        except:
+            logger.exception('Failed to parse CSV file')
+            raise_json_error(
+                self.request,
+                hexc.HTTPUnprocessableEntity,
+                {
+                    'message': _(u'Could not parse csv file.'),
+                    'code': 'InvalidCSVFileCodeError',
+                },
+                None)
+        # Get the invitation message and any other values
+        values.update(self.readInput())
+        return self._do_call(values)
+
+    def readInput(self, value=None):
+        result = None
+        if self.request.body:
+            result = super(SendSiteInvitationCode, self).readInput(value)
+            result = CaseInsensitiveDict(result)
+        return result or {}
+
+    def _validate_invitations(self, values):
+        # Parse through the submitted emails and names to make sure all values are
+        # provided and emails are valid. Because these values are coming from the
+        # view, we would expect that warnings and invalid emails are rare here
+        for invitation in values:
+            email = invitation['email']
+            realname = invitation['realname']
+            # These cases shouldn't happen
+            if email is None and realname is None:
+                msg = translate(_(u'Missing email and name for input'))
+                self.warnings.append(msg)
+                continue
+            elif email is None:
+                msg = translate(_(u'Missing email for %s', realname))
+                self.warnings.append(msg)
+                continue
+            elif realname is None:
+                msg = translate(_(u'Missing name for email: %s', email))
+                self.warnings.append(msg)
+                continue
+
+            if not isValidMailAddress(email):
+                self.invalid_emails.append(email)
+                continue
+
+    @view_config(name=REL_SEND_SITE_INVITATION)
+    def send_site_invitations(self):
+        values = self.readInput()
+        self._validate_invitations(values)
+        return self._do_call(values)
+
+    def _do_call(self, values):
+        # At this point we should have a values dict containing invitation destinations and message
+        if self.warnings or self.invalid_emails:
+            raise_json_error(
+                self.request,
+                hexc.HTTPExpectationFailed,
+                {
+                    'message': _(u'The provided input is missing values or contains invalid email addresses.'),
+                    'code': 'InvalidSiteInvitationData',
+                    'Warnings': self.warnings,
+                    'InvalidEmails': self.invalid_emails
+                },
+                None
+            )
+
+        result = LocatedExternalDict()
+        result[ITEMS] = items = []
+        result.__name__ = self.request.view_name
+        result.__parent__ = self.request.context
+
+        message = values.get('message')
+
+        # pylint: disable=no-member
+        entity = self.context.__name__  # TODO may not be the right value
+        for user_dict in values:
+            email = user_dict['email']
+            realname = user_dict['realname']
+            # TODO: Add the name to the invitation
+            invitation = JoinSiteInvitation()
+            invitation.entity = entity
+            invitation.message = message
+            invitation.receiver = email
+            invitation.sender = self.remoteUser.username
+            self.invitations.add(invitation)
+            items.append(invitation)
+            # TODO this expectation of a user needs resolved
+            notify(InvitationSentEvent(invitation, email))
+
+        result[TOTAL] = result[ITEM_COUNT] = len(items)
+        return result
