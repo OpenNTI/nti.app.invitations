@@ -17,7 +17,7 @@ from nti.appserver.workspaces.interfaces import IWorkspace
 from nti.invitations.interfaces import IInvitation
 from nti.invitations.interfaces import IInvitationActor
 
-from nti.schema.field import DecodingValidTextLine as ValidTextLine, List
+from nti.schema.field import DecodingValidTextLine as ValidTextLine, List, Bool
 
 
 class IInvitationsWorkspace(IWorkspace):
@@ -53,12 +53,18 @@ class IJoinEntityAndGrantPermissionInvitation(IJoinEntityInvitation):
     Interface for an invitation to join an entity and grant specific permissions
     """
 
-    entity = ValidTextLine(title=u'The entity name',
+    entity = ValidTextLine(title=u'The entity NTIID',
                            required=True)
 
-    permissions = List(title=u'The permissions this user will be granted',
+    Permissions = List(title=u'The permissions this user will be granted',
                        required=True)
-ISiteInvitation = IJoinEntityAndGrantPermission
+    Permissions.setTaggedValue('_ext_excluded_out', True)
+
+    IsGeneric = Bool(title=u'The invitation code is generic',
+                     required=False,
+                     default=False)
+    IsGeneric.setTaggedValue('_ext_excluded_out', True)
+ISiteInvitation = IJoinEntityAndGrantPermissionInvitation
 
 
 class IJoinSiteInvitationFactory(interface.Interface):

@@ -106,8 +106,6 @@ class InvitationsPathAdapter(object):
         return component.getUtility(IInvitationsContainer)
 
     def __getitem__(self, key):
-        from IPython.terminal.debugger import set_trace;set_trace()
-
         # pylint: disable=no-member,too-many-function-args
         key = urllib_parse.unquote(key)
         result = self.invitations.get(key)
@@ -428,16 +426,20 @@ class SendDFLInvitationView(AbstractAuthenticatedView,
 @view_defaults(route_name='objects.generic.traversal',
                renderer='rest',
                context=IDataserverFolder,  # TODO: correct context?
-               permission=nauth.ACT_UPDATE,  # TODO: follow the DFL permissions?
+               # permission=nauth.ACT_UPDATE,  # TODO: follow the DFL permissions?
                request_method='POST',
                name=REL_SEND_SITE_INVITATION)
 class SendSiteInvitationCode(AbstractAuthenticatedView,
                              ModeledContentUploadRequestUtilsMixin):
 
-    def __init__(self):
-        super(SendSiteInvitationCode, self).__init__()
+    def __init__(self, request):
+        super(SendSiteInvitationCode, self).__init__(request)
         self.warnings = list()
         self.invalid_emails = list()
+
+    @Lazy
+    def invitations(self):
+        return component.getUtility(IInvitationsContainer)
 
     # TODO: This closely resembles
     # TODO: nti.app.products.courseware.views.course_invitation_views.CheckCourseInvitationsCSVView.parse_csv_users
@@ -498,19 +500,19 @@ class SendSiteInvitationCode(AbstractAuthenticatedView,
         # provided and emails are valid. Because these values are coming from the
         # view, we would expect that warnings and invalid emails are rare here
         for invitation in values:
-            email = invitation['email']
-            realname = invitation['realname']
+            email = invitation.get('email')
+            realname = invitation.get('realname')
             # These cases shouldn't happen
             if email is None and realname is None:
-                msg = translate(_(u'Missing email and name for input'))
+                msg = u'Missing email and name for input'
                 self.warnings.append(msg)
                 continue
             elif email is None:
-                msg = translate(_(u'Missing email for %s', realname))
+                msg = u'Missing email for %s.' % realname
                 self.warnings.append(msg)
                 continue
             elif realname is None:
-                msg = translate(_(u'Missing name for email: %s', email))
+                msg = u'Missing name for %s.' % email
                 self.warnings.append(msg)
                 continue
 
@@ -521,7 +523,19 @@ class SendSiteInvitationCode(AbstractAuthenticatedView,
     @view_config(name=REL_SEND_SITE_INVITATION)
     def send_site_invitations(self):
         values = self.readInput()
-        self._validate_invitations(values)
+        invitations = values.get('invitations')
+        if invitations is not None:
+            self._validate_invitations(invitations)
+        else:
+            raise_json_error(
+                self.request,
+                hexc.HTTPExpectationFailed,
+                {
+                    'message': 'Invitations are a required field.',
+                    'code': 'InvalidSiteInvitationData'
+                },
+                None
+            )
         return self._do_call(values)
 
     def _do_call(self, values):
@@ -548,7 +562,8 @@ class SendSiteInvitationCode(AbstractAuthenticatedView,
 
         # pylint: disable=no-member
         entity = self.context.__name__  # TODO may not be the right value
-        for user_dict in values:
+        # TODO is this the right place to set the invitation permission in the future?
+        for user_dict in values['invitations']:
             email = user_dict['email']
             realname = user_dict['realname']
             # TODO: Add the name to the invitation
@@ -559,7 +574,7 @@ class SendSiteInvitationCode(AbstractAuthenticatedView,
             invitation.sender = self.remoteUser.username
             self.invitations.add(invitation)
             items.append(invitation)
-            # TODO this expectation of a user needs resolved
+            # TODO this expectation of a user needs resolved - may be ok actually
             notify(InvitationSentEvent(invitation, email))
 
         result[TOTAL] = result[ITEM_COUNT] = len(items)

@@ -33,7 +33,6 @@ class JoinEntityInvitation(Invitation):
     mimeType = mime_type = "application/vnd.nextthought.joinentityinvitation"
 JoinCommunityInvitation = JoinEntityInvitation
 
-# TODO: implement
 @interface.implementer(IJoinEntityInvitation)
 class JoinEntityAndGrantPermissionInvitation(JoinEntityInvitation):
     createDirectFieldProperties(IJoinEntityAndGrantPermissionInvitation)
@@ -68,3 +67,8 @@ class JoinEntityInvitationActor(object):
             logger.warning("Don't know how to accept invitation to join entity %s",
                            entity)
         return result
+
+
+@interface.implementer(IJoinEntityInvitationActor)
+class JoinEntityAndGrantPermissionActor(object):
+    pass
