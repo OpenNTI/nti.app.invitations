@@ -6,7 +6,10 @@ from __future__ import print_function
 from __future__ import absolute_import
 
 # pylint: disable=protected-access,too-many-public-methods,arguments-differ
+import csv
+import tempfile
 
+import StringIO
 from hamcrest import is_not, is_, has_properties
 from hamcrest import has_entry
 from hamcrest import has_length
@@ -312,3 +315,62 @@ class TestInvitationViews(ApplicationLayerTest):
                                status=200)
             body = res.json_body
             assert_that(body['Items'], has_length(2))
+
+    def _make_fake_csv(self, data):
+
+        fake_csv = tempfile.NamedTemporaryFile(delete=False)
+        fake_csv.name = 'test.csv'
+        with open(fake_csv.name, 'w') as fake_csv:
+            fake_writer = csv.writer(fake_csv)
+            fake_writer.writerows(data)
+        return fake_csv
+
+    @WithSharedApplicationMockDS(testapp=True, users=True)
+    def test_send_site_csv_invitations(self):
+        site_csv_invitation_url = '/dataserver2/@@send-site-csv-invitation'
+        with mock_dataserver.mock_db_trans(self.ds):
+
+            # test invalid email
+            data = [
+                [u'bademail', u'Bad Email']
+            ]
+            self._make_fake_csv(data)
+            res = self.testapp.post(site_csv_invitation_url,
+                                         {'message': 'Test bad csv'},
+                                    upload_files=[('csv', 'test.csv'), ],
+                                    status=417)
+            body = res.json_body
+            assert_that(body[u'message'], is_(u'The provided input is missing values or contains invalid email addresses.'))
+            assert_that(body[u'code'], is_(u'InvalidSiteInvitationData'))
+            assert_that(body[u'Warnings'], is_([]))
+            assert_that(body[u'InvalidEmails'], is_([u'bademail']))
+
+            # Test missing fields
+            data = [
+                [u'', u'No Email'],
+                [u'missingname@test.com', u'']
+            ]
+            self._make_fake_csv(data)
+            res = self.testapp.post(site_csv_invitation_url,
+                                         {'message': 'Test bad csv'},
+                                    upload_files=[('csv', 'test.csv'), ],
+                                    status=417)
+            body = res.json_body
+            assert_that(body[u'message'], is_(u'The provided input is missing values or contains invalid email addresses.'))
+            assert_that(body[u'code'], is_(u'InvalidSiteInvitationData'))
+            assert_that(body[u'Warnings'], is_([u'Missing email in line 1.',
+                                                u'Missing name in line 2.']))
+            assert_that(body[u'InvalidEmails'], is_([]))
+
+            # Test good data
+            data = [
+                [u'test@email.com', u'Test Email'],
+            ]
+            self._make_fake_csv(data)
+            res = self.testapp.post(site_csv_invitation_url,
+                                         {'message': 'Test good csv'},
+                                    upload_files=[('csv', 'test.csv'), ],
+                                    status=200)
+            body = res.json_body
+            assert_that(body['Items'], has_length(1))
+

@@ -457,10 +457,12 @@ class SendSiteInvitationCode(AbstractAuthenticatedView,
                 email = email.strip() if email else email
                 realname = row[1] if len(row) > 1 else ''
                 if not email:
-                    msg = translate(_(u"Missing email in line ${line}.",
-                                    mapping={'line': idx + 1}))
+                    msg = u"Missing email in line %s." % (idx+1)
                     self.warnings.append(msg)
                     continue
+                if not realname:
+                    msg = u"Missing name in line %s." % (idx+1)
+                    self.warnings.append(msg)
                 if not isValidMailAddress(email):
                     self.invalid_emails.append(email)
                     continue
@@ -473,7 +475,7 @@ class SendSiteInvitationCode(AbstractAuthenticatedView,
     def upload_csv_invitations(self):
         values = {}
         try:
-            values['invitations'] = self.parse_csv_users()
+            values['invitations'] = self.parse_csv()
         except:
             logger.exception('Failed to parse CSV file')
             raise_json_error(
