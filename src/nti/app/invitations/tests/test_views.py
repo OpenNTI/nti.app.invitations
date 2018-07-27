@@ -7,6 +7,7 @@ from __future__ import absolute_import
 
 # pylint: disable=protected-access,too-many-public-methods,arguments-differ
 
+from hamcrest import is_
 from hamcrest import is_not
 from hamcrest import has_entry
 from hamcrest import has_length
@@ -14,9 +15,13 @@ from hamcrest import assert_that
 from hamcrest import contains_string
 does_not = is_not
 
+import csv
+
 import fudge
 
 import simplejson as json
+
+import tempfile
 
 from zope import component
 from zope import interface
@@ -248,3 +253,126 @@ class TestInvitationViews(ApplicationLayerTest):
         testapp.post('/dataserver2/Invitations/%s/@@decline' % code,
                      extra_environ=self._make_extra_environ(),
                      status=204)
+
+    @WithSharedApplicationMockDS(testapp=True, users=True)
+    def test_send_site_invitation(self):
+        site_invitation_url = '/dataserver2/@@send-site-invitation'
+        with mock_dataserver.mock_db_trans(self.ds):
+            # Send request with no data
+            data = {}
+            res = self.testapp.post_json(site_invitation_url,
+                         data,
+                         status=417)
+            body = res.json_body
+            assert_that(body[u'message'], is_(u'Invitations are a required field.'))
+            assert_that(body[u'code'], is_(u'InvalidSiteInvitationData'))
+
+            # Send request with missing fields
+            data = {'invitations':
+                        [
+                            {'realname': 'No Email'},
+                            {'email': 'missingname@test.com'}
+                        ],
+                    'message': 'Missing Fields Test Case'}
+            res = self.testapp.post_json(site_invitation_url,
+                          data,
+                          status=417)
+            body = res.json_body
+            assert_that(body[u'message'], is_(u'The provided input is missing values or contains invalid email addresses.'))
+            assert_that(body[u'code'], is_(u'InvalidSiteInvitationData'))
+            assert_that(body[u'Warnings'], is_([u'Missing email for No Email.',
+                                                u'Missing name for missingname@test.com.']))
+            assert_that(body[u'InvalidEmails'], is_([]))
+
+            # Send request with invalid email
+            data = {'invitations':
+                        [
+                            {'realname': 'Bad Email',
+                             'email': 'bademail'}
+                        ],
+                    'message': 'Bad Email Test Case'
+                    }
+            res = self.testapp.post_json(site_invitation_url,
+                               data,
+                               status=417)
+            body = res.json_body
+            assert_that(body[u'message'], is_(u'The provided input is missing values or contains invalid email addresses.'))
+            assert_that(body[u'code'], is_(u'InvalidSiteInvitationData'))
+            assert_that(body[u'Warnings'], is_([]))
+            assert_that(body[u'InvalidEmails'], is_([u'bademail']))
+
+            # Send valid request
+            data = {
+                'invitations':
+                    [
+                        {'email': 'good@email.com',
+                         'realname': 'Good Email'},
+                        {'email': 'passing@test.com',
+                         'realname': 'Passing Test'}
+                    ],
+                'message': 'Passing Test Case'
+            }
+            res = self.testapp.post_json(site_invitation_url,
+                               data,
+                               status=200)
+            body = res.json_body
+            assert_that(body['Items'], has_length(2))
+
+    def _make_fake_csv(self, data):
+
+        fake_csv = tempfile.NamedTemporaryFile(delete=False)
+        fake_csv.name = 'test.csv'
+        with open(fake_csv.name, 'w') as fake_csv:
+            fake_writer = csv.writer(fake_csv)
+            fake_writer.writerows(data)
+        return fake_csv
+
+    @WithSharedApplicationMockDS(testapp=True, users=True)
+    def test_send_site_csv_invitations(self):
+        site_csv_invitation_url = '/dataserver2/@@send-site-csv-invitation'
+        with mock_dataserver.mock_db_trans(self.ds):
+
+            # test invalid email
+            data = [
+                [u'bademail', u'Bad Email']
+            ]
+            self._make_fake_csv(data)
+            res = self.testapp.post(site_csv_invitation_url,
+                                         {'message': 'Test bad csv'},
+                                    upload_files=[('csv', 'test.csv'), ],
+                                    status=417)
+            body = res.json_body
+            assert_that(body[u'message'], is_(u'The provided input is missing values or contains invalid email addresses.'))
+            assert_that(body[u'code'], is_(u'InvalidSiteInvitationData'))
+            assert_that(body[u'Warnings'], is_([]))
+            assert_that(body[u'InvalidEmails'], is_([u'bademail']))
+
+            # Test missing fields
+            data = [
+                [u'', u'No Email'],
+                [u'missingname@test.com', u'']
+            ]
+            self._make_fake_csv(data)
+            res = self.testapp.post(site_csv_invitation_url,
+                                         {'message': 'Test bad csv'},
+                                    upload_files=[('csv', 'test.csv'), ],
+                                    status=417)
+            body = res.json_body
+            assert_that(body[u'message'], is_(u'The provided input is missing values or contains invalid email addresses.'))
+            assert_that(body[u'code'], is_(u'InvalidSiteInvitationData'))
+            assert_that(body[u'Warnings'], is_([u'Missing email in line 1.',
+                                                u'Missing name in line 2.']))
+            assert_that(body[u'InvalidEmails'], is_([]))
+
+            # Test good data
+            data = [
+                [u'test@email.com', u'Test Email'],
+            ]
+            self._make_fake_csv(data)
+            res = self.testapp.post(site_csv_invitation_url,
+                                         {'message': 'Test good csv'},
+                                    upload_files=[('csv', 'test.csv'), ],
+                                    status=200)
+            body = res.json_body
+            assert_that(body['Items'], has_length(1))
+

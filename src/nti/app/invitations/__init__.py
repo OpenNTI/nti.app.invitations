@@ -30,6 +30,14 @@ REL_DECLINE_INVITATION = u'decline-invitation'
 REL_SEND_INVITATION = u'send-invitation'
 
 #: The link relationship type to which an authenticated
+#: user can ``POST`` data to send an invitation to a site
+REL_SEND_SITE_INVITATION = u'send-site-invitation'
+
+#: The link relationship type to which an authenticated
+#: user can ``POST`` a csv file to send an invitation to a site
+REL_SEND_SITE_CSV_INVITATION = u'send-site-csv-invitation'
+
+#: The link relationship type to which an authenticated
 #: user can ``GET`` the outstanding invitations.
 REL_PENDING_INVITATIONS = u'pending-invitations'
 

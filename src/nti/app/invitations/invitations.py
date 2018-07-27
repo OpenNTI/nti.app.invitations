@@ -10,8 +10,11 @@ from __future__ import absolute_import
 
 from zope import interface
 
+from zope.cachedescriptors.property import readproperty
+
 from nti.app.invitations.interfaces import IJoinEntityInvitation
 from nti.app.invitations.interfaces import IJoinEntityInvitationActor
+from nti.app.invitations.interfaces import ISiteInvitation
 
 from nti.dataserver.interfaces import ICommunity
 from nti.dataserver.interfaces import IFriendsList
@@ -19,6 +22,8 @@ from nti.dataserver.interfaces import IFriendsList
 from nti.dataserver.users.entity import Entity
 
 from nti.invitations.model import Invitation
+
+from nti.property.property import alias
 
 from nti.schema.fieldproperty import createDirectFieldProperties
 
@@ -31,6 +36,20 @@ class JoinEntityInvitation(Invitation):
 
     mimeType = mime_type = "application/vnd.nextthought.joinentityinvitation"
 JoinCommunityInvitation = JoinEntityInvitation
+
+
+@interface.implementer(ISiteInvitation)
+class JoinSiteInvitation(JoinEntityInvitation):
+    createDirectFieldProperties(ISiteInvitation)
+
+    # TODO: That's a long mimetype...
+    mimeType = mime_type = "application/vnd.nextthought.siteinvitation"
+
+    receiver_email = alias('receiver')
+
+    @readproperty
+    def receiver_name(self):
+        return getattr(self.receiver, 'realname', None)
 
 
 @interface.implementer(IJoinEntityInvitationActor)

@@ -17,6 +17,7 @@ from nti.appserver.workspaces.interfaces import IWorkspace
 from nti.invitations.interfaces import IInvitation
 from nti.invitations.interfaces import IInvitationActor
 
+from nti.schema.field import Bool
 from nti.schema.field import DecodingValidTextLine as ValidTextLine
 
 
@@ -46,3 +47,17 @@ class IJoinEntityInvitationActor(IInvitationActor):
     """
     Actor to join a user to an entity
     """
+
+
+class ISiteInvitation(IJoinEntityInvitation):
+    """
+    Interface for an invitation to join a site
+    """
+
+    entity = ValidTextLine(title=u'The site NTIID',
+                           required=True)
+
+    IsGeneric = Bool(title=u'The invitation code is generic',
+                     required=False,
+                     default=False)
+    IsGeneric.setTaggedValue('_ext_excluded_out', True)
