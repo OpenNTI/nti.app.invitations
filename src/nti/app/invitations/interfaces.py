@@ -69,12 +69,12 @@ class ISiteInvitationActor(IInvitationActor):
     """
 
 
-class IAcceptSiteInvitation(interface.Interface):
+class ISiteInvitationAccepter(interface.Interface):
     """
     Handles accepting a site invitation
     """
 
-    def do_accept(invitation):
+    def do_accept(request, invitation):
         """
         This method can be implemented in specific sites to handle atypical site login flows such as OAuth, etc
         """

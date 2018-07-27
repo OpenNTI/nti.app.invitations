@@ -14,6 +14,8 @@ import csv
 
 import six
 import time
+from nti.app.invitations.interfaces import ISiteInvitation
+from nti.app.invitations.utils import pending_site_invitations_for_user
 
 from six.moves import urllib_parse
 
@@ -81,16 +83,16 @@ from nti.externalization.integer_strings import from_external_string
 from nti.externalization.interfaces import LocatedExternalDict
 from nti.externalization.interfaces import StandardExternalFields
 
-from nti.invitations.interfaces import IInvitation
+from nti.invitations.interfaces import IInvitation, InvitationActorError, InvitationExpiredError
 from nti.invitations.interfaces import IDisabledInvitation
 from nti.invitations.interfaces import InvitationSentEvent
 from nti.invitations.interfaces import IInvitationsContainer
 from nti.invitations.interfaces import InvitationValidationError
 
-from nti.invitations.utils import accept_invitation
+from nti.invitations.utils import accept_invitation, get_invitation_actor
 from nti.invitations.utils import get_pending_invitations
 
-from nti.ntiids.oids import to_external_ntiid_oid
+from nti.site.site import getSite
 
 ITEMS = StandardExternalFields.ITEMS
 TOTAL = StandardExternalFields.TOTAL
@@ -275,8 +277,6 @@ class AcceptInvitationByCodeView(AcceptInvitationMixin,
 class AcceptInvitationView(AcceptInvitationMixin):
 
     def _do_call(self):
-        from IPython.terminal.debugger import set_trace;set_trace()
-
         request = self.request
         invitation = self._validate_invitation(self.context)
         try:
@@ -438,16 +438,17 @@ class SendDFLInvitationView(AbstractAuthenticatedView,
                # permission=nauth.ACT_UPDATE,  # TODO: follow the DFL permissions?
                request_method='POST',
                name=REL_SEND_SITE_INVITATION)
-class SendSiteInvitationCode(AbstractAuthenticatedView,
+class SendSiteInvitationCodeView(AbstractAuthenticatedView,
                              ModeledContentUploadRequestUtilsMixin):
 
     def __init__(self, request):
-        super(SendSiteInvitationCode, self).__init__(request)
+        super(SendSiteInvitationCodeView, self).__init__(request)
         self.warnings = list()
         self.invalid_emails = list()
 
     @Lazy
     def invitations(self):
+
         return component.getUtility(IInvitationsContainer)
 
     # TODO: This closely resembles
@@ -502,7 +503,7 @@ class SendSiteInvitationCode(AbstractAuthenticatedView,
     def readInput(self, value=None):
         result = None
         if self.request.body:
-            result = super(SendSiteInvitationCode, self).readInput(value)
+            result = super(SendSiteInvitationCodeView, self).readInput(value)
             result = CaseInsensitiveDict(result)
         return result or {}
 
@@ -551,7 +552,7 @@ class SendSiteInvitationCode(AbstractAuthenticatedView,
 
     def create_invitation(self, email, realname, message):
         invitation = JoinSiteInvitation()
-        invitation.site = to_external_ntiid_oid(self.context)  # TODO is this what we want?
+        invitation.site = getSite().__name__
         invitation.receiver_email = email
         invitation.sender = self.remoteUser.username  # TODO this may not be what we want if this is a generated username
         invitation.receiver_name = realname
@@ -585,11 +586,11 @@ class SendSiteInvitationCode(AbstractAuthenticatedView,
         for user_dict in values['invitations']:
             email = user_dict['email']
             realname = user_dict['realname']
-            pending_invitation = get_pending_invitations([email])  # TODO this could be refactored to only be called once if expensive
+            pending_invitation = pending_site_invitations_for_user(email)
             # Check if this user already has an invite to this site
             # we don't want to have multiple invites for the same user floating around
             # so just send them another email
-            if pending_invitation:  # This returns an empty set rather than None
+            if pending_invitation is not None:
                 invitation = pending_invitation
             else:
                 invitation = self.create_invitation(email, realname, message)
@@ -599,3 +600,46 @@ class SendSiteInvitationCode(AbstractAuthenticatedView,
 
         result[TOTAL] = result[ITEM_COUNT] = len(items)
         return result
+
+
+@view_config(route_name='objects.generic.traversal',
+               renderer='rest',
+               permission=nauth.ACT_UPDATE,
+               context=ISiteInvitation,
+               request_method='POST',
+               name='accept')
+class AcceptSiteInvitationView(AcceptInvitationMixin):
+
+    def _do_call(self):
+        from IPython.terminal.debugger import set_trace;
+        set_trace()
+
+        request = self.request
+        invitation = self._validate_invitation(self.context)
+        try:
+            # Don't use the accept invitation util here as this invitation may need a callback
+            # adn/or redirect
+            if invitation.is_expired():
+                raise InvitationExpiredError(invitation)
+            actor = get_invitation_actor(invitation)
+            if actor is None:
+                raise InvitationActorError(invitation)
+            response = actor.accept(request, invitation)
+        except InvitationValidationError as e:
+            e.field = u'invitation'
+            self.handle_validation_error(request, e)
+        except Exception as e:  # pragma: no cover pylint: disable=broad-except
+            self.handle_possible_validation_error(request, e)
+        return response
+
+
+@view_config(route_name='objects.generic.traversal',
+               renderer='rest',
+               permission=nauth.ACT_UPDATE,
+               context=IDataserverFolder,
+               request_method='POST',
+               name='accept')
+class AcceptSiteInvitationByCodeView(AcceptInvitationMixin):
+
+    def _do_call(self):
+        pass

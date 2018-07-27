@@ -61,8 +61,4 @@
 			 provides=".interfaces.IInvitationActor"
 			 for=".interfaces.ISiteInvitation" />
 
-	<adapter factory=".invitations.DefaultAcceptSiteInvitation"
-			 provides=".interfaces.IAcceptSiteInvitation"
-			 for="nti.dataserver.interfaces.IDataserverFolder" />
-
 </configure>
