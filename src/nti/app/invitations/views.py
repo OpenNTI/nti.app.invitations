@@ -434,8 +434,8 @@ class SendDFLInvitationView(AbstractAuthenticatedView,
 
 @view_defaults(route_name='objects.generic.traversal',
                renderer='rest',
-               context=IDataserverFolder,  # TODO: correct context?
-               # permission=nauth.ACT_UPDATE,  # TODO: follow the DFL permissions?
+               context=InvitationsPathAdapter,
+               permission=nauth.ACT_UPDATE,
                request_method='POST',
                name=REL_SEND_SITE_INVITATION)
 class SendSiteInvitationCodeView(AbstractAuthenticatedView,
@@ -448,7 +448,6 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
 
     @Lazy
     def invitations(self):
-
         return component.getUtility(IInvitationsContainer)
 
     # TODO: This closely resembles
@@ -604,15 +603,13 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
 
 @view_config(route_name='objects.generic.traversal',
                renderer='rest',
-               permission=nauth.ACT_UPDATE,
                context=ISiteInvitation,
                request_method='POST',
                name='accept')
 class AcceptSiteInvitationView(AcceptInvitationMixin):
 
     def _do_call(self):
-        from IPython.terminal.debugger import set_trace;
-        set_trace()
+        from IPython.terminal.debugger import set_trace;set_trace()
 
         request = self.request
         invitation = self._validate_invitation(self.context)
@@ -635,11 +632,23 @@ class AcceptSiteInvitationView(AcceptInvitationMixin):
 
 @view_config(route_name='objects.generic.traversal',
                renderer='rest',
-               permission=nauth.ACT_UPDATE,
-               context=IDataserverFolder,
+               context=InvitationsPathAdapter,
                request_method='POST',
-               name='accept')
-class AcceptSiteInvitationByCodeView(AcceptInvitationMixin):
+               name=REL_ACCEPT_INVITATION)
+class AcceptSiteInvitationByCodeView(AcceptInvitationByCodeView):
+
+    def get_invitation_by_code(self, code):
+        result = None
+        try:
+            iid = from_external_string(code)
+            result = component.getUtility(IIntIds).queryObject(iid)
+        except (TypeError, ValueError):
+            pass
+        return result
 
     def _do_call(self):
-        pass
+        from IPython.terminal.debugger import set_trace;set_trace()
+
+        request = self.request
+        code = self.get_invite_code()
+        invitation = self.get_invitation_by_code(code)

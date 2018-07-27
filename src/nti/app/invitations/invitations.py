@@ -8,7 +8,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import absolute_import
 
-from nti.appserver.logon import _create_success_response
+from nti.appserver.logon import _create_success_response, _create_failure_response
 from nti.coremetadata.interfaces import IDataserver
 from nti.dataserver.users import User
 from nti.invitations.interfaces import MarkAsAcceptedInvitationEvent
@@ -20,7 +20,6 @@ from zope.cachedescriptors.property import readproperty
 from nti.app.invitations.interfaces import IJoinEntityInvitation
 from nti.app.invitations.interfaces import IJoinEntityInvitationActor
 from nti.app.invitations.interfaces import ISiteInvitation
-from nti.app.invitations.interfaces import ISiteInvitationAccepter
 from nti.app.invitations.interfaces import ISiteInvitationActor
 
 from nti.dataserver.interfaces import ICommunity
@@ -88,50 +87,25 @@ class JoinEntityInvitationActor(object):
 
 
 @interface.implementer(ISiteInvitationActor)
-class SiteInvitationActor(JoinEntityInvitationActor):
-
-    def accept(self, request, invitation=None):
-        from IPython.terminal.debugger import set_trace;set_trace()
-
-        response = None
-        invitation = self.invitation if invitation is None else invitation
-        # This utility can be implemented on a site to handle adding users in a specific way (OAuth logon, etc)
-        accepter = component.getUtility(ISiteInvitationAccepter)
-        # Check if this invitation was able to be accepted
-        response = accepter.do_accept(request, invitation)
-        return response
-
-
-class DefaultAcceptSiteInvitation(object):
-    # This is a placeholder for future development
+class DefaultSiteInvitationActor(object):
 
     def __init__(self, site):
         self.site = site
 
-    def do_accept(self, request, invitation):
+    def accept(self, request, invitation):
         dataserver = component.getUtility(IDataserver)
-        user = User.get_user(username=invitation.receiver, dataserver=dataserver)  # TODO: is email a good lookup key?
-        # This person already has an NT account
+        user = User.get_user(username=invitation.receiver, dataserver=dataserver)
         if user is not None:
-            # TODO I don't know what I'm doing
-            # We could mark this invitation as accepted here, but to keep with the heuristic
-            # we will just broadcast the event
             notify(MarkAsAcceptedInvitationEvent(user))
-            return _create_success_response(request,
-                                            userid=user.username)
+            return hexc.HTTPConflict(u'The email this invite was sent for is already associated with an account.')
         # We need to create them an NT account and log them in
         else:
-            # TODO Probably even less sure what I'm doing here
-            # There could be two cases here
-            # 1. The user has been invited to a publicly accessible site
-            # In this case we should redirect them to the account creation page.
-            # This presents a challenge as to when this invitation should be marked as accepted
-            # we will likely need to register a subscriber on an account creation event to
-            # determine if this user has followed through. However, the user could create an
-            # account with a different email. We may need to put something into the request session
-            # to be able to check this more assuredly
-            # 2. The user has been invited to a private site
-            # In this case the account creation page isn't accessible
-            # so we should create an account for this user with a temporary password
-            # and log them in. They should be sent an email containing this information
-            return False
+            # TODO Is this the behavior we want?
+            # TODO could also redirect to account creation
+            user = User.create_user(username=invitation.receiver_email,
+                                    external_value={'realname': invitation.receiver_name})
+            if user is not None:
+                notify(MarkAsAcceptedInvitationEvent(user))
+                return _create_success_response(request,
+                                                userid=user.username)
+            return _create_failure_response(request)

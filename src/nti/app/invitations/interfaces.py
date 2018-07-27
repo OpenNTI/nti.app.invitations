@@ -68,13 +68,3 @@ class ISiteInvitationActor(IInvitationActor):
     Actor to add a user to a site
     """
 
-
-class ISiteInvitationAccepter(interface.Interface):
-    """
-    Handles accepting a site invitation
-    """
-
-    def do_accept(request, invitation):
-        """
-        This method can be implemented in specific sites to handle atypical site login flows such as OAuth, etc
-        """

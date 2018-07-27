@@ -56,9 +56,10 @@
 	<adapter factory=".invitations.JoinEntityInvitationActor"
 			 provides=".interfaces.IJoinEntityInvitationActor"
 			 for=".interfaces.IJoinEntityInvitation" />
-
-	<adapter factory=".invitations.SiteInvitationActor"
-			 provides=".interfaces.IInvitationActor"
-			 for=".interfaces.ISiteInvitation" />
+	<configure zcml:condition="have devmode">
+		<adapter factory=".invitations.DefaultSiteInvitationActor"
+				 provides=".interfaces.ISiteInvitationActor"
+				 for=".interfaces.ISiteInvitation" />
+	</configure>
 
 </configure>
