@@ -8,11 +8,12 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import absolute_import
 
+from nti.property.property import alias
 from zope import interface
 
 from nti.app.invitations.interfaces import IJoinEntityInvitation
 from nti.app.invitations.interfaces import IJoinEntityInvitationActor
-from nti.app.invitations.interfaces import IJoinEntityAndGrantPermissionInvitation
+from nti.app.invitations.interfaces import ISiteInvitation
 
 from nti.dataserver.interfaces import ICommunity
 from nti.dataserver.interfaces import IFriendsList
@@ -22,6 +23,7 @@ from nti.dataserver.users.entity import Entity
 from nti.invitations.model import Invitation
 
 from nti.schema.fieldproperty import createDirectFieldProperties
+from zope.cachedescriptors.property import readproperty
 
 logger = __import__('logging').getLogger(__name__)
 
@@ -33,13 +35,19 @@ class JoinEntityInvitation(Invitation):
     mimeType = mime_type = "application/vnd.nextthought.joinentityinvitation"
 JoinCommunityInvitation = JoinEntityInvitation
 
-@interface.implementer(IJoinEntityInvitation)
-class JoinEntityAndGrantPermissionInvitation(JoinEntityInvitation):
-    createDirectFieldProperties(IJoinEntityAndGrantPermissionInvitation)
+
+@interface.implementer(ISiteInvitation)
+class JoinSiteInvitation(JoinEntityInvitation):
+    createDirectFieldProperties(ISiteInvitation)
 
     # TODO: That's a long mimetype...
-    mimeType = mime_type = "application/vnd.nextthought.joinentityandgrantpermissioninvitation"
-JoinSiteInvitation = JoinEntityAndGrantPermissionInvitation
+    mimeType = mime_type = "application/vnd.nextthought.siteinvitation"
+
+    receiver_email = alias('receiver')
+
+    @readproperty
+    def receiver_name(self):
+        return getattr(self.receiver, 'realname', None)
 
 
 @interface.implementer(IJoinEntityInvitationActor)
@@ -67,8 +75,3 @@ class JoinEntityInvitationActor(object):
             logger.warning("Don't know how to accept invitation to join entity %s",
                            entity)
         return result
-
-
-@interface.implementer(IJoinEntityInvitationActor)
-class JoinEntityAndGrantPermissionActor(object):
-    pass

@@ -14,6 +14,7 @@ import csv
 
 import six
 import time
+
 from six.moves import urllib_parse
 
 from requests.structures import CaseInsensitiveDict
@@ -39,7 +40,8 @@ from pyramid.interfaces import IRequest
 from pyramid.view import view_config
 from pyramid.view import view_defaults
 
-from nti.app.base.abstract_views import AbstractAuthenticatedView, get_source
+from nti.app.base.abstract_views import AbstractAuthenticatedView
+from nti.app.base.abstract_views import get_source
 
 from nti.app.externalization.error import raise_json_error
 
@@ -48,7 +50,9 @@ from nti.app.externalization.view_mixins import ModeledContentUploadRequestUtils
 from nti.app.externalization.error import handle_validation_error
 from nti.app.externalization.error import handle_possible_validation_error
 
-from nti.app.invitations import MessageFactory as _, REL_SEND_SITE_CSV_INVITATION, REL_SEND_SITE_INVITATION
+from nti.app.invitations import MessageFactory as _
+from nti.app.invitations import REL_SEND_SITE_CSV_INVITATION
+from nti.app.invitations import REL_SEND_SITE_INVITATION
 
 from nti.app.invitations import INVITATIONS
 from nti.app.invitations import REL_SEND_INVITATION
@@ -58,7 +62,8 @@ from nti.app.invitations import REL_DECLINE_INVITATION
 from nti.app.invitations import REL_PENDING_INVITATIONS
 from nti.app.invitations import REL_TRIVIAL_DEFAULT_INVITATION_CODE
 
-from nti.app.invitations.invitations import JoinEntityInvitation, JoinSiteInvitation
+from nti.app.invitations.invitations import JoinEntityInvitation
+from nti.app.invitations.invitations import JoinSiteInvitation
 
 from nti.dataserver import authorization as nauth
 
@@ -70,7 +75,7 @@ from nti.dataserver.users.interfaces import IUserProfile
 
 from nti.dataserver.users.users import User
 
-from nti.externalization.integer_strings import to_external_string, translate
+from nti.externalization.integer_strings import to_external_string
 from nti.externalization.integer_strings import from_external_string
 
 from nti.externalization.interfaces import LocatedExternalDict
@@ -84,6 +89,8 @@ from nti.invitations.interfaces import InvitationValidationError
 
 from nti.invitations.utils import accept_invitation
 from nti.invitations.utils import get_pending_invitations
+
+from nti.ntiids.oids import to_external_ntiid_oid
 
 ITEMS = StandardExternalFields.ITEMS
 TOTAL = StandardExternalFields.TOTAL
@@ -426,7 +433,7 @@ class SendDFLInvitationView(AbstractAuthenticatedView,
 @view_defaults(route_name='objects.generic.traversal',
                renderer='rest',
                context=IDataserverFolder,  # TODO: correct context?
-               # permission=nauth.ACT_UPDATE,  # TODO: follow the DFL permissions?
+               permission=nauth.ACT_UPDATE,  # TODO: follow the DFL permissions?
                request_method='POST',
                name=REL_SEND_SITE_INVITATION)
 class SendSiteInvitationCode(AbstractAuthenticatedView,
@@ -540,6 +547,16 @@ class SendSiteInvitationCode(AbstractAuthenticatedView,
             )
         return self._do_call(values)
 
+    def create_invitation(self, email, realname, message):
+        invitation = JoinSiteInvitation()
+        invitation.site = to_external_ntiid_oid(self.context)  # TODO is this what we want?
+        invitation.receiver_email = email
+        invitation.sender = self.remoteUser.username  # TODO this may not be what we want if this is a generated username
+        invitation.receiver_name = realname
+        invitation.message = message
+        self.invitations.add(invitation)
+        return invitation
+
     def _do_call(self, values):
         # At this point we should have a values dict containing invitation destinations and message
         if self.warnings or self.invalid_emails:
@@ -563,20 +580,19 @@ class SendSiteInvitationCode(AbstractAuthenticatedView,
         message = values.get('message')
 
         # pylint: disable=no-member
-        entity = self.context.__name__  # TODO may not be the right value
-        # TODO is this the right place to set the invitation permission in the future?
         for user_dict in values['invitations']:
             email = user_dict['email']
             realname = user_dict['realname']
-            # TODO: Add the name to the invitation
-            invitation = JoinSiteInvitation()
-            invitation.entity = entity
-            invitation.message = message
-            invitation.receiver = email
-            invitation.sender = self.remoteUser.username
-            self.invitations.add(invitation)
+            pending_invitation = get_pending_invitations([email])  # TODO this could be refactored to only be called once if expensive
+            # Check if this user already has an invite to this site
+            # we don't want to have multiple invites for the same user floating around
+            # so just send them another email
+            if pending_invitation:  # This returns an empty set rather than None
+                invitation = pending_invitation
+            else:
+                invitation = self.create_invitation(email, realname, message)
             items.append(invitation)
-            # TODO this expectation of a user needs resolved - may be ok actually
+            # TODO implement this event? Likely site by site impl
             notify(InvitationSentEvent(invitation, email))
 
         result[TOTAL] = result[ITEM_COUNT] = len(items)

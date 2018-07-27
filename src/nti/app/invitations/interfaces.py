@@ -17,7 +17,8 @@ from nti.appserver.workspaces.interfaces import IWorkspace
 from nti.invitations.interfaces import IInvitation
 from nti.invitations.interfaces import IInvitationActor
 
-from nti.schema.field import DecodingValidTextLine as ValidTextLine, List, Bool
+from nti.schema.field import Bool
+from nti.schema.field import DecodingValidTextLine as ValidTextLine
 
 
 class IInvitationsWorkspace(IWorkspace):
@@ -48,32 +49,15 @@ class IJoinEntityInvitationActor(IInvitationActor):
     """
 
 
-class IJoinEntityAndGrantPermissionInvitation(IJoinEntityInvitation):
+class ISiteInvitation(IJoinEntityInvitation):
     """
-    Interface for an invitation to join an entity and grant specific permissions
+    Interface for an invitation to join a site
     """
 
-    entity = ValidTextLine(title=u'The entity NTIID',
+    entity = ValidTextLine(title=u'The site NTIID',
                            required=True)
-
-    Permissions = List(title=u'The permissions this user will be granted',
-                       required=True)
-    Permissions.setTaggedValue('_ext_excluded_out', True)
 
     IsGeneric = Bool(title=u'The invitation code is generic',
                      required=False,
                      default=False)
     IsGeneric.setTaggedValue('_ext_excluded_out', True)
-ISiteInvitation = IJoinEntityAndGrantPermissionInvitation
-
-
-class IJoinSiteInvitationFactory(interface.Interface):
-    """
-    Interface for a factory that determines how to add a user to a site
-    """
-
-    def handle_invitation(self, user):
-        """
-        Handle the invitation for this user according to site specifications
-        This is used to determine the creation flow for this user e.g. OAuth2, NT, etc
-        """
