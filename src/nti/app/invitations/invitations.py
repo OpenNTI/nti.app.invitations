@@ -8,8 +8,9 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import absolute_import
 
-from nti.property.property import alias
 from zope import interface
+
+from zope.cachedescriptors.property import readproperty
 
 from nti.app.invitations.interfaces import IJoinEntityInvitation
 from nti.app.invitations.interfaces import IJoinEntityInvitationActor
@@ -22,8 +23,9 @@ from nti.dataserver.users.entity import Entity
 
 from nti.invitations.model import Invitation
 
+from nti.property.property import alias
+
 from nti.schema.fieldproperty import createDirectFieldProperties
-from zope.cachedescriptors.property import readproperty
 
 logger = __import__('logging').getLogger(__name__)
 
