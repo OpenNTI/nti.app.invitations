@@ -61,3 +61,20 @@ class ISiteInvitation(IJoinEntityInvitation):
                      required=False,
                      default=False)
     IsGeneric.setTaggedValue('_ext_excluded_out', True)
+
+
+class ISiteInvitationActor(IInvitationActor):
+    """
+    Actor to add a user to a site
+    """
+
+
+class IAcceptSiteInvitation(interface.Interface):
+    """
+    Handles accepting a site invitation
+    """
+
+    def do_accept(invitation):
+        """
+        This method can be implemented in specific sites to handle atypical site login flows such as OAuth, etc
+        """

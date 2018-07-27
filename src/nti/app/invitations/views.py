@@ -275,6 +275,8 @@ class AcceptInvitationByCodeView(AcceptInvitationMixin,
 class AcceptInvitationView(AcceptInvitationMixin):
 
     def _do_call(self):
+        from IPython.terminal.debugger import set_trace;set_trace()
+
         request = self.request
         invitation = self._validate_invitation(self.context)
         try:
@@ -433,7 +435,7 @@ class SendDFLInvitationView(AbstractAuthenticatedView,
 @view_defaults(route_name='objects.generic.traversal',
                renderer='rest',
                context=IDataserverFolder,  # TODO: correct context?
-               permission=nauth.ACT_UPDATE,  # TODO: follow the DFL permissions?
+               # permission=nauth.ACT_UPDATE,  # TODO: follow the DFL permissions?
                request_method='POST',
                name=REL_SEND_SITE_INVITATION)
 class SendSiteInvitationCode(AbstractAuthenticatedView,
