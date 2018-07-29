@@ -17,7 +17,6 @@ logger = __import__('logging').getLogger(__name__)
 
 
 def pending_site_invitations_for_user(user):
-    from IPython.terminal.debugger import set_trace;set_trace()
     email = getattr('email', user, user)
     current_site = getSite().__name__
     pending_invitations = get_pending_invitations([email])

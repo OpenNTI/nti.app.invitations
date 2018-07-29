@@ -17,6 +17,7 @@ import time
 
 from nti.app.invitations.interfaces import ISiteInvitation
 from nti.app.invitations.utils import pending_site_invitations_for_user
+from nti.dataserver.authorization import is_admin_or_site_admin
 
 from six.moves import urllib_parse
 
@@ -437,8 +438,8 @@ class SendDFLInvitationView(AbstractAuthenticatedView,
 @view_defaults(route_name='objects.generic.traversal',
                renderer='rest',
                context=InvitationsPathAdapter,
-               permission=nauth.ACT_UPDATE,
                request_method='POST',
+               permission=nauth.ACT_READ,  # Do the permission check in the view
                name=REL_SEND_SITE_INVITATION)
 class SendSiteInvitationCodeView(AbstractAuthenticatedView,
                                  ModeledContentUploadRequestUtilsMixin):
@@ -451,6 +452,10 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
     @Lazy
     def invitations(self):
         return component.getUtility(IInvitationsContainer)
+
+    def check_permissions(self):
+        if not is_admin_or_site_admin(self.remoteUser):
+            raise hexc.HTTPForbidden()
 
     # TODO: This closely resembles
     # TODO: nti.app.products.courseware.views.course_invitation_views.CheckCourseInvitationsCSVView.parse_csv_users
@@ -484,6 +489,7 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
 
     @view_config(name=REL_SEND_SITE_CSV_INVITATION)
     def upload_csv_invitations(self):
+        self.check_permissions()
         values = {}
         try:
             values['invitations'] = self.parse_csv()
@@ -535,6 +541,7 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
 
     @view_config(name=REL_SEND_SITE_INVITATION)
     def send_site_invitations(self):
+        self.check_permissions()
         values = self.readInput()
         invitations = values.get('invitations')
         if invitations is not None:
