@@ -14,6 +14,7 @@ import csv
 
 import six
 import time
+
 from nti.app.invitations.interfaces import ISiteInvitation
 from nti.app.invitations.utils import pending_site_invitations_for_user
 
@@ -42,7 +43,7 @@ from pyramid.interfaces import IRequest
 from pyramid.view import view_config
 from pyramid.view import view_defaults
 
-from nti.app.base.abstract_views import AbstractAuthenticatedView
+from nti.app.base.abstract_views import AbstractAuthenticatedView, AbstractView
 from nti.app.base.abstract_views import get_source
 
 from nti.app.externalization.error import raise_json_error
@@ -104,7 +105,6 @@ logger = __import__('logging').getLogger(__name__)
 @interface.implementer(IPathAdapter, IContained)
 @component.adapter(IDataserverFolder, IRequest)
 class InvitationsPathAdapter(object):
-
     __name__ = INVITATIONS
 
     def __init__(self, dataserver, unused_request):
@@ -138,7 +138,7 @@ class GetDefaultTrivialInvitationCode(AbstractAuthenticatedView):
         return LocatedExternalDict({'invitation_code': code})
 
 
-class AcceptInvitationMixin(AbstractAuthenticatedView):
+class AcceptInvitationMixin(AbstractView):
 
     def handle_validation_error(self, request, e):
         handle_validation_error(request, e)
@@ -150,7 +150,7 @@ class AcceptInvitationMixin(AbstractAuthenticatedView):
     def invitations(self):
         return component.getUtility(IInvitationsContainer)
 
-    def _validate_invitation(self, invitation):
+    def _validate_invitation(self, invitation, check_user=True):
         request = self.request
         if invitation.is_accepted():
             raise_json_error(request,
@@ -168,25 +168,25 @@ class AcceptInvitationMixin(AbstractAuthenticatedView):
                                  'code': 'InvalidInvitationCode',
                              },
                              None)
-
-        profile = IUserProfile(self.context, None)
-        email = getattr(profile, 'email', None) or u''
-        receiver = invitation.receiver.lower()
-        # pylint: disable=no-member
-        if receiver not in (self.context.username.lower(), email.lower()):
-            raise_json_error(request,
-                             hexc.HTTPUnprocessableEntity,
-                             {
-                                 'message': _(u"Invitation is not for this user."),
-                                 'code': 'InvitationIsNotForUser',
-                             },
-                             None)
+        if check_user:
+            profile = IUserProfile(self.context, None)
+            email = getattr(profile, 'email', None) or u''
+            receiver = invitation.receiver.lower()
+            # pylint: disable=no-member
+            if receiver not in (self.context.username.lower(), email.lower()):
+                raise_json_error(request,
+                                 hexc.HTTPUnprocessableEntity,
+                                 {
+                                     'message': _(u"Invitation is not for this user."),
+                                     'code': 'InvitationIsNotForUser',
+                                 },
+                                 None)
         return invitation
 
     def _do_validation(self, invite_code):
         request = self.request
-        if     not invite_code \
-            or invite_code not in self.invitations:
+        if not invite_code \
+                or invite_code not in self.invitations:
             raise_json_error(request,
                              hexc.HTTPUnprocessableEntity,
                              {
@@ -212,14 +212,15 @@ class AcceptInvitationMixin(AbstractAuthenticatedView):
                request_method='POST',
                permission=nauth.ACT_UPDATE)
 class AcceptInvitationByCodeView(AcceptInvitationMixin,
+                                 AbstractAuthenticatedView,
                                  ModeledContentUploadRequestUtilsMixin):
 
     def get_invite_code(self):
         values = CaseInsensitiveDict(self.readInput())
         result = values.get('code') \
-              or values.get('invitation') \
-              or values.get('invitation_code') \
-              or values.get('invitation_codes')  # legacy (should only be one)
+                 or values.get('invitation') \
+                 or values.get('invitation_code') \
+                 or values.get('invitation_codes')  # legacy (should only be one)
         if isinstance(result, (list, tuple)) and result:  # pragma: no cover
             result = result[0]
         return result
@@ -274,7 +275,8 @@ class AcceptInvitationByCodeView(AcceptInvitationMixin,
              permission=nauth.ACT_UPDATE,
              request_method='POST',
              name='accept')
-class AcceptInvitationView(AcceptInvitationMixin):
+class AcceptInvitationView(AcceptInvitationMixin,
+                           AbstractAuthenticatedView):
 
     def _do_call(self):
         request = self.request
@@ -362,9 +364,9 @@ class SendDFLInvitationView(AbstractAuthenticatedView,
 
     def get_usernames(self, values):
         result = values.get('usernames') \
-              or values.get('username') \
-              or values.get('users') \
-              or values.get('user')
+                 or values.get('username') \
+                 or values.get('users') \
+                 or values.get('user')
         if isinstance(result, six.string_types):
             result = result.split(',')
         return result
@@ -388,9 +390,9 @@ class SendDFLInvitationView(AbstractAuthenticatedView,
         for username in set(usernames):
             user = User.get_user(username)
             # pylint: disable=no-member,unsupported-membership-test
-            if      IUser.providedBy(user) \
-                and user not in self.context \
-                and username != self.remoteUser.username:
+            if IUser.providedBy(user) \
+                    and user not in self.context \
+                    and username != self.remoteUser.username:
                 result.append(user.username)
 
         if not result:
@@ -439,7 +441,7 @@ class SendDFLInvitationView(AbstractAuthenticatedView,
                request_method='POST',
                name=REL_SEND_SITE_INVITATION)
 class SendSiteInvitationCodeView(AbstractAuthenticatedView,
-                             ModeledContentUploadRequestUtilsMixin):
+                                 ModeledContentUploadRequestUtilsMixin):
 
     def __init__(self, request):
         super(SendSiteInvitationCodeView, self).__init__(request)
@@ -466,11 +468,11 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
                 email = email.strip() if email else email
                 realname = row[1] if len(row) > 1 else ''
                 if not email:
-                    msg = u"Missing email in line %s." % (idx+1)
+                    msg = u"Missing email in line %s." % (idx + 1)
                     self.warnings.append(msg)
                     continue
                 if not realname:
-                    msg = u"Missing name in line %s." % (idx+1)
+                    msg = u"Missing name in line %s." % (idx + 1)
                     self.warnings.append(msg)
                 if not isValidMailAddress(email):
                     self.invalid_emails.append(email)
@@ -553,7 +555,7 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
         invitation = JoinSiteInvitation()
         invitation.site = getSite().__name__
         invitation.receiver_email = email
-        invitation.sender = self.remoteUser.username  # TODO this may not be what we want if this is a generated username
+        invitation.sender = self.remoteUser.username
         invitation.receiver_name = realname
         invitation.message = message
         self.invitations.add(invitation)
@@ -594,7 +596,6 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
             else:
                 invitation = self.create_invitation(email, realname, message)
             items.append(invitation)
-            # TODO implement this event? Likely site by site impl
             notify(InvitationSentEvent(invitation, email))
 
         result[TOTAL] = result[ITEM_COUNT] = len(items)
@@ -602,17 +603,17 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
 
 
 @view_config(route_name='objects.generic.traversal',
-               renderer='rest',
-               context=ISiteInvitation,
-               request_method='POST',
-               name='accept')
+             renderer='rest',
+             context=ISiteInvitation,
+             request_method='POST',
+             name=REL_ACCEPT_INVITATION)
 class AcceptSiteInvitationView(AcceptInvitationMixin):
 
-    def _do_call(self):
-        from IPython.terminal.debugger import set_trace;set_trace()
-
+    def _do_call(self, invitation=None):
         request = self.request
-        invitation = self._validate_invitation(self.context)
+        invitation = invitation if invitation else self.context
+        invitation = self._validate_invitation(invitation,
+                                               check_user=False)
         try:
             # Don't use the accept invitation util here as this invitation may need a callback
             # adn/or redirect
@@ -629,26 +630,40 @@ class AcceptSiteInvitationView(AcceptInvitationMixin):
             self.handle_possible_validation_error(request, e)
         return response
 
+    def __call__(self):
+        return self._do_call()
+
 
 @view_config(route_name='objects.generic.traversal',
-               renderer='rest',
-               context=InvitationsPathAdapter,
-               request_method='POST',
-               name=REL_ACCEPT_INVITATION)
-class AcceptSiteInvitationByCodeView(AcceptInvitationByCodeView):
+             renderer='rest',
+             context=InvitationsPathAdapter,
+             request_method='POST',
+             name=REL_ACCEPT_INVITATION)
+class AcceptSiteInvitationByCodeView(AcceptSiteInvitationView,
+                                     ModeledContentUploadRequestUtilsMixin):
 
-    def get_invitation_by_code(self, code):
-        result = None
-        try:
-            iid = from_external_string(code)
-            result = component.getUtility(IIntIds).queryObject(iid)
-        except (TypeError, ValueError):
-            pass
+    @Lazy
+    def invitations(self):
+        return component.getUtility(IInvitationsContainer)
+
+    def get_invite_code(self):
+        values = CaseInsensitiveDict(self.readInput())
+        result = values.get('code') \
+                 or values.get('invitation') \
+                 or values.get('invitation_code') \
+                 or values.get('invitation_codes')  # legacy (should only be one)
+        if isinstance(result, (list, tuple)) and result:  # pragma: no cover
+            result = result[0]
         return result
 
-    def _do_call(self):
-        from IPython.terminal.debugger import set_trace;set_trace()
-
-        request = self.request
+    def __call__(self):
         code = self.get_invite_code()
-        invitation = self.get_invitation_by_code(code)
+        invitation = self.invitations.get_invitation_by_code(code)
+        if invitation is None:
+            raise_json_error(self.request,
+                             hexc.HTTPNotFound(),
+                             {'message': u'The provided invitation code is not valid.',
+                              'code': u'SiteInvitationNotFound'},
+                             None
+                             )
+        return self._do_call(invitation)
