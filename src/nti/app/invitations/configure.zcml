@@ -42,6 +42,7 @@
 
 	<!-- Subscriber -->
 	<subscriber handler=".subscribers._user_removed" />
+	<subscriber handler=".subscribers._invitation_accepted" />
 
 	<!-- Decorators -->
 	<subscriber	factory=".decorators.DFLGetInvitationLinkProvider"
@@ -56,6 +57,7 @@
 	<adapter factory=".invitations.JoinEntityInvitationActor"
 			 provides=".interfaces.IJoinEntityInvitationActor"
 			 for=".interfaces.IJoinEntityInvitation" />
+
 	<configure zcml:condition="have devmode">
 		<adapter factory=".invitations.DefaultSiteInvitationActor"
 				 provides=".interfaces.ISiteInvitationActor"

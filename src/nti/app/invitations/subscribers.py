@@ -8,7 +8,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import absolute_import
 
-from nti.app.invitations.utils import pending_site_invitations_for_user
+from nti.app.invitations.utils import pending_site_invitations_for_email
 from zope import component
 
 from zc.intid.interfaces import IBeforeIdRemovedEvent
@@ -44,7 +44,9 @@ def _user_removed(user, unused_event):
 @component.adapter(IMarkAsAcceptedInvitationEvent)
 def _invitation_accepted(event):
     user = event.user
-    invitation = pending_site_invitations_for_user(user)
+    user = IUserProfile(user, None)
+    email = getattr(user, 'email', None)
+    invitation = pending_site_invitations_for_email(email)
     if invitation is not None:
         invitation.accepted = True
         invitation.receiver = getattr(user, 'username', user)  # update

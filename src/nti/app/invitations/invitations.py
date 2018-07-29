@@ -8,11 +8,11 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import absolute_import
 
+from nti.app.invitations import SITE_INVITATION_MIMETYPE, JOIN_ENTITY_INVITATION_MIMETYPE
 from nti.appserver.logon import _create_success_response, _create_failure_response
 from nti.coremetadata.interfaces import IDataserver
 from nti.dataserver.users import User
 from nti.invitations.interfaces import MarkAsAcceptedInvitationEvent
-from nti.ntiids.ntiids import find_object_with_ntiid
 from zope import interface, component
 from pyramid import httpexceptions as hexc
 from zope.cachedescriptors.property import readproperty
@@ -41,7 +41,7 @@ logger = __import__('logging').getLogger(__name__)
 class JoinEntityInvitation(Invitation):
     createDirectFieldProperties(IJoinEntityInvitation)
 
-    mimeType = mime_type = "application/vnd.nextthought.joinentityinvitation"
+    mimeType = mime_type = JOIN_ENTITY_INVITATION_MIMETYPE
 JoinCommunityInvitation = JoinEntityInvitation
 
 
@@ -49,7 +49,7 @@ JoinCommunityInvitation = JoinEntityInvitation
 class JoinSiteInvitation(JoinEntityInvitation):
     createDirectFieldProperties(ISiteInvitation)
 
-    mimeType = mime_type = "application/vnd.nextthought.siteinvitation"
+    mimeType = mime_type = SITE_INVITATION_MIMETYPE
 
     receiver_email = alias('receiver')
     entity = alias('site')

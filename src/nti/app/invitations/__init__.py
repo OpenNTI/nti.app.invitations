@@ -57,3 +57,11 @@ REL_ACCEPT_INVITATIONS = u'accept-invitations'
 #: There is no way to disable the code at this time (in the future that could be done with a
 #: ``DELETE`` to this link type). See also :func:`get_default_trivial_invitation_code`
 REL_TRIVIAL_DEFAULT_INVITATION_CODE = u'default-trivial-invitation-code'
+
+#: The mimeType for Site Invitations. It is defined here so that is can be used
+#: elsewhere as a parameter for querying the invitation catalog
+SITE_INVITATION_MIMETYPE = u'application/vnd.nextthought.siteinvitation'
+
+#: The mimeType for Join Entity Invitations. It is defined here so that is can be used
+#: elsewhere as a parameter for querying the invitation catalog
+JOIN_ENTITY_INVITATION_MIMETYPE = u'application/vnd.nextthought.joinentityinvitation'

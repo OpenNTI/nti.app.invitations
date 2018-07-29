@@ -16,7 +16,7 @@ import six
 import time
 
 from nti.app.invitations.interfaces import ISiteInvitation
-from nti.app.invitations.utils import pending_site_invitations_for_user
+from nti.app.invitations.utils import pending_site_invitations_for_email
 from nti.dataserver.authorization import is_admin_or_site_admin
 
 from six.moves import urllib_parse
@@ -594,7 +594,7 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
         for user_dict in values['invitations']:
             email = user_dict['email']
             realname = user_dict['realname']
-            pending_invitation = pending_site_invitations_for_user(email)
+            pending_invitation = pending_site_invitations_for_email(email)
             # Check if this user already has an invite to this site
             # we don't want to have multiple invites for the same user floating around
             # so just send them another email
