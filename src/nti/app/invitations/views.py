@@ -621,6 +621,7 @@ class AcceptSiteInvitationView(AcceptInvitationMixin):
         invitation = invitation if invitation else self.context
         invitation = self._validate_invitation(invitation,
                                                check_user=False)
+        self.request.environ['nti.request_had_transaction_side_effects'] = True
         try:
             # Don't use the accept invitation util here as this invitation may need a callback
             # adn/or redirect

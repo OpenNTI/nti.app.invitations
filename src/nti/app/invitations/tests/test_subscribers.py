@@ -10,11 +10,12 @@ from __future__ import absolute_import
 from hamcrest import is_not
 from hamcrest import has_length
 from hamcrest import assert_that
-from zope.event import notify
 
 does_not = is_not
 
 from zope import component
+
+from zope.event import notify
 
 from nti.app.testing.application_webtest import ApplicationLayerTest
 
@@ -75,7 +76,8 @@ class TestSubscribers(ApplicationLayerTest):
             invitation = JoinSiteInvitation(code=u'bleach',
                                             receiver=u'ichigo@nti.com',
                                             sender=u'aizen',
-                                            accepted=False)
+                                            accepted=False,
+                                            target_site=u'dataserver2')
             component.getUtility(IInvitationsContainer).add(invitation)
 
         with mock_dataserver.mock_db_trans(self.ds):
