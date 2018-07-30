@@ -45,6 +45,10 @@ REL_SEND_SITE_CSV_INVITATION = u'send-site-csv-invitation'
 #: user can ``GET`` the outstanding invitations.
 REL_PENDING_INVITATIONS = u'pending-invitations'
 
+#: The link relationship to which an authenticated
+#: site admin can ``GET`` the outstanding site invitations
+REL_PENDING_SITE_INVITATIONS = u'pending-site-invitations'
+
 #: The link relationship type to which an authenticated
 #: user can ``POST`` data to accept outstanding invitations. Also the name of a
 #: view to handle this feedback: :func:`accept_invitations_view`

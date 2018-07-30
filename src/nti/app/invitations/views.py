@@ -54,7 +54,7 @@ from nti.app.externalization.view_mixins import ModeledContentUploadRequestUtils
 from nti.app.externalization.error import handle_validation_error
 from nti.app.externalization.error import handle_possible_validation_error
 
-from nti.app.invitations import MessageFactory as _, REL_ACCEPT_SITE_INVITATION
+from nti.app.invitations import MessageFactory as _, REL_ACCEPT_SITE_INVITATION, SITE_INVITATION_MIMETYPE
 from nti.app.invitations import REL_SEND_SITE_CSV_INVITATION
 from nti.app.invitations import REL_SEND_SITE_INVITATION
 
@@ -64,6 +64,7 @@ from nti.app.invitations import REL_ACCEPT_INVITATION
 from nti.app.invitations import REL_ACCEPT_INVITATIONS
 from nti.app.invitations import REL_DECLINE_INVITATION
 from nti.app.invitations import REL_PENDING_INVITATIONS
+from nti.app.invitations import REL_PENDING_SITE_INVITATIONS
 from nti.app.invitations import REL_TRIVIAL_DEFAULT_INVITATION_CODE
 
 from nti.app.invitations.invitations import JoinEntityInvitation
@@ -675,3 +676,31 @@ class AcceptSiteInvitationByCodeView(AcceptSiteInvitationView,
                              None
                              )
         return self._do_call(invitation)
+
+
+@view_config(route_name='objects.generic.traversal',
+             renderer='rest',
+             context=InvitationsPathAdapter,
+             permission=nauth.ACT_READ,
+             request_method='GET',
+             name=REL_PENDING_SITE_INVITATIONS)
+class GetPendingInvitationsView(AbstractAuthenticatedView,
+                                ModeledContentUploadRequestUtilsMixin):
+
+    def _do_call(self):
+        result = LocatedExternalDict()
+        input = self.readInput()
+        sites = input.get('sites')
+        items = get_pending_invitations(mimeTypes=SITE_INVITATION_MIMETYPE)
+        if sites is not None:
+            items = [item if item.target_site in sites for item in items]
+        result[ITEMS] = items
+        result[TOTAL] = result[ITEM_COUNT] = len(items)
+        result.__name__ = self.request.view_name
+        result.__parent__ = self.request.context
+        return result
+
+    def __call__(self):
+        if not is_admin_or_site_admin(self.remoteUser):
+            raise hexc.HTTPForbidden()
+        return self._do_call()
