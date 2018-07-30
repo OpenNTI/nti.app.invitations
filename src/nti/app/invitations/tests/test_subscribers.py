@@ -10,7 +10,6 @@ from __future__ import absolute_import
 from hamcrest import is_not
 from hamcrest import has_length
 from hamcrest import assert_that
-from nti.app.invitations.invitations import JoinSiteInvitation
 from zope.event import notify
 
 does_not = is_not
@@ -25,7 +24,10 @@ from nti.dataserver.tests import mock_dataserver
 
 from nti.dataserver.users.users import User
 
-from nti.invitations.interfaces import IInvitationsContainer, MarkAsAcceptedInvitationEvent
+from nti.invitations.interfaces import IInvitationsContainer
+from nti.invitations.interfaces import MarkAsAcceptedInvitationEvent
+
+from nti.app.invitations.invitations import JoinSiteInvitation
 
 from nti.invitations.model import Invitation
 

@@ -12,18 +12,23 @@ from hamcrest import has_length
 import csv
 import tempfile
 
+from zope import component
+
 from nti.app.invitations.invitations import JoinSiteInvitation
+
 from nti.app.testing.application_webtest import ApplicationLayerTest
 
 from nti.app.testing.decorators import WithSharedApplicationMockDS
 
 from nti.dataserver.tests import mock_dataserver
+
 from nti.dataserver.users import User
+
 from nti.invitations.interfaces import IInvitationsContainer
-from nti.ntiids.ntiids import find_object_with_ntiid
+
 from nti.ntiids.oids import to_external_ntiid_oid
-from zope import component
-from zope.component.hooks import getSite
+
+from nti.site.site import getSite
 
 __docformat__ = "restructuredtext en"
 

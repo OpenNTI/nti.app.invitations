@@ -8,34 +8,47 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import absolute_import
 
-from nti.app.invitations import SITE_INVITATION_MIMETYPE, JOIN_ENTITY_INVITATION_MIMETYPE
-from nti.appserver.logon import _create_success_response, _create_failure_response
-from nti.coremetadata.interfaces import IDataserver
-from nti.dataserver.users import User
-from nti.dataserver.users.interfaces import IUserProfile
-from nti.invitations.interfaces import MarkAsAcceptedInvitationEvent
-from nti.site.site import get_component_hierarchy_names
-from zope import interface, component
 from pyramid import httpexceptions as hexc
+
+from zope import component
+from zope import interface
+
 from zope.cachedescriptors.property import readproperty
+
+from zope.event import notify
+
+from nti.app.invitations import JOIN_ENTITY_INVITATION_MIMETYPE
+from nti.app.invitations import SITE_INVITATION_MIMETYPE
 
 from nti.app.invitations.interfaces import IJoinEntityInvitation
 from nti.app.invitations.interfaces import IJoinEntityInvitationActor
 from nti.app.invitations.interfaces import ISiteInvitation
 from nti.app.invitations.interfaces import ISiteInvitationActor
 
+
+from nti.appserver.logon import _create_failure_response
+from nti.appserver.logon import _create_success_response
+
+from nti.coremetadata.interfaces import IDataserver
+
 from nti.dataserver.interfaces import ICommunity
 from nti.dataserver.interfaces import IFriendsList
 
+from nti.dataserver.users import User
+
 from nti.dataserver.users.entity import Entity
+
+from nti.dataserver.users.interfaces import IUserProfile
+
+from nti.invitations.interfaces import MarkAsAcceptedInvitationEvent
 
 from nti.invitations.model import Invitation
 
 from nti.property.property import alias
 
 from nti.schema.fieldproperty import createDirectFieldProperties
-from zope.component.hooks import getSite
-from zope.event import notify
+
+from nti.site.site import getSite
 
 logger = __import__('logging').getLogger(__name__)
 

@@ -7,23 +7,17 @@ from __future__ import absolute_import
 
 # pylint: disable=protected-access,too-many-public-methods,arguments-differ
 
-from hamcrest import is_
 from hamcrest import is_not
 from hamcrest import has_entry
 from hamcrest import has_length
 from hamcrest import assert_that
 from hamcrest import contains_string
-from nti.ntiids.ntiids import find_object_with_ntiid
 
 does_not = is_not
-
-import csv
 
 import fudge
 
 import simplejson as json
-
-import tempfile
 
 from zope import component
 from zope import interface
