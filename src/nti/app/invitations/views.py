@@ -93,13 +93,14 @@ from nti.externalization.integer_strings import from_external_string
 from nti.externalization.interfaces import LocatedExternalDict
 from nti.externalization.interfaces import StandardExternalFields
 
-from nti.invitations.interfaces import IInvitation, DuplicateInvitationCodeError
+from nti.invitations.interfaces import IInvitation
 from nti.invitations.interfaces import IDisabledInvitation
 from nti.invitations.interfaces import InvitationActorError
 from nti.invitations.interfaces import InvitationExpiredError
 from nti.invitations.interfaces import InvitationSentEvent
 from nti.invitations.interfaces import IInvitationsContainer
 from nti.invitations.interfaces import InvitationValidationError
+from nti.invitations.interfaces import DuplicateInvitationCodeError
 
 from nti.invitations.utils import accept_invitation
 from nti.invitations.utils import get_invitation_actor
