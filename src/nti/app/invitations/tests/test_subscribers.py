@@ -68,9 +68,6 @@ class TestSubscribers(ApplicationLayerTest):
 
     @WithSharedApplicationMockDS
     def test_mark_as_accepted_event(self):
-        from IPython.terminal.debugger import set_trace;
-        set_trace()
-
         with mock_dataserver.mock_db_trans(self.ds):
             self._create_user(u"aizen", external_value={'email': u"aizen@nti.com"})
             invitation = JoinSiteInvitation(code=u'bleach',

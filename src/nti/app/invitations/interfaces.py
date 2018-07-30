@@ -49,13 +49,13 @@ class IJoinEntityInvitationActor(IInvitationActor):
     """
 
 
-class ISiteInvitation(IJoinEntityInvitation):
+class ISiteInvitation(interface.Interface):
     """
     Interface for an invitation to join a site
     """
 
-    entity = ValidTextLine(title=u'The site NTIID',
-                           required=True)
+    target_site = ValidTextLine(title=u'The target site name',
+                                required=True)
 
     IsGeneric = Bool(title=u'The invitation code is generic',
                      required=False,

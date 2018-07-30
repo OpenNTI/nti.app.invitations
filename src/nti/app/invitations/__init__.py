@@ -21,6 +21,10 @@ INVITATIONS = u'Invitations'
 #: whose value is an invitation code.
 REL_ACCEPT_INVITATION = u'accept-invitation'
 
+#: The link relationship type to which an anonymous, unauthenticated
+#: user can ``POST`` data to accept outstanding site invitations.
+REL_ACCEPT_SITE_INVITATION = u'accept-site-invitation'
+
 #: The link relationship type to which an authenticated
 #: user can ``POST`` data to decline outstanding invitations.
 REL_DECLINE_INVITATION = u'decline-invitation'

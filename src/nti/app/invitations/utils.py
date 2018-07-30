@@ -17,12 +17,10 @@ logger = __import__('logging').getLogger(__name__)
 
 
 def pending_site_invitations_for_email(user):
-    from IPython.terminal.debugger import set_trace;set_trace()
-
     email = getattr(user, 'email', user)
     current_site = getSite().__name__
     pending_invitations = get_pending_invitations(receivers=email,
                                                   mimeTypes=SITE_INVITATION_MIMETYPE)
     for pending in pending_invitations:
-        if pending.site == current_site:
+        if pending.target_site == current_site:
             return pending

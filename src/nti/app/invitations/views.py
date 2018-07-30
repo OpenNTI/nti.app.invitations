@@ -54,7 +54,7 @@ from nti.app.externalization.view_mixins import ModeledContentUploadRequestUtils
 from nti.app.externalization.error import handle_validation_error
 from nti.app.externalization.error import handle_possible_validation_error
 
-from nti.app.invitations import MessageFactory as _
+from nti.app.invitations import MessageFactory as _, REL_ACCEPT_SITE_INVITATION
 from nti.app.invitations import REL_SEND_SITE_CSV_INVITATION
 from nti.app.invitations import REL_SEND_SITE_INVITATION
 
@@ -560,7 +560,7 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
 
     def create_invitation(self, email, realname, message):
         invitation = JoinSiteInvitation()
-        invitation.site = getSite().__name__
+        invitation.target_site = getSite().__name__
         invitation.receiver_email = email
         invitation.sender = self.remoteUser.username
         invitation.receiver_name = realname
@@ -613,7 +613,7 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
              renderer='rest',
              context=ISiteInvitation,
              request_method='POST',
-             name=REL_ACCEPT_INVITATION)
+             name=REL_ACCEPT_SITE_INVITATION)
 class AcceptSiteInvitationView(AcceptInvitationMixin):
 
     def _do_call(self, invitation=None):
@@ -645,7 +645,7 @@ class AcceptSiteInvitationView(AcceptInvitationMixin):
              renderer='rest',
              context=InvitationsPathAdapter,
              request_method='POST',
-             name=REL_ACCEPT_INVITATION)
+             name=REL_ACCEPT_SITE_INVITATION)
 class AcceptSiteInvitationByCodeView(AcceptSiteInvitationView,
                                      ModeledContentUploadRequestUtilsMixin):
 
