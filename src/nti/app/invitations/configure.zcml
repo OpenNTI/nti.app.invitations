@@ -42,7 +42,7 @@
 
 	<!-- Subscriber -->
 	<subscriber handler=".subscribers._user_removed" />
-	<subscriber handler=".subscribers._invitation_accepted" />
+	<subscriber handler=".subscribers._site_invitation_accepted" />
 
 	<!-- Decorators -->
 	<subscriber	factory=".decorators.DFLGetInvitationLinkProvider"

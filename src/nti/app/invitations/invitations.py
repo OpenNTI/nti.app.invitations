@@ -109,9 +109,11 @@ class DefaultSiteInvitationActor(object):
         self.site = site
 
     def accept(self, request, invitation):
-        # Check that this invitation is for the current site
         if invitation.target_site != getSite().__name__:
             return hexc.HTTPConflict(u'The invitation you are trying to accept is not valid for this site.')
+        if invitation.IsGeneric:
+            # TODO this could be a redirect to account creation page
+            return hexc.HTTPNotImplemented(u'Generic invitation codes are not yet supported for this site.')
 
         dataserver = component.getUtility(IDataserver)
         user = User.get_user(username=invitation.receiver, dataserver=dataserver)

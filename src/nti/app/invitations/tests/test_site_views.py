@@ -5,8 +5,9 @@ from __future__ import print_function
 from __future__ import absolute_import
 from __future__ import division
 
-from hamcrest import assert_that, is_not
+from hamcrest import assert_that
 from hamcrest import is_
+from hamcrest import is_not
 from hamcrest import has_length
 
 import csv
@@ -14,6 +15,7 @@ import tempfile
 
 from zope import component
 
+from nti.app.invitations.invitations import JoinEntityInvitation
 from nti.app.invitations.invitations import JoinSiteInvitation
 
 from nti.app.testing.application_webtest import ApplicationLayerTest
@@ -24,11 +26,15 @@ from nti.dataserver.tests import mock_dataserver
 
 from nti.dataserver.users import User
 
+from nti.externalization.interfaces import StandardExternalFields
+
 from nti.invitations.interfaces import IInvitationsContainer
 
 from nti.ntiids.oids import to_external_ntiid_oid
 
 from nti.site.site import getSite
+
+ITEMS = StandardExternalFields.ITEMS
 
 __docformat__ = "restructuredtext en"
 
@@ -286,3 +292,81 @@ class TestSiteInvitationViews(ApplicationLayerTest):
         self.testapp.post_json(inv_url,
                                {u'code': u'Sunnyvale2'},
                                status=409)
+
+    @WithSharedApplicationMockDS(testapp=True, users=True)
+    def test_pending_site_invitations(self):
+
+        pending_url = '/dataserver2/Invitations/@@pending-site-invitations'
+
+        with mock_dataserver.mock_db_trans(self.ds):
+            site_invitation = JoinSiteInvitation(code=u'Sunnyvale1',
+                                                 receiver=u'ricky@tpb.net',
+                                                 sender=u'sjohnson',
+                                                 accepted=False,
+                                                 target_site=u'dataserver2')
+
+            container = component.getUtility(IInvitationsContainer)
+            container.add(site_invitation)
+
+        # Generic test that there is one in there
+        res = self.testapp.get(pending_url)
+        body = res.json_body
+        assert_that(body[ITEMS], has_length(1))
+
+        with mock_dataserver.mock_db_trans(self.ds):
+            site_invitation = JoinSiteInvitation(code=u'Sunnyvale2',
+                                                 receiver=u'julian@tpb.net',
+                                                 sender=u'sjohnson',
+                                                 accepted=False,
+                                                 target_site=u'exclude_me')
+
+            container = component.getUtility(IInvitationsContainer)
+            container.add(site_invitation)
+
+        # Test that we only get them for the specified sites if passed
+        res = self.testapp.get(pending_url,
+                               {'site': 'dataserver2'})
+        body = res.json_body
+        assert_that(body[ITEMS], has_length(1))
+
+        with mock_dataserver.mock_db_trans(self.ds):
+            site_invitation = JoinEntityInvitation(code=u'Sunnyvale3',
+                                                   receiver=u'lahey@tpb.net',
+                                                   sender=u'sjohnson',
+                                                   accepted=False)
+
+            container = component.getUtility(IInvitationsContainer)
+            container.add(site_invitation)
+
+        res = self.testapp.get(pending_url)
+        body = res.json_body
+        assert_that(body[ITEMS], has_length(2))
+
+    @WithSharedApplicationMockDS(testapp=True, users=True)
+    def test_generic_site_invitation(self):
+
+        generic_url = '/dataserver2/Invitations/@@generic-site-invitation'
+
+        # Basic test
+        res = self.testapp.post_json(generic_url,
+                                     {'code': 'generic_code'},
+                                     status=200)
+        body = res.json_body
+        assert_that(body['code'], is_('generic_code'))
+
+        # Test no code
+        self.testapp.post_json(generic_url,
+                               {},
+                               status=417)
+
+        # Test too long
+        # Make a long string
+        code = ''.join(['x' for _ in range(50)])
+        self.testapp.post_json(generic_url,
+                               {'code': code},
+                               status=417)
+
+        # Test accept (currently returns not implemented for the default case)
+        self.testapp.post_json('/dataserver2/Invitations/@@accept-site-invitation',
+                                     {'code': 'generic_code'},
+                                     status=501)

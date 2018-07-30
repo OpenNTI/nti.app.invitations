@@ -15,13 +15,10 @@ import csv
 import six
 import time
 
-from nti.app.invitations.interfaces import ISiteInvitation
-from nti.app.invitations.utils import pending_site_invitations_for_email
-from nti.dataserver.authorization import is_admin_or_site_admin
-
 from six.moves import urllib_parse
 
 from requests.structures import CaseInsensitiveDict
+
 from z3c.schema.email import isValidMailAddress
 
 from zope import component
@@ -44,7 +41,8 @@ from pyramid.interfaces import IRequest
 from pyramid.view import view_config
 from pyramid.view import view_defaults
 
-from nti.app.base.abstract_views import AbstractAuthenticatedView, AbstractView
+from nti.app.base.abstract_views import AbstractView
+from nti.app.base.abstract_views import AbstractAuthenticatedView
 from nti.app.base.abstract_views import get_source
 
 from nti.app.externalization.error import raise_json_error
@@ -54,9 +52,12 @@ from nti.app.externalization.view_mixins import ModeledContentUploadRequestUtils
 from nti.app.externalization.error import handle_validation_error
 from nti.app.externalization.error import handle_possible_validation_error
 
-from nti.app.invitations import MessageFactory as _, REL_ACCEPT_SITE_INVITATION, SITE_INVITATION_MIMETYPE
+from nti.app.invitations import MessageFactory as _
+from nti.app.invitations import REL_ACCEPT_SITE_INVITATION
+from nti.app.invitations import REL_GENERIC_SITE_INVITATION
 from nti.app.invitations import REL_SEND_SITE_CSV_INVITATION
 from nti.app.invitations import REL_SEND_SITE_INVITATION
+from nti.app.invitations import SITE_INVITATION_MIMETYPE
 
 from nti.app.invitations import INVITATIONS
 from nti.app.invitations import REL_SEND_INVITATION
@@ -67,10 +68,16 @@ from nti.app.invitations import REL_PENDING_INVITATIONS
 from nti.app.invitations import REL_PENDING_SITE_INVITATIONS
 from nti.app.invitations import REL_TRIVIAL_DEFAULT_INVITATION_CODE
 
+from nti.app.invitations.interfaces import ISiteInvitation
+
 from nti.app.invitations.invitations import JoinEntityInvitation
 from nti.app.invitations.invitations import JoinSiteInvitation
 
+from nti.app.invitations.utils import pending_site_invitations_for_email
+
 from nti.dataserver import authorization as nauth
+
+from nti.dataserver.authorization import is_admin_or_site_admin
 
 from nti.dataserver.interfaces import IUser
 from nti.dataserver.interfaces import IDataserverFolder
@@ -86,13 +93,16 @@ from nti.externalization.integer_strings import from_external_string
 from nti.externalization.interfaces import LocatedExternalDict
 from nti.externalization.interfaces import StandardExternalFields
 
-from nti.invitations.interfaces import IInvitation, InvitationActorError, InvitationExpiredError
+from nti.invitations.interfaces import IInvitation, DuplicateInvitationCodeError
 from nti.invitations.interfaces import IDisabledInvitation
+from nti.invitations.interfaces import InvitationActorError
+from nti.invitations.interfaces import InvitationExpiredError
 from nti.invitations.interfaces import InvitationSentEvent
 from nti.invitations.interfaces import IInvitationsContainer
 from nti.invitations.interfaces import InvitationValidationError
 
-from nti.invitations.utils import accept_invitation, get_invitation_actor
+from nti.invitations.utils import accept_invitation
+from nti.invitations.utils import get_invitation_actor
 from nti.invitations.utils import get_pending_invitations
 
 from nti.site.site import getSite
@@ -684,16 +694,14 @@ class AcceptSiteInvitationByCodeView(AcceptSiteInvitationView,
              permission=nauth.ACT_READ,
              request_method='GET',
              name=REL_PENDING_SITE_INVITATIONS)
-class GetPendingInvitationsView(AbstractAuthenticatedView,
-                                ModeledContentUploadRequestUtilsMixin):
+class GetPendingSiteInvitationsView(AbstractAuthenticatedView):
 
     def _do_call(self):
         result = LocatedExternalDict()
-        input = self.readInput()
-        sites = input.get('sites')
+        site = self.request.params.get('site')
         items = get_pending_invitations(mimeTypes=SITE_INVITATION_MIMETYPE)
-        if sites is not None:
-            items = [item for item in items if item.target_site in sites]
+        if site is not None:
+            items = [item for item in items if item.target_site == site]
         result[ITEMS] = items
         result[TOTAL] = result[ITEM_COUNT] = len(items)
         result.__name__ = self.request.view_name
@@ -704,3 +712,40 @@ class GetPendingInvitationsView(AbstractAuthenticatedView,
         if not is_admin_or_site_admin(self.remoteUser):
             raise hexc.HTTPForbidden()
         return self._do_call()
+
+
+@view_config(route_name='objects.generic.traversal',
+             renderer='rest',
+             context=InvitationsPathAdapter,
+             permission=nauth.ACT_READ,
+             request_method='POST',
+             name=REL_GENERIC_SITE_INVITATION)
+class SetGenericInvitationCodeForSite(AbstractAuthenticatedView,
+                                      ModeledContentUploadRequestUtilsMixin):
+    # This can be disabled by using the DeclineInvitationView
+    # TODO we may want to limit this to one generic code per site
+
+    @Lazy
+    def invitations(self):
+        return component.getUtility(IInvitationsContainer)
+
+    def __call__(self):
+        input = self.readInput()
+        code = input.get('code')
+        if code is None:
+            raise hexc.HTTPExpectationFailed(u'You must include a code to be set as the generic')
+
+        # Arbitrary
+        if len(code) > 25:
+            raise hexc.HTTPExpectationFailed(u'Your code may not be longer than 25 characters')
+
+        invitation = JoinSiteInvitation()
+        invitation.target_site = getSite().__name__
+        invitation.sender = self.remoteUser.username
+        invitation.code = code
+        invitation.IsGeneric = True
+        try:
+            self.invitations.add(invitation)
+        except DuplicateInvitationCodeError:
+            return hexc.HTTPConflict(u'The code you entered is not available.')
+        return invitation
