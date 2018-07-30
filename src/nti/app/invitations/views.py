@@ -693,7 +693,7 @@ class GetPendingInvitationsView(AbstractAuthenticatedView,
         sites = input.get('sites')
         items = get_pending_invitations(mimeTypes=SITE_INVITATION_MIMETYPE)
         if sites is not None:
-            items = [item if item.target_site in sites for item in items]
+            items = [item for item in items if item.target_site in sites]
         result[ITEMS] = items
         result[TOTAL] = result[ITEM_COUNT] = len(items)
         result.__name__ = self.request.view_name
