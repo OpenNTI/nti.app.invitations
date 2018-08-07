@@ -467,6 +467,7 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
 
     def check_permissions(self):
         if not is_admin_or_site_admin(self.remoteUser):
+            logger.exception(u'Failed permissions check for sending site invitation.')
             raise hexc.HTTPForbidden()
 
     # TODO: This closely resembles
@@ -583,6 +584,7 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
     def _do_call(self, values):
         # At this point we should have a values dict containing invitation destinations and message
         if self.warnings or self.invalid_emails:
+            logger.exception(u'Site Invitation input contains missing or invalid values.')
             raise_json_error(
                 self.request,
                 hexc.HTTPExpectationFailed,
@@ -678,6 +680,7 @@ class AcceptSiteInvitationByCodeView(AcceptSiteInvitationView):
         code = self.get_invite_code()
         invitation = self.invitations.get_invitation_by_code(code)
         if invitation is None:
+            logger.exception(u'Invalid invitation was attempted to be redeemed.')
             raise_json_error(self.request,
                              hexc.HTTPNotFound(),
                              {'message': u'The provided invitation code is not valid.',
@@ -709,6 +712,7 @@ class GetPendingSiteInvitationsView(AbstractAuthenticatedView):
 
     def __call__(self):
         if not is_admin_or_site_admin(self.remoteUser):
+            logger.exception(u'User failed permissions check for pending site invitations.')
             raise hexc.HTTPForbidden()
         return self._do_call()
 
@@ -732,10 +736,12 @@ class SetGenericInvitationCodeForSite(AbstractAuthenticatedView,
         input = self.readInput()
         code = input.get('code')
         if code is None:
+            logger.exception(u'Generic invitation code was not provided.')
             raise hexc.HTTPExpectationFailed(u'You must include a code to be set as the generic')
 
         # Arbitrary
         if len(code) > 25:
+            logger.exception(u'The provided invitation code was longer than 25 characters.')
             raise hexc.HTTPExpectationFailed(u'Your code may not be longer than 25 characters')
 
         invitation = JoinSiteInvitation()
@@ -746,5 +752,6 @@ class SetGenericInvitationCodeForSite(AbstractAuthenticatedView,
         try:
             self.invitations.add(invitation)
         except DuplicateInvitationCodeError:
+            logger.exception(u'Generic code matched an existing invitation code.')
             return hexc.HTTPConflict(u'The code you entered is not available.')
         return invitation
