@@ -659,7 +659,8 @@ class AcceptSiteInvitationView(AcceptInvitationMixin):
 @view_config(route_name='objects.generic.traversal',
              renderer='rest',
              context=InvitationsPathAdapter,
-             request_method='GET')
+             request_method='GET',
+             name=REL_ACCEPT_SITE_INVITATION)
 class AcceptSiteInvitationByCodeView(AcceptSiteInvitationView):
 
     @Lazy
