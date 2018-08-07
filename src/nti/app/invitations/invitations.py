@@ -15,8 +15,6 @@ from zope import interface
 
 from zope.cachedescriptors.property import readproperty
 
-from zope.event import notify
-
 from nti.app.invitations import JOIN_ENTITY_INVITATION_MIMETYPE
 from nti.app.invitations import SITE_INVITATION_MIMETYPE
 
@@ -24,12 +22,14 @@ from nti.app.invitations.interfaces import IJoinEntityInvitation
 from nti.app.invitations.interfaces import IJoinEntityInvitationActor
 from nti.app.invitations.interfaces import ISiteInvitation
 from nti.app.invitations.interfaces import ISiteInvitationActor
-
+from nti.app.invitations.interfaces import IVerifyAndAcceptSiteInvitation
+from nti.app.invitations.utils import pending_site_invitations_for_email
 
 from nti.appserver.logon import _create_failure_response
 from nti.appserver.logon import _create_success_response
 
 from nti.coremetadata.interfaces import IDataserver
+from nti.coremetadata.interfaces import IUser
 
 from nti.dataserver.interfaces import ICommunity
 from nti.dataserver.interfaces import IFriendsList
@@ -39,8 +39,6 @@ from nti.dataserver.users import User
 from nti.dataserver.users.entity import Entity
 
 from nti.dataserver.users.interfaces import IUserProfile
-
-from nti.invitations.interfaces import MarkAsAcceptedInvitationEvent
 
 from nti.invitations.model import Invitation
 
@@ -120,7 +118,8 @@ class DefaultSiteInvitationActor(object):
         dataserver = component.getUtility(IDataserver)
         user = User.get_user(username=invitation.receiver, dataserver=dataserver)
         if user is not None:
-            notify(MarkAsAcceptedInvitationEvent(user))
+            accepter = IVerifyAndAcceptSiteInvitation(user)
+            accepter.accept(invitation)
             return hexc.HTTPConflict(u'The email this invite was sent for is already associated with an account.')
         # We need to create them an NT account and log them in
         else:
@@ -130,7 +129,35 @@ class DefaultSiteInvitationActor(object):
             user.email = invitation.receiver_email
             user.email_verified = True
             if user is not None:
-                notify(MarkAsAcceptedInvitationEvent(user))
+                accepter = IVerifyAndAcceptSiteInvitation(user)
+                accepter.accept(invitation)
                 return _create_success_response(request,
                                                 userid=user.username)
             return _create_failure_response(request)
+
+
+@component.adapter(IUser)
+@interface.implementer(IVerifyAndAcceptSiteInvitation)
+class VerifyAndAcceptSiteInvitation(object):
+
+    def __init__(self, user):
+        self.user = user
+
+    def accept(self, invitation=None):
+        # If we get passed an invitation then we can just update it and be done
+        # otherwise try to fuzzy match the newly created user to an invite
+        user = IUserProfile(self.user, None)
+        email = getattr(user, 'email', None)
+        invitation = pending_site_invitations_for_email(email) if invitation is None else invitation
+        if invitation is not None and not invitation.IsGeneric:
+            invitation.accepted = True
+            invitation.receiver = getattr(user, 'username', user)  # update
+        # The user may have gotten here through a generic invitation or our fuzzy match didn't work
+        # Let's go ahead and create an invitation for them so that it is documented they accepted an
+        # invitation to this site
+        elif invitation.IsGeneric:
+            invitation = JoinSiteInvitation(receiver=user,
+                                            target_site=getSite(),
+                                            accepted=True)
+        accepter = IVerifyAndAcceptSiteInvitation(user)
+        accepter.accept(invitation)

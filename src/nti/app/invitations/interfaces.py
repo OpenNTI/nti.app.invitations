@@ -68,3 +68,9 @@ class ISiteInvitationActor(IInvitationActor):
     Actor to add a user to a site
     """
 
+
+class IVerifyAndAcceptSiteInvitation(interface.Interface):
+    """
+    An adapter that handles ensuring an invitation can be marked as accepted
+    and nofifies the appropriate subscribers.
+    """
