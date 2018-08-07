@@ -201,8 +201,8 @@ class TestSiteInvitationViews(ApplicationLayerTest):
 
         # Accept the invitation with an anonymous user
         inv_url = '/dataserver2/Objects/%s/@@accept-site-invitation' % inv_ntiid
-        self.testapp.post(inv_url,
-                          status=204)
+        self.testapp.get(inv_url,
+                         status=204)
         with mock_dataserver.mock_db_trans(self.ds):
             container = component.getUtility(IInvitationsContainer)
             accepted_invitation = container.get(u'Sunnyvale1')
@@ -222,8 +222,8 @@ class TestSiteInvitationViews(ApplicationLayerTest):
             inv_ntiid = to_external_ntiid_oid(site_invitation)
 
         inv_url = '/dataserver2/Objects/%s/@@accept-site-invitation' % inv_ntiid
-        self.testapp.post(inv_url,
-                          status=409)
+        self.testapp.get(inv_url,
+                         status=409)
 
         with mock_dataserver.mock_db_trans(self.ds):
             container = component.getUtility(IInvitationsContainer)
@@ -234,7 +234,7 @@ class TestSiteInvitationViews(ApplicationLayerTest):
         with mock_dataserver.mock_db_trans(self.ds):
             accepted_invitation.target_site = u'failure.com'
 
-        self.testapp.post(inv_url,
+        self.testapp.get(inv_url,
                           status=409)
 
     @WithSharedApplicationMockDS(testapp=True, users=True)
@@ -256,9 +256,9 @@ class TestSiteInvitationViews(ApplicationLayerTest):
             assert_that(container, has_length(1))
 
         # Accept the invitation with an anonymous user
-        self.testapp.post_json(inv_url,
-                               {'code': u'Sunnyvale1'},
-                               status=204)
+        self.testapp.get(inv_url,
+                         params={'code': u'Sunnyvale1'},
+                         status=204)
         with mock_dataserver.mock_db_trans(self.ds):
             container = component.getUtility(IInvitationsContainer)
             accepted_invitation = container.get(u'Sunnyvale1')
@@ -276,9 +276,9 @@ class TestSiteInvitationViews(ApplicationLayerTest):
             container = component.getUtility(IInvitationsContainer)
             container.add(site_invitation)
 
-        self.testapp.post_json(inv_url,
-                               {u'code': u'Sunnyvale2'},
-                               status=409)
+        self.testapp.get(inv_url,
+                         params={u'code': u'Sunnyvale2'},
+                         status=409)
 
         with mock_dataserver.mock_db_trans(self.ds):
             container = component.getUtility(IInvitationsContainer)
@@ -289,9 +289,9 @@ class TestSiteInvitationViews(ApplicationLayerTest):
         with mock_dataserver.mock_db_trans(self.ds):
             accepted_invitation.target_site = u'failure.com'
 
-        self.testapp.post_json(inv_url,
-                               {u'code': u'Sunnyvale2'},
-                               status=409)
+        self.testapp.get(inv_url,
+                         params={u'code': u'Sunnyvale2'},
+                         status=409)
 
     @WithSharedApplicationMockDS(testapp=True, users=True)
     def test_pending_site_invitations(self):
@@ -367,6 +367,6 @@ class TestSiteInvitationViews(ApplicationLayerTest):
                                status=417)
 
         # Test accept (currently returns not implemented for the default case)
-        self.testapp.post_json('/dataserver2/Invitations/@@accept-site-invitation',
-                                     {'code': 'generic_code'},
-                                     status=501)
+        self.testapp.get('/dataserver2/Invitations/@@accept-site-invitation',
+                         params={'code': 'generic_code'},
+                         status=501)

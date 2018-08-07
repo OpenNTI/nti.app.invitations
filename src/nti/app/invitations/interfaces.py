@@ -74,3 +74,9 @@ class IVerifyAndAcceptSiteInvitation(interface.Interface):
     An adapter that handles ensuring an invitation can be marked as accepted
     and nofifies the appropriate subscribers.
     """
+
+    def accept(invitation):
+        """
+        Handles accepting an invitation
+        Can be implemented on a site-by-site basis to handle different behaviors
+        """

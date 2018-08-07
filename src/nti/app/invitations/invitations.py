@@ -15,6 +15,8 @@ from zope import interface
 
 from zope.cachedescriptors.property import readproperty
 
+from zope.event import notify
+
 from nti.app.invitations import JOIN_ENTITY_INVITATION_MIMETYPE
 from nti.app.invitations import SITE_INVITATION_MIMETYPE
 
@@ -39,6 +41,8 @@ from nti.dataserver.users import User
 from nti.dataserver.users.entity import Entity
 
 from nti.dataserver.users.interfaces import IUserProfile
+
+from nti.invitations.interfaces import InvitationAcceptedEvent
 
 from nti.invitations.model import Invitation
 
@@ -125,9 +129,9 @@ class DefaultSiteInvitationActor(object):
         else:
             user = User.create_user(username=invitation.receiver_email,
                                     external_value={'realname': invitation.receiver_name})
-            user = IUserProfile(user)
-            user.email = invitation.receiver_email
-            user.email_verified = True
+            profile = IUserProfile(user)
+            profile.email = invitation.receiver_email
+            profile.email_verified = True
             if user is not None:
                 accepter = IVerifyAndAcceptSiteInvitation(user)
                 accepter.accept(invitation)
@@ -146,18 +150,17 @@ class VerifyAndAcceptSiteInvitation(object):
     def accept(self, invitation=None):
         # If we get passed an invitation then we can just update it and be done
         # otherwise try to fuzzy match the newly created user to an invite
-        user = IUserProfile(self.user, None)
-        email = getattr(user, 'email', None)
+        profile = IUserProfile(self.user, None)
+        email = getattr(profile, 'email', None)
         invitation = pending_site_invitations_for_email(email) if invitation is None else invitation
         if invitation is not None and not invitation.IsGeneric:
             invitation.accepted = True
-            invitation.receiver = getattr(user, 'username', user)  # update
+            invitation.receiver = getattr(profile, 'username', profile)  # update
         # The user may have gotten here through a generic invitation or our fuzzy match didn't work
         # Let's go ahead and create an invitation for them so that it is documented they accepted an
         # invitation to this site
         elif invitation.IsGeneric:
-            invitation = JoinSiteInvitation(receiver=user,
+            invitation = JoinSiteInvitation(receiver=self.user,
                                             target_site=getSite(),
                                             accepted=True)
-        accepter = IVerifyAndAcceptSiteInvitation(user)
-        accepter.accept(invitation)
+        notify(InvitationAcceptedEvent(invitation, self.user))
