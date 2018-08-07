@@ -15,8 +15,6 @@ does_not = is_not
 
 from zope import component
 
-from zope.event import notify
-
 from nti.app.testing.application_webtest import ApplicationLayerTest
 
 from nti.app.testing.decorators import WithSharedApplicationMockDS
@@ -26,9 +24,6 @@ from nti.dataserver.tests import mock_dataserver
 from nti.dataserver.users.users import User
 
 from nti.invitations.interfaces import IInvitationsContainer
-from nti.invitations.interfaces import MarkAsAcceptedInvitationEvent
-
-from nti.app.invitations.invitations import JoinSiteInvitation
 
 from nti.invitations.model import Invitation
 
@@ -68,36 +63,3 @@ class TestSubscribers(ApplicationLayerTest):
 
             container = component.getUtility(IInvitationsContainer)
             assert_that(container, has_length(0))
-
-    @WithSharedApplicationMockDS
-    def test_mark_as_accepted_event(self):
-        with mock_dataserver.mock_db_trans(self.ds):
-            self._create_user(u"aizen", external_value={'email': u"aizen@nti.com"})
-            invitation = JoinSiteInvitation(code=u'bleach',
-                                            receiver=u'ichigo@nti.com',
-                                            sender=u'aizen',
-                                            accepted=False,
-                                            target_site=u'dataserver2')
-            component.getUtility(IInvitationsContainer).add(invitation)
-
-        with mock_dataserver.mock_db_trans(self.ds):
-            invitations = get_sent_invitations(u'aizen')
-            assert_that(invitations, has_length(1))
-
-            invitations = get_pending_invitations()
-            assert_that(invitations, has_length(1))
-
-        with mock_dataserver.mock_db_trans(self.ds):
-            # The user accepts the invitation and now has an account
-            user = self._create_user(u"ichigo", external_value={'email': u"ichigo@nti.com"})
-            notify(MarkAsAcceptedInvitationEvent(user))
-
-        with mock_dataserver.mock_db_trans(self.ds):
-            invitations = get_sent_invitations(u'aizen')
-            assert_that(invitations, has_length(0))
-
-            invitations = get_pending_invitations()
-            assert_that(invitations, has_length(0))
-
-            container = component.getUtility(IInvitationsContainer)
-            assert_that(container, has_length(1))
