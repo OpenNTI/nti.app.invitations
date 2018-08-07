@@ -624,7 +624,7 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
 @view_config(route_name='objects.generic.traversal',
              renderer='rest',
              context=ISiteInvitation,
-             request_method='POST',
+             request_method='GET',
              name=REL_ACCEPT_SITE_INVITATION)
 class AcceptSiteInvitationView(AcceptInvitationMixin):
 
@@ -657,17 +657,15 @@ class AcceptSiteInvitationView(AcceptInvitationMixin):
 @view_config(route_name='objects.generic.traversal',
              renderer='rest',
              context=InvitationsPathAdapter,
-             request_method='POST',
-             name=REL_ACCEPT_SITE_INVITATION)
-class AcceptSiteInvitationByCodeView(AcceptSiteInvitationView,
-                                     ModeledContentUploadRequestUtilsMixin):
+             request_method='GET')
+class AcceptSiteInvitationByCodeView(AcceptSiteInvitationView):
 
     @Lazy
     def invitations(self):
         return component.getUtility(IInvitationsContainer)
 
     def get_invite_code(self):
-        values = CaseInsensitiveDict(self.readInput())
+        values = CaseInsensitiveDict(self.request.params)
         result = values.get('code') \
                  or values.get('invitation') \
                  or values.get('invitation_code') \

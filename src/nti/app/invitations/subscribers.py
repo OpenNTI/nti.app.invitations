@@ -53,7 +53,7 @@ def _user_removed(user, unused_event):
 def _site_invitation_accepted(event):
     # If we get passed an invitation then we can just update it and be done
     # otherwise try to fuzzy match the newly created user to an invite
-    invitation = event.obj
+    invitation = event.object
     user = event.user
     user = IUserProfile(user, None)
     email = getattr(user, 'email', None)
@@ -64,9 +64,8 @@ def _site_invitation_accepted(event):
     # The user may have gotten here through a generic invitation or our fuzzy match didn't work
     # Let's go ahead and create an invitation for them so that it is documented they accepted an
     # invitation to this site
-    else:
+    elif invitation.IsGeneric:
         invitation = JoinSiteInvitation(receiver=user,
                                         target_site=getSite(),
-                                        sender=u'Generic',
                                         accepted=True)
     notify(InvitationAcceptedEvent(invitation, user))
