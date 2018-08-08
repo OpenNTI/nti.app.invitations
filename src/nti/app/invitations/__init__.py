@@ -22,7 +22,7 @@ INVITATIONS = u'Invitations'
 REL_ACCEPT_INVITATION = u'accept-invitation'
 
 #: The link relationship type to which an anonymous, unauthenticated
-#: user can ``POST`` data to accept outstanding site invitations.
+#: user can ``GET`` data to accept outstanding site invitations.
 REL_ACCEPT_SITE_INVITATION = u'accept-site-invitation'
 
 #: The link relationship type to which an authenticated
@@ -78,3 +78,10 @@ SITE_INVITATION_MIMETYPE = u'application/vnd.nextthought.siteinvitation'
 #: The mimeType for Join Entity Invitations. It is defined here so that is can be used
 #: elsewhere as a parameter for querying the invitation catalog
 JOIN_ENTITY_INVITATION_MIMETYPE = u'application/vnd.nextthought.joinentityinvitation'
+
+#: The mimeType for Generic Site Invitations. It is defined here so that is can be used
+#: elsewhere as a parameter for querying the invitation catalog
+GENERIC_SITE_INVITATION_MIMETYPE = u'application/vnd.nextthought.genericsiteinvitation'
+
+#: The key for a request session that has a user's invitation code
+SITE_INVITATION_SESSION_KEY = u'site_invitation_code'

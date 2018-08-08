@@ -7,7 +7,6 @@ from __future__ import division
 
 from hamcrest import assert_that
 from hamcrest import is_
-from hamcrest import is_not
 from hamcrest import has_length
 
 import csv
@@ -16,7 +15,7 @@ import tempfile
 from zope import component
 
 from nti.app.invitations.invitations import JoinEntityInvitation
-from nti.app.invitations.invitations import JoinSiteInvitation
+from nti.app.invitations.invitations import SiteInvitation
 
 from nti.app.testing.application_webtest import ApplicationLayerTest
 
@@ -24,15 +23,11 @@ from nti.app.testing.decorators import WithSharedApplicationMockDS
 
 from nti.dataserver.tests import mock_dataserver
 
-from nti.dataserver.users import User
-
 from nti.externalization.interfaces import StandardExternalFields
 
 from nti.invitations.interfaces import IInvitationsContainer
 
 from nti.ntiids.oids import to_external_ntiid_oid
-
-from nti.site.site import getSite
 
 ITEMS = StandardExternalFields.ITEMS
 
@@ -42,6 +37,8 @@ logger = __import__('logging').getLogger(__name__)
 
 
 class TestSiteInvitationViews(ApplicationLayerTest):
+    # TODO it would be nice to assert that the request session state is what we
+    # expect after the accept process
 
     @WithSharedApplicationMockDS(testapp=True, users=True)
     def test_send_site_invitation(self):
@@ -182,11 +179,10 @@ class TestSiteInvitationViews(ApplicationLayerTest):
     def test_accept_site_invitation(self):
         # Create an invitation
         with mock_dataserver.mock_db_trans(self.ds):
-            site_invitation = JoinSiteInvitation(code=u'Sunnyvale1',
-                                                 receiver=u'ricky@tpb.net',
-                                                 sender=u'sjohnson',
-                                                 accepted=False,
-                                                 target_site=getSite().__name__)
+            site_invitation = SiteInvitation(code=u'Sunnyvale1',
+                                             receiver=u'ricky@tpb.net',
+                                             sender=u'sjohnson',
+                                             accepted=False)
 
             assert_that(site_invitation.is_accepted(), is_(False))
 
@@ -202,40 +198,7 @@ class TestSiteInvitationViews(ApplicationLayerTest):
         # Accept the invitation with an anonymous user
         inv_url = '/dataserver2/Objects/%s/@@accept-site-invitation' % inv_ntiid
         self.testapp.get(inv_url,
-                         status=204)
-        with mock_dataserver.mock_db_trans(self.ds):
-            container = component.getUtility(IInvitationsContainer)
-            accepted_invitation = container.get(u'Sunnyvale1')
-            assert_that(accepted_invitation.is_accepted(), is_(True))
-            user = User.get_user(username=u'ricky@tpb.net')
-            assert_that(user, is_not(None))
-
-        # Check that an email already associated with a NT account fails creation
-        with mock_dataserver.mock_db_trans(self.ds):
-            site_invitation = JoinSiteInvitation(code=u'Sunnyvale2',
-                                                 receiver=u'ricky@tpb.net',
-                                                 sender=u'sjohnson',
-                                                 accepted=False,
-                                                 target_site=getSite().__name__)
-            container = component.getUtility(IInvitationsContainer)
-            container.add(site_invitation)
-            inv_ntiid = to_external_ntiid_oid(site_invitation)
-
-        inv_url = '/dataserver2/Objects/%s/@@accept-site-invitation' % inv_ntiid
-        self.testapp.get(inv_url,
-                         status=409)
-
-        with mock_dataserver.mock_db_trans(self.ds):
-            container = component.getUtility(IInvitationsContainer)
-            accepted_invitation = container.get(u'Sunnyvale2')
-            # assert_that(accepted_invitation.is_accepted(), is_(True))  # TODO don't doom tx
-
-        # Check that an invitation for a different site than currently on cannot be accepted
-        with mock_dataserver.mock_db_trans(self.ds):
-            accepted_invitation.target_site = u'failure.com'
-
-        self.testapp.get(inv_url,
-                          status=409)
+                         status=302)
 
     @WithSharedApplicationMockDS(testapp=True, users=True)
     def test_accept_site_invitation_with_code(self):
@@ -243,11 +206,10 @@ class TestSiteInvitationViews(ApplicationLayerTest):
 
         # Create an invitation
         with mock_dataserver.mock_db_trans(self.ds):
-            site_invitation = JoinSiteInvitation(code=u'Sunnyvale1',
-                                                 receiver=u'ricky@tpb.net',
-                                                 sender=u'sjohnson',
-                                                 accepted=False,
-                                                 target_site=getSite().__name__)
+            site_invitation = SiteInvitation(code=u'Sunnyvale1',
+                                             receiver=u'ricky@tpb.net',
+                                             sender=u'sjohnson',
+                                             accepted=False)
 
             assert_that(site_invitation.is_accepted(), is_(False))
             container = component.getUtility(IInvitationsContainer)
@@ -258,52 +220,17 @@ class TestSiteInvitationViews(ApplicationLayerTest):
         # Accept the invitation with an anonymous user
         self.testapp.get(inv_url,
                          params={'code': u'Sunnyvale1'},
-                         status=204)
-        with mock_dataserver.mock_db_trans(self.ds):
-            container = component.getUtility(IInvitationsContainer)
-            accepted_invitation = container.get(u'Sunnyvale1')
-            assert_that(accepted_invitation.is_accepted(), is_(True))
-            user = User.get_user(username=u'ricky@tpb.net')
-            assert_that(user, is_not(None))
-
-        # Check that an email already associated with a NT account fails creation
-        with mock_dataserver.mock_db_trans(self.ds):
-            site_invitation = JoinSiteInvitation(code=u'Sunnyvale2',
-                                                 receiver=u'ricky@tpb.net',
-                                                 sender=u'sjohnson',
-                                                 accepted=False,
-                                                 target_site=getSite().__name__)
-            container = component.getUtility(IInvitationsContainer)
-            container.add(site_invitation)
-
-        self.testapp.get(inv_url,
-                         params={u'code': u'Sunnyvale2'},
-                         status=409)
-
-        with mock_dataserver.mock_db_trans(self.ds):
-            container = component.getUtility(IInvitationsContainer)
-            accepted_invitation = container.get(u'Sunnyvale2')
-            # assert_that(accepted_invitation.is_accepted(), is_(True))  # TODO don't doom tx
-
-        # Check that an invitation for a different site than currently on cannot be accepted
-        with mock_dataserver.mock_db_trans(self.ds):
-            accepted_invitation.target_site = u'failure.com'
-
-        self.testapp.get(inv_url,
-                         params={u'code': u'Sunnyvale2'},
-                         status=409)
+                         status=302)
 
     @WithSharedApplicationMockDS(testapp=True, users=True)
     def test_pending_site_invitations(self):
-
         pending_url = '/dataserver2/Invitations/@@pending-site-invitations'
 
         with mock_dataserver.mock_db_trans(self.ds):
-            site_invitation = JoinSiteInvitation(code=u'Sunnyvale1',
-                                                 receiver=u'ricky@tpb.net',
-                                                 sender=u'sjohnson',
-                                                 accepted=False,
-                                                 target_site=u'dataserver2')
+            site_invitation = SiteInvitation(code=u'Sunnyvale1',
+                                             receiver=u'ricky@tpb.net',
+                                             sender=u'sjohnson',
+                                             accepted=False)
 
             container = component.getUtility(IInvitationsContainer)
             container.add(site_invitation)
@@ -314,11 +241,11 @@ class TestSiteInvitationViews(ApplicationLayerTest):
         assert_that(body[ITEMS], has_length(1))
 
         with mock_dataserver.mock_db_trans(self.ds):
-            site_invitation = JoinSiteInvitation(code=u'Sunnyvale2',
-                                                 receiver=u'julian@tpb.net',
-                                                 sender=u'sjohnson',
-                                                 accepted=False,
-                                                 target_site=u'exclude_me')
+            site_invitation = SiteInvitation(code=u'Sunnyvale2',
+                                             receiver=u'julian@tpb.net',
+                                             sender=u'sjohnson',
+                                             accepted=False,
+                                             site=u'exclude_me')
 
             container = component.getUtility(IInvitationsContainer)
             container.add(site_invitation)
@@ -338,21 +265,59 @@ class TestSiteInvitationViews(ApplicationLayerTest):
             container = component.getUtility(IInvitationsContainer)
             container.add(site_invitation)
 
-        res = self.testapp.get(pending_url)
+        res = self.testapp.get(pending_url,
+                               {'site': 'exclude_me'})
         body = res.json_body
-        assert_that(body[ITEMS], has_length(2))
+        assert_that(body[ITEMS], has_length(1))
 
     @WithSharedApplicationMockDS(testapp=True, users=True)
     def test_generic_site_invitation(self):
-
         generic_url = '/dataserver2/Invitations/@@generic-site-invitation'
 
-        # Basic test
+        with mock_dataserver.mock_db_trans(self.ds):
+            invitations = component.getUtility(IInvitationsContainer)
+            assert_that(invitations, has_length(0))
+
+        # Create a generic code
         res = self.testapp.post_json(generic_url,
-                                     {'code': 'generic_code'},
+                                     {'code': 'generic_code1'},
                                      status=200)
         body = res.json_body
-        assert_that(body['code'], is_('generic_code'))
+        assert_that(body['code'], is_('generic_code1'))
+
+        with mock_dataserver.mock_db_trans(self.ds):
+            invitations = component.getUtility(IInvitationsContainer)
+            assert_that(invitations, has_length(1))
+
+        # Test that the generic code is a singleton
+        res = self.testapp.post_json(generic_url,
+                                     {'code': 'generic_code2'},
+                                     status=200)
+        body = res.json_body
+        assert_that(body['code'], is_('generic_code2'))
+
+        with mock_dataserver.mock_db_trans(self.ds):
+            invitations = component.getUtility(IInvitationsContainer)
+            assert_that(invitations, has_length(1))
+
+        # Test PUT
+        res = self.testapp.put_json(generic_url,
+                                    {'code': 'generic_code3'},
+                                    status=200)
+        body = res.json_body
+        assert_that(body['code'], is_('generic_code3'))
+
+        with mock_dataserver.mock_db_trans(self.ds):
+            invitations = component.getUtility(IInvitationsContainer)
+            assert_that(invitations, has_length(1))
+
+        # Test delete
+        self.testapp.delete(generic_url,
+                            status=204)
+
+        with mock_dataserver.mock_db_trans(self.ds):
+            invitations = component.getUtility(IInvitationsContainer)
+            assert_that(invitations, has_length(0))
 
         # Test no code
         self.testapp.post_json(generic_url,
@@ -366,7 +331,10 @@ class TestSiteInvitationViews(ApplicationLayerTest):
                                {'code': code},
                                status=417)
 
-        # Test accept (currently returns not implemented for the default case)
+        # Test accept
+        self.testapp.post_json(generic_url,
+                               {'code': 'generic_code1'},
+                               status=200)
         self.testapp.get('/dataserver2/Invitations/@@accept-site-invitation',
-                         params={'code': 'generic_code'},
-                         status=501)
+                         params={'code': 'generic_code1'},
+                         status=302)

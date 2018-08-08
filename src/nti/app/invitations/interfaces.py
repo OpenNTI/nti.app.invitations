@@ -12,12 +12,13 @@ from __future__ import absolute_import
 
 from zope import interface
 
+from nti.app.invitations import MessageFactory as _
+
 from nti.appserver.workspaces.interfaces import IWorkspace
 
-from nti.invitations.interfaces import IInvitation
+from nti.invitations.interfaces import IInvitation, InvitationValidationError
 from nti.invitations.interfaces import IInvitationActor
 
-from nti.schema.field import Bool
 from nti.schema.field import DecodingValidTextLine as ValidTextLine
 
 
@@ -57,10 +58,11 @@ class ISiteInvitation(interface.Interface):
     target_site = ValidTextLine(title=u'The target site name',
                                 required=True)
 
-    IsGeneric = Bool(title=u'The invitation code is generic',
-                     required=False,
-                     default=False)
-    IsGeneric.setTaggedValue('_ext_excluded_out', True)
+
+class IGenericSiteInvitation(interface.Interface):
+    """
+    Singleton site invitation interface for generic site invitations
+    """
 
 
 class ISiteInvitationActor(IInvitationActor):
@@ -69,14 +71,19 @@ class ISiteInvitationActor(IInvitationActor):
     """
 
 
-class IVerifyAndAcceptSiteInvitation(interface.Interface):
+class IChallengeLogonProvider(interface.Interface):
     """
-    An adapter that handles ensuring an invitation can be marked as accepted
-    and nofifies the appropriate subscribers.
+    A utility for defining where accepted site invitations
+    should be redirected. This can be be implemented on
+    a site-by-site basis for special login cases (OAUTH, etc)
     """
 
-    def accept(invitation):
+    def logon_url():
         """
-        Handles accepting an invitation
-        Can be implemented on a site-by-site basis to handle different behaviors
+        :return: The logon destination for the site this is configured in
         """
+
+
+class InvitationRequiredError(InvitationValidationError):
+    __doc__ = _(u'An invitation is required for account creation on this site.')
+    i18n_message = __doc__

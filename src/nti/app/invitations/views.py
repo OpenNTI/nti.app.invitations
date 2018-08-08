@@ -53,11 +53,13 @@ from nti.app.externalization.error import handle_validation_error
 from nti.app.externalization.error import handle_possible_validation_error
 
 from nti.app.invitations import MessageFactory as _
+from nti.app.invitations import GENERIC_SITE_INVITATION_MIMETYPE
 from nti.app.invitations import REL_ACCEPT_SITE_INVITATION
 from nti.app.invitations import REL_GENERIC_SITE_INVITATION
 from nti.app.invitations import REL_SEND_SITE_CSV_INVITATION
 from nti.app.invitations import REL_SEND_SITE_INVITATION
 from nti.app.invitations import SITE_INVITATION_MIMETYPE
+from nti.app.invitations import SITE_INVITATION_SESSION_KEY
 
 from nti.app.invitations import INVITATIONS
 from nti.app.invitations import REL_SEND_INVITATION
@@ -68,10 +70,12 @@ from nti.app.invitations import REL_PENDING_INVITATIONS
 from nti.app.invitations import REL_PENDING_SITE_INVITATIONS
 from nti.app.invitations import REL_TRIVIAL_DEFAULT_INVITATION_CODE
 
+from nti.app.invitations.interfaces import IChallengeLogonProvider
 from nti.app.invitations.interfaces import ISiteInvitation
 
+from nti.app.invitations.invitations import GenericSiteInvitation
 from nti.app.invitations.invitations import JoinEntityInvitation
-from nti.app.invitations.invitations import JoinSiteInvitation
+from nti.app.invitations.invitations import SiteInvitation
 
 from nti.app.invitations.utils import pending_site_invitations_for_email
 
@@ -95,15 +99,12 @@ from nti.externalization.interfaces import StandardExternalFields
 
 from nti.invitations.interfaces import IInvitation
 from nti.invitations.interfaces import IDisabledInvitation
-from nti.invitations.interfaces import InvitationActorError
-from nti.invitations.interfaces import InvitationExpiredError
 from nti.invitations.interfaces import InvitationSentEvent
 from nti.invitations.interfaces import IInvitationsContainer
 from nti.invitations.interfaces import InvitationValidationError
 from nti.invitations.interfaces import DuplicateInvitationCodeError
 
 from nti.invitations.utils import accept_invitation
-from nti.invitations.utils import get_invitation_actor
 from nti.invitations.utils import get_pending_invitations
 
 from nti.site.site import getSite
@@ -467,7 +468,7 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
 
     def check_permissions(self):
         if not is_admin_or_site_admin(self.remoteUser):
-            logger.exception(u'Failed permissions check for sending site invitation.')
+            logger.info(u'User %s failed permissions check for sending site invitation.' % (self.remoteUser,))
             raise hexc.HTTPForbidden()
 
     # TODO: This closely resembles
@@ -564,7 +565,7 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
                 self.request,
                 hexc.HTTPExpectationFailed,
                 {
-                    'message': 'Invitations are a required field.',
+                    'message': _(u'Invitations are a required field.'),
                     'code': 'InvalidSiteInvitationData'
                 },
                 None
@@ -572,8 +573,7 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
         return self._do_call(values)
 
     def create_invitation(self, email, realname, message):
-        invitation = JoinSiteInvitation()
-        invitation.target_site = getSite().__name__
+        invitation = SiteInvitation()
         invitation.receiver_email = email
         invitation.sender = self.remoteUser.username
         invitation.receiver_name = realname
@@ -584,7 +584,7 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
     def _do_call(self, values):
         # At this point we should have a values dict containing invitation destinations and message
         if self.warnings or self.invalid_emails:
-            logger.exception(u'Site Invitation input contains missing or invalid values.')
+            logger.info(u'Site Invitation input contains missing or invalid values.')
             raise_json_error(
                 self.request,
                 hexc.HTTPExpectationFailed,
@@ -630,27 +630,15 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
              name=REL_ACCEPT_SITE_INVITATION)
 class AcceptSiteInvitationView(AcceptInvitationMixin):
 
-    def _do_call(self, invitation=None):
-        request = self.request
-        invitation = invitation if invitation else self.context
-        invitation = self._validate_invitation(invitation,
-                                               check_user=False)
-        self.request.environ['nti.request_had_transaction_side_effects'] = True
-        try:
-            # Don't use the accept invitation util here as this invitation may need a callback
-            # adn/or redirect
-            if invitation.is_expired():
-                raise InvitationExpiredError(invitation)
-            actor = get_invitation_actor(invitation)
-            if actor is None:
-                raise InvitationActorError(invitation)
-            response = actor.accept(request, invitation)
-        except InvitationValidationError as e:
-            e.field = u'invitation'
-            self.handle_validation_error(request, e)
-        except Exception as e:  # pragma: no cover pylint: disable=broad-except
-            self.handle_possible_validation_error(request, e)
-        return response
+    def _do_call(self, code=None):
+        code = self.context.code if not code else code
+        url_provider = component.queryUtility(IChallengeLogonProvider)
+        if url_provider is None:
+            logger.warn(u'No challenge logon provider for site %s' % getSite())
+            return hexc.HTTPNotFound()
+        self.request.session[SITE_INVITATION_SESSION_KEY] = code
+        logon_url = url_provider.logon_url()
+        return hexc.HTTPFound(logon_url)
 
     def __call__(self):
         return self._do_call()
@@ -679,16 +667,7 @@ class AcceptSiteInvitationByCodeView(AcceptSiteInvitationView):
 
     def __call__(self):
         code = self.get_invite_code()
-        invitation = self.invitations.get_invitation_by_code(code)
-        if invitation is None:
-            logger.exception(u'Invalid invitation was attempted to be redeemed.')
-            raise_json_error(self.request,
-                             hexc.HTTPNotFound(),
-                             {'message': u'The provided invitation code is not valid.',
-                              'code': u'SiteInvitationNotFound'},
-                             None
-                             )
-        return self._do_call(invitation)
+        return self._do_call(code=code)
 
 
 @view_config(route_name='objects.generic.traversal',
@@ -701,10 +680,9 @@ class GetPendingSiteInvitationsView(AbstractAuthenticatedView):
 
     def _do_call(self):
         result = LocatedExternalDict()
-        site = self.request.params.get('site')
-        items = get_pending_invitations(mimeTypes=SITE_INVITATION_MIMETYPE)
-        if site is not None:
-            items = [item for item in items if item.target_site == site]
+        site = self.request.params.get('site') or getSite().__name__
+        items = get_pending_invitations(mimeTypes=SITE_INVITATION_MIMETYPE,
+                                        sites=site)
         result[ITEMS] = items
         result[TOTAL] = result[ITEM_COUNT] = len(items)
         result.__name__ = self.request.view_name
@@ -713,7 +691,7 @@ class GetPendingSiteInvitationsView(AbstractAuthenticatedView):
 
     def __call__(self):
         if not is_admin_or_site_admin(self.remoteUser):
-            logger.exception(u'User failed permissions check for pending site invitations.')
+            logger.exception(u'User %s failed permissions check for pending site invitations.' % (self.remoteUser,))
             raise hexc.HTTPForbidden()
         return self._do_call()
 
@@ -722,37 +700,94 @@ class GetPendingSiteInvitationsView(AbstractAuthenticatedView):
              renderer='rest',
              context=InvitationsPathAdapter,
              permission=nauth.ACT_READ,
-             request_method='POST',
+             request_method=('POST', 'PUT'),
              name=REL_GENERIC_SITE_INVITATION)
-class SetGenericInvitationCodeForSite(AbstractAuthenticatedView,
-                                      ModeledContentUploadRequestUtilsMixin):
+class SetGenericSiteInvitationCode(AbstractAuthenticatedView,
+                                   ModeledContentUploadRequestUtilsMixin):
     # This can be disabled by using the DeclineInvitationView
-    # TODO we may want to limit this to one generic code per site
 
     @Lazy
     def invitations(self):
         return component.getUtility(IInvitationsContainer)
 
     def __call__(self):
+        if not is_admin_or_site_admin(self.remoteUser):
+            logger.info(u'User %s failed permissions check for creating a generic site invitation.' % (self.remoteUser,))
+            raise hexc.HTTPForbidden()
         input = self.readInput()
         code = input.get('code')
         if code is None:
-            logger.exception(u'Generic invitation code was not provided.')
-            raise hexc.HTTPExpectationFailed(u'You must include a code to be set as the generic')
+            logger.info(u'Generic invitation code was not provided.')
+            raise hexc.HTTPExpectationFailed(_(u'You must include a code to be set as the generic'))
 
         # Arbitrary
         if len(code) > 25:
-            logger.exception(u'The provided invitation code was longer than 25 characters.')
-            raise hexc.HTTPExpectationFailed(u'Your code may not be longer than 25 characters')
+            logger.info(u'The provided invitation code %s was longer than 25 characters.' % (code,))
+            raise hexc.HTTPExpectationFailed(_(u'Your code may not be longer than 25 characters'))
 
-        invitation = JoinSiteInvitation()
-        invitation.target_site = getSite().__name__
+        generics = get_pending_invitations(mimeTypes=GENERIC_SITE_INVITATION_MIMETYPE,
+                                           sites=getSite().__name__)
+        if len(generics) > 0:
+            # There should only ever be only of these
+            if len(generics) != 1:
+                logger.warn(u'There is more than one generic site invitation for this site.')
+            for generic in generics:
+                self.invitations.remove(generic)
+
+        invitation = GenericSiteInvitation()
         invitation.sender = self.remoteUser.username
         invitation.code = code
-        invitation.IsGeneric = True
         try:
             self.invitations.add(invitation)
         except DuplicateInvitationCodeError:
-            logger.exception(u'Generic code matched an existing invitation code.')
-            return hexc.HTTPConflict(u'The code you entered is not available.')
+            logger.info(u'Generic code %s matched an existing invitation code.' % (code,))
+            return hexc.HTTPConflict(_(u'The code you entered is not available.'))
         return invitation
+
+
+@view_config(route_name='objects.generic.traversal',
+             renderer='rest',
+             context=InvitationsPathAdapter,
+             permission=nauth.ACT_READ,
+             request_method='GET',
+             name=REL_GENERIC_SITE_INVITATION)
+class GetGenericSiteInvitationCode(AbstractAuthenticatedView):
+
+    @Lazy
+    def invitations(self):
+        return component.getUtility(IInvitationsContainer)
+
+    def __call__(self):
+        result = LocatedExternalDict()
+        items = get_pending_invitations(mimeTypes=GENERIC_SITE_INVITATION_MIMETYPE,
+                                        sites=getSite().__name__)
+        result[ITEMS] = items
+        result[TOTAL] = result[ITEM_COUNT] = len(items)
+        result.__name__ = self.request.view_name
+        result.__parent__ = self.request.context
+        return result
+
+
+@view_config(route_name='objects.generic.traversal',
+             renderer='rest',
+             context=InvitationsPathAdapter,
+             permission=nauth.ACT_READ,
+             request_method='DELETE',
+             name=REL_GENERIC_SITE_INVITATION)
+class DeleteGenericSiteInvitationCode(AbstractAuthenticatedView):
+
+    @Lazy
+    def invitations(self):
+        return component.getUtility(IInvitationsContainer)
+
+    def __call__(self):
+        items = get_pending_invitations(mimeTypes=GENERIC_SITE_INVITATION_MIMETYPE,
+                                        sites=getSite().__name__)
+
+        if len(items) > 1:
+            logger.warn(u'There is more than one generic site invitation.')
+
+        for generic in items:
+            self.invitations.remove(generic)
+
+        return hexc.HTTPNoContent()

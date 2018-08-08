@@ -8,8 +8,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import absolute_import
 
-from pyramid import httpexceptions as hexc
-
 from zope import component
 from zope import interface
 
@@ -17,32 +15,25 @@ from zope.cachedescriptors.property import readproperty
 
 from zope.event import notify
 
+from nti.app.invitations import GENERIC_SITE_INVITATION_MIMETYPE
 from nti.app.invitations import JOIN_ENTITY_INVITATION_MIMETYPE
 from nti.app.invitations import SITE_INVITATION_MIMETYPE
 
+from nti.app.invitations.interfaces import IGenericSiteInvitation
 from nti.app.invitations.interfaces import IJoinEntityInvitation
 from nti.app.invitations.interfaces import IJoinEntityInvitationActor
 from nti.app.invitations.interfaces import ISiteInvitation
 from nti.app.invitations.interfaces import ISiteInvitationActor
-from nti.app.invitations.interfaces import IVerifyAndAcceptSiteInvitation
-from nti.app.invitations.utils import pending_site_invitations_for_email
-
-from nti.appserver.logon import _create_failure_response
-from nti.appserver.logon import _create_success_response
-
-from nti.coremetadata.interfaces import IDataserver
-from nti.coremetadata.interfaces import IUser
 
 from nti.dataserver.interfaces import ICommunity
 from nti.dataserver.interfaces import IFriendsList
 
-from nti.dataserver.users import User
-
 from nti.dataserver.users.entity import Entity
 
-from nti.dataserver.users.interfaces import IUserProfile
+from nti.dataserver.users.interfaces import IUserProfileSchemaProvider
 
 from nti.invitations.interfaces import InvitationAcceptedEvent
+from nti.invitations.interfaces import IInvitationsContainer
 
 from nti.invitations.model import Invitation
 
@@ -64,16 +55,28 @@ JoinCommunityInvitation = JoinEntityInvitation
 
 
 @interface.implementer(ISiteInvitation)
-class JoinSiteInvitation(Invitation):
+class SiteInvitation(Invitation):
     createDirectFieldProperties(ISiteInvitation)
 
     mimeType = mime_type = SITE_INVITATION_MIMETYPE
 
     receiver_email = alias('receiver')
+    Code = alias('code')
+
+    @readproperty
+    def target_site(self):
+        # If a target site is not explicitly set we will assume this invitation is for the current site
+        return getSite().__name__
 
     @readproperty
     def receiver_name(self):
         return getattr(self.receiver, 'realname', None)
+
+
+@interface.implementer(IGenericSiteInvitation)
+class GenericSiteInvitation(SiteInvitation):
+
+    mimeType = mime_type = GENERIC_SITE_INVITATION_MIMETYPE
 
 
 @interface.implementer(IJoinEntityInvitationActor)
@@ -104,63 +107,39 @@ class JoinEntityInvitationActor(object):
 
 
 @interface.implementer(ISiteInvitationActor)
+@component.adapter(ISiteInvitation)
 class DefaultSiteInvitationActor(object):
-    # TODO This actor is not intended to be used in production as is
 
-    def __init__(self, site):
-        self.site = site
+    def __init__(self, invitation=None):
+        self.invitation = invitation
 
-    def accept(self, request, invitation):
-        if invitation.target_site != getSite().__name__:
-            logger.exception(u'Invalid site invitation')
-            return hexc.HTTPConflict(u'The invitation you are trying to accept is not valid for this site.')
-        if invitation.IsGeneric:
-            # TODO this could be a redirect to account creation page
-            logger.exception(u'Unsupported invitation type (generic).')
-            return hexc.HTTPNotImplemented(u'Generic invitation codes are not yet supported for this site.')
-
-        dataserver = component.getUtility(IDataserver)
-        user = User.get_user(username=invitation.receiver, dataserver=dataserver)
-        if user is not None:
-            accepter = IVerifyAndAcceptSiteInvitation(user)
-            accepter.accept(invitation)
-            return hexc.HTTPConflict(u'The email this invite was sent for is already associated with an account.')
-        # We need to create them an NT account and log them in
-        else:
-            user = User.create_user(username=invitation.receiver_email,
-                                    external_value={'realname': invitation.receiver_name})
-            profile = IUserProfile(user)
-            profile.email = invitation.receiver_email
-            profile.email_verified = True
-            if user is not None:
-                accepter = IVerifyAndAcceptSiteInvitation(user)
-                accepter.accept(invitation)
-                return _create_success_response(request,
-                                                userid=user.username)
-            return _create_failure_response(request)
-
-
-@component.adapter(IUser)
-@interface.implementer(IVerifyAndAcceptSiteInvitation)
-class VerifyAndAcceptSiteInvitation(object):
-
-    def __init__(self, user):
-        self.user = user
-
-    def accept(self, invitation=None):
-        # If we get passed an invitation then we can just update it and be done
-        # otherwise try to fuzzy match the newly created user to an invite
-        profile = IUserProfile(self.user, None)
+    def accept(self, user, invitation=None):
+        profile_iface = IUserProfileSchemaProvider(user).getSchema()
+        profile = profile_iface(user)
         email = getattr(profile, 'email', None)
-        invitation = pending_site_invitations_for_email(email) if invitation is None else invitation
-        if invitation is not None and not invitation.IsGeneric:
+        result = False
+        if email == invitation.receiver and invitation.target_site == getSite().__name__:
             invitation.accepted = True
-            invitation.receiver = getattr(profile, 'username', profile)  # update
-        # The user may have gotten here through a generic invitation or our fuzzy match didn't work
-        # Let's go ahead and create an invitation for them so that it is documented they accepted an
-        # invitation to this site
-        elif invitation.IsGeneric:
-            invitation = JoinSiteInvitation(receiver=self.user,
-                                            target_site=getSite(),
-                                            accepted=True)
-        notify(InvitationAcceptedEvent(invitation, self.user))
+            invitation.receiver = getattr(user, 'username', user)  # update
+            notify(InvitationAcceptedEvent(invitation, user))
+            result = True
+        return result
+
+
+@interface.implementer(ISiteInvitationActor)
+@component.adapter(IGenericSiteInvitation)
+class DefaultGenericSiteInvitationActor(object):
+
+    def __init__(self, invitation=None):
+        self.invitation = invitation
+
+    def accept(self, user, invitation=None):
+        generic_invitation = self.invitation if invitation is None else invitation
+        invitation = SiteInvitation(receiver=getattr(user, 'username', user),
+                                    sender=generic_invitation.sender,
+                                    target_site=getSite().__name__,
+                                    accepted=True)
+        invitations = component.getUtility(IInvitationsContainer)
+        invitations.add(invitation)
+        notify(InvitationAcceptedEvent(invitation, user))
+        return True

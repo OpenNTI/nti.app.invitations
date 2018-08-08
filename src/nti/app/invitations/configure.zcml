@@ -57,14 +57,17 @@
 			 provides=".interfaces.IJoinEntityInvitationActor"
 			 for=".interfaces.IJoinEntityInvitation" />
 
-	<adapter factory=".invitations.VerifyAndAcceptSiteInvitation"
-			 provides=".interfaces.IVerifyAndAcceptSiteInvitation"
-			 for="nti.coremetadata.interfaces.IUser" />
+	<utility factory=".logon.ChallengeLogonProvider"
+			 provides=".interfaces.IChallengeLogonProvider" />
 
-	<configure zcml:condition="have devmode">
-		<adapter factory=".invitations.DefaultSiteInvitationActor"
-				 provides=".interfaces.ISiteInvitationActor"
-				 for=".interfaces.ISiteInvitation" />
-	</configure>
+	<adapter factory=".invitations.DefaultSiteInvitationActor"
+			 provides=".interfaces.ISiteInvitationActor"
+			 for=".interfaces.ISiteInvitation" />
+
+	<adapter factory=".invitations.DefaultGenericSiteInvitationActor"
+			 provides=".interfaces.ISiteInvitationActor"
+			 for=".interfaces.IGenericSiteInvitation" />
+
+	<subscriber handler=".subscribers._validate_site_invitation" />
 
 </configure>
