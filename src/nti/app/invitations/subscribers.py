@@ -52,13 +52,18 @@ def _user_removed(user, unused_event):
 def _validate_site_invitation(user, event):
     request = event.request
     invitation = request.session.get(SITE_INVITATION_SESSION_KEY)
+    invitations = component.queryUtility(IInvitationsContainer)
     if invitation is not None:
-        invitations = component.queryUtility(IInvitationsContainer)
-        invitation = invitations[invitation]  # We only have the code in the session, not the object
-        result = accept_site_invitation(user, invitation)
-        if not result:
-            logger.exception(u'Failed to accept invitation for %s' % invitation.receiver)
-            raise InvitationValidationError
+        if invitations is None:
+            logger.warn(u'There is no invitations container for this site')
+            return
+        else:
+            # We only have the code in the session, not the object
+            invitation = invitations.get_invitation_by_code(invitation)
+            result = accept_site_invitation(user, invitation)
+            if not result:
+                logger.exception(u'Failed to accept invitation for %s' % invitation.receiver)
+                raise InvitationValidationError
 
 
 @component.adapter(IUser, IUserCreatedWithRequestEvent)
