@@ -10,6 +10,7 @@ from hamcrest import is_
 from hamcrest import has_length
 
 import csv
+
 import tempfile
 
 from zope import component
@@ -17,6 +18,7 @@ from zope import component
 from nti.app.invitations.interfaces import ISiteAdminInvitation
 
 from nti.app.invitations.invitations import JoinEntityInvitation
+from nti.app.invitations.invitations import SiteAdminInvitation
 from nti.app.invitations.invitations import SiteInvitation
 
 from nti.app.testing.application_webtest import ApplicationLayerTest
@@ -162,18 +164,6 @@ class TestSiteInvitationViews(ApplicationLayerTest):
                                     status=200)
             body = res.json_body
             assert_that(body['Items'], has_length(1))
-
-            # Test duplicate invite
-            res = self.testapp.post(site_csv_invitation_url,
-                                    {'message': 'Test repeat invitation'},
-                                    upload_files=[('csv', 'test.csv'), ],
-                                    status=200)
-            body = res.json_body
-            assert_that(body[u'message'],
-                        is_(u'The provided input is missing values or contains invalid email addresses.'))
-            assert_that(body[u'code'], is_(u'InvalidSiteInvitationData'))
-            assert_that(body[u'Warnings'], is_([u'Email address: test@email.com already has a pending invitation to this site.']))
-            assert_that(body[u'InvalidEmails'], is_([]))
 
     @WithSharedApplicationMockDS(testapp=True, users=True)
     def test_accept_site_invitation(self):
@@ -339,45 +329,91 @@ class TestSiteInvitationViews(ApplicationLayerTest):
                          params={'code': 'generic_code1'},
                          status=302)
 
-    @WithSharedApplicationMockDS
+    @WithSharedApplicationMockDS(testapp=True, users=True)
     def test_send_site_admin_invitation(self):
         # The core functionality of these views are covered above
         # We are verifying that the right invite is being created here
-        site_invitation_url = '/dataserver2/Invitations/@@send-site-admin-invitations'
-        with mock_dataserver.mock_db_trans(self.ds):
-            data = {
-                'invitations':
-                    [
-                        {'email': 'good@email.com',
-                         'realname': 'Good Email'},
-                        {'email': 'passing@test.com',
-                         'realname': 'Passing Test'}
-                    ],
-                'message': 'Passing Test Case'
-            }
-            res = self.testapp.post_json(site_invitation_url,
-                                         data,
-                                         status=200)
-            body = res.json_body
-            assert_that(body['Items'], has_length(2))
+        site_invitation_url = '/dataserver2/Invitations/@@send-site-admin-invitation'
+        data = {
+            'invitations':
+                [
+                    {'email': 'good@email.com',
+                     'realname': 'Good Email'},
+                    {'email': 'passing@test.com',
+                     'realname': 'Passing Test'}
+                ],
+            'message': 'Passing Test Case'
+        }
+        res = self.testapp.post_json(site_invitation_url,
+                                     data,
+                                     status=200)
+        body = res.json_body
+        assert_that(body['Items'], has_length(2))
 
+        with mock_dataserver.mock_db_trans(self.ds):
             invitations = component.getUtility(IInvitationsContainer)
             assert_that(invitations, has_length(2))
-            for invitation in invitations:
+            for invitation in invitations.values():
                 assert_that(ISiteAdminInvitation.providedBy(invitation), is_(True))
 
-    @WithSharedApplicationMockDS
+    @WithSharedApplicationMockDS(testapp=True, users=True)
     def test_pending_site_admin_invitations(self):
         pending_url = '/dataserver2/Invitations/@@pending-site-admin-invitations'
         with mock_dataserver.mock_db_trans(self.ds):
             self._create_user(u'lahey', external_value={'email': u'lahey@tpb.net'})
             site_inv = SiteInvitation(receiver=u'ricky@tpb.net',
                                       sender=u'lahey')
-            admin_inv = SiteInvitation(receiver=u'julian@tpb.net',
-                                       sender=u'sjohnson') # Site admin user
+            admin_inv = SiteAdminInvitation(receiver=u'julian@tpb.net',
+                                            sender=u'lahey')
             invitations = component.getUtility(IInvitationsContainer)
             invitations.add(site_inv)
             invitations.add(admin_inv)
-            res = self.testapp.get(pending_url)
-            body = res.json_body
-            assert_that(body['Items', has_length(1)])
+        res = self.testapp.get(pending_url)
+        body = res.json_body
+        assert_that(body['Items'], has_length(1))
+
+    @WithSharedApplicationMockDS(testapp=True, users=True)
+    def test_challenge_invitations(self):
+        site_invitation_url = '/dataserver2/Invitations/@@send-site-invitation'
+        data = {
+            'invitations':
+                [
+                    {'email': 'good@email.com',
+                     'realname': 'Good Email'},
+                    {'email': 'passing@test.com',
+                     'realname': 'Passing Test'}
+                ],
+            'message': 'Passing Test Case'
+        }
+        res = self.testapp.post_json(site_invitation_url,
+                                     data,
+                                     status=200)
+        body = res.json_body
+        assert_that(body['Items'], has_length(2))
+
+        # Test mixed challenge and good
+        data['invitations'].append({'email': 'new@email.com',
+                                    'realname': 'New Email'})
+        res = self.testapp.post_json(site_invitation_url,
+                                     data,
+                                     status=200)
+        body = res.json_body
+        assert_that(body['Items'], has_length(1))
+        assert_that(body['Challenge']['ChallengeItems'], has_length(2))
+
+        # Test challenge to different endpoint
+        site_invitation_url = '/dataserver2/Invitations/@@send-site-admin-invitation'
+        res = self.testapp.post_json(site_invitation_url,
+                                     data,
+                                     status=200)
+        body = res.json_body
+        assert_that(body['Items'], has_length(0))
+        assert_that(body['Challenge']['ChallengeItems'], has_length(3))
+
+        # Test force
+        url = body['Challenge']['Links'][0]['href']
+        res = self.testapp.post_json(url,
+                                     data,
+                                     status=200)
+        body = res.json_body
+        assert_that(body['Items'], has_length(3))

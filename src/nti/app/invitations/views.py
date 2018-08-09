@@ -640,8 +640,8 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
             challenge[u'message'] = u'One or more pending invitations will be updated.'
             challenge[u'ChallengeItems'] = to_external_object(pending_invitations)
             challenge[u'ChallengeItemCount'] = len(pending_invitations)
+            result[u'Challenge'] = challenge
         result[ITEM_COUNT] = len(items)
-        result[u'Challenge'] = challenge
         result[TOTAL] = len(items) + len(pending_invitations)
         return result
 

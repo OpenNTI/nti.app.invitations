@@ -186,15 +186,15 @@ class DefaultSiteAdminInvitationActor(SiteInvitationActorMixin):
 
     def accept(self, user, invitation=None):
         receiver_profile = self.user_profile(user)
-        sender_profile = self.user_profile(invitation.sender)
+        sender_user = User.get_user(invitation.sender)
         # Check that the sender had the privileges to send this invite
-        if not is_admin_or_site_admin(sender_profile):
+        if not is_admin_or_site_admin(sender_user):
             logger.info(u'User %s failed permission check to grant new user site admin privileges' % invitation.sender)
             return False
         if self.check_valid_invitation(receiver_profile, invitation):
             invitation.accepted = True
             invitation.receiver = getattr(user, 'username', user)
-            self._make_site_admin(user, invitation.target_site)
+            self._make_site_admin(user, getSite())
             notify(InvitationAcceptedEvent(invitation, user))
             return True
         return False

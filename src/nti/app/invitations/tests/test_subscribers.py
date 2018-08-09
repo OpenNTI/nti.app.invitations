@@ -112,6 +112,23 @@ class TestSubscribers(ApplicationLayerTest):
             assert_that(invite.receiver, is_(u'ricky'))
             assert_that(invite.sender, is_(u'lahey'))
 
+        # Test new invitation code
+        with mock_dataserver.mock_db_trans(self.ds):
+            event.request.session[SITE_INVITATION_SESSION_KEY] = invitation.code
+            invitations = component.getUtility(IInvitationsContainer)
+            invitations.remove(invitation)
+            invitation = SiteInvitation(code=u'Sunnyvale2',
+                                        sender=u'lahey',
+                                        receiver=u'ricky@tpb.net')
+            invitations.add(invitation)
+            _validate_site_invitation(ricky, event)
+            ricky_invites = get_invitations(receivers=u'ricky')
+            assert_that(ricky_invites, has_length(1))
+            invite = ricky_invites[0]
+            assert_that(invite.is_accepted(), is_(True))
+            assert_that(invite.receiver, is_(u'ricky'))
+            assert_that(invite.sender, is_(u'lahey'))
+
     @WithSharedApplicationMockDS
     def test_invitation_required_for_user_creation(self):
 
