@@ -32,29 +32,15 @@ from nti.dataserver.tests import mock_dataserver
 
 from nti.dataserver.users.users import User
 
-from nti.invitations.interfaces import IInvitationsContainer, InvitationValidationError
+from nti.invitations.interfaces import InvitationValidationError
+from nti.invitations.interfaces import IInvitationsContainer
 
 from nti.invitations.model import Invitation
 
-from nti.invitations.utils import get_sent_invitations, get_invitations
+from nti.invitations.utils import get_invitations
+from nti.invitations.utils import get_sent_invitations
 from nti.invitations.utils import get_pending_invitations
 
-
-ZCML_STRING = u"""
-<configure	xmlns="http://namespaces.zope.org/zope"
-			xmlns:i18n="http://namespaces.zope.org/i18n"
-			xmlns:zcml="http://namespaces.zope.org/zcml">
-
-	<include package="zope.component" file="meta.zcml" />
-	<include package="zope.security" file="meta.zcml" />
-	<include package="zope.component" />
-	<include package="." file="meta.zcml" />
-
-	<configure>
-		<subscriber handler=".subscribers._require_invite_for_user_creation />
-	</configure>
-</configure>
-"""
 
 class TestSubscribers(ApplicationLayerTest):
 
