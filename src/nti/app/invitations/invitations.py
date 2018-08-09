@@ -21,6 +21,7 @@ from zope.securitypolicy.interfaces import IPrincipalRoleManager
 
 from nti.app.invitations import GENERIC_SITE_INVITATION_MIMETYPE
 from nti.app.invitations import JOIN_ENTITY_INVITATION_MIMETYPE
+from nti.app.invitations import SITE_ADMIN_INVITATION_MIMETYPE
 from nti.app.invitations import SITE_INVITATION_MIMETYPE
 
 from nti.app.invitations.interfaces import IGenericSiteInvitation
