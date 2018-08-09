@@ -59,9 +59,15 @@ class ISiteInvitation(interface.Interface):
                                 required=True)
 
 
-class IGenericSiteInvitation(interface.Interface):
+class IGenericSiteInvitation(ISiteInvitation):
     """
     Singleton site invitation interface for generic site invitations
+    """
+
+
+class ISiteAdminInvitation(ISiteInvitation):
+    """
+    Interface for a site invitation that grants the user site admin privileges
     """
 
 

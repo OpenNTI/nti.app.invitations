@@ -83,5 +83,9 @@ JOIN_ENTITY_INVITATION_MIMETYPE = u'application/vnd.nextthought.joinentityinvita
 #: elsewhere as a parameter for querying the invitation catalog
 GENERIC_SITE_INVITATION_MIMETYPE = u'application/vnd.nextthought.genericsiteinvitation'
 
+#: The mimeType for Site Admin Invitations. It is defined here so that is can be used
+#: elsewhere as a parameter for querying the invitation catalog
+SITE_ADMIN_INVITATION_MIMETYPE = u'application/vnd.nextthought.siteadmininvitation'
+
 #: The key for a request session that has a user's invitation code
 SITE_INVITATION_SESSION_KEY = u'site_invitation_code'
