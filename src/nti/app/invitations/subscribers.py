@@ -53,6 +53,8 @@ def _validate_site_invitation(user, event):
     request = event.request
     invitation = request.session.get(SITE_INVITATION_SESSION_KEY)
     if invitation is not None:
+        invitations = component.queryUtility(IInvitationsContainer)
+        invitation = invitations[invitation]  # We only have the code in the session, not the object
         result = accept_site_invitation(user, invitation)
         if not result:
             logger.exception(u'Failed to accept invitation for %s' % invitation.receiver)
