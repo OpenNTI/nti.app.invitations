@@ -57,15 +57,17 @@ from nti.app.invitations import GENERIC_SITE_INVITATION_MIMETYPE
 from nti.app.invitations import REL_ACCEPT_SITE_INVITATION
 from nti.app.invitations import REL_GENERIC_SITE_INVITATION
 from nti.app.invitations import REL_SEND_SITE_INVITATION
+from nti.app.invitations import SITE_ADMIN_INVITATION_MIMETYPE
 from nti.app.invitations import SITE_INVITATION_MIMETYPE
 from nti.app.invitations import SITE_INVITATION_SESSION_KEY
-
+from nti.app.invitations import REL_SEND_SITE_ADMIN_INVITATION
 from nti.app.invitations import INVITATIONS
 from nti.app.invitations import REL_SEND_INVITATION
 from nti.app.invitations import REL_ACCEPT_INVITATION
 from nti.app.invitations import REL_ACCEPT_INVITATIONS
 from nti.app.invitations import REL_DECLINE_INVITATION
 from nti.app.invitations import REL_PENDING_INVITATIONS
+from nti.app.invitations import REL_PENDING_SITE_ADMIN_INVITATIONS
 from nti.app.invitations import REL_PENDING_SITE_INVITATIONS
 from nti.app.invitations import REL_TRIVIAL_DEFAULT_INVITATION_CODE
 
@@ -74,6 +76,7 @@ from nti.app.invitations.interfaces import ISiteInvitation
 
 from nti.app.invitations.invitations import GenericSiteInvitation
 from nti.app.invitations.invitations import JoinEntityInvitation
+from nti.app.invitations.invitations import SiteAdminInvitation
 from nti.app.invitations.invitations import SiteInvitation
 
 from nti.app.invitations.utils import pending_site_invitations_for_email
@@ -456,6 +459,8 @@ class SendDFLInvitationView(AbstractAuthenticatedView,
 class SendSiteInvitationCodeView(AbstractAuthenticatedView,
                                  ModeledContentUploadRequestUtilsMixin):
 
+    _invitation_type = SiteInvitation
+
     def __init__(self, request):
         super(SendSiteInvitationCodeView, self).__init__(request)
         self.warnings = list()
@@ -552,7 +557,7 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
         return values
 
     def create_invitation(self, email, realname, message):
-        invitation = SiteInvitation()
+        invitation = self._invitation_type()
         invitation.receiver_email = email
         invitation.sender = self.remoteUser.username
         invitation.receiver_name = realname
@@ -659,10 +664,12 @@ class AcceptSiteInvitationByCodeView(AcceptSiteInvitationView):
              name=REL_PENDING_SITE_INVITATIONS)
 class GetPendingSiteInvitationsView(AbstractAuthenticatedView):
 
+    _invitation_mime_type = SITE_INVITATION_MIMETYPE
+
     def _do_call(self):
         result = LocatedExternalDict()
         site = self.request.params.get('site') or getSite().__name__
-        items = get_pending_invitations(mimeTypes=SITE_INVITATION_MIMETYPE,
+        items = get_pending_invitations(mimeTypes=self._invitation_mime_type,
                                         sites=site)
         result[ITEMS] = items
         result[TOTAL] = result[ITEM_COUNT] = len(items)
@@ -732,21 +739,9 @@ class SetGenericSiteInvitationCode(AbstractAuthenticatedView,
              permission=nauth.ACT_READ,
              request_method='GET',
              name=REL_GENERIC_SITE_INVITATION)
-class GetGenericSiteInvitationCode(AbstractAuthenticatedView):
+class GetGenericSiteInvitationCode(GetPendingSiteInvitationsView):
 
-    @Lazy
-    def invitations(self):
-        return component.getUtility(IInvitationsContainer)
-
-    def __call__(self):
-        result = LocatedExternalDict()
-        items = get_pending_invitations(mimeTypes=GENERIC_SITE_INVITATION_MIMETYPE,
-                                        sites=getSite().__name__)
-        result[ITEMS] = items
-        result[TOTAL] = result[ITEM_COUNT] = len(items)
-        result.__name__ = self.request.view_name
-        result.__parent__ = self.request.context
-        return result
+    _invitation_mime_type = GENERIC_SITE_INVITATION_MIMETYPE
 
 
 @view_config(route_name='objects.generic.traversal',
@@ -772,3 +767,25 @@ class DeleteGenericSiteInvitationCode(AbstractAuthenticatedView):
             self.invitations.remove(generic)
 
         return hexc.HTTPNoContent()
+
+
+@view_config(route_name='objects.generic.traversal',
+             renderer='rest',
+             context=InvitationsPathAdapter,
+             permission=nauth.ACT_READ,
+             request_method='POST',
+             name=REL_SEND_SITE_ADMIN_INVITATION)
+class SendSiteAdminInvitationView(SendSiteInvitationCodeView):
+
+    _invitation_type = SiteAdminInvitation
+
+
+@view_config(route_name='objects.generic.traversal',
+             renderer='rest',
+             context=InvitationsPathAdapter,
+             permission=nauth.ACT_READ,
+             request_method='GET',
+             name=REL_PENDING_SITE_ADMIN_INVITATIONS)
+class GetPendingSiteAdminInvitationsView(GetPendingSiteInvitationsView):
+
+    _invitation_mime_type = SITE_ADMIN_INVITATION_MIMETYPE

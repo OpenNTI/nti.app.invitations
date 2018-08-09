@@ -38,6 +38,10 @@ REL_SEND_INVITATION = u'send-invitation'
 REL_SEND_SITE_INVITATION = u'send-site-invitation'
 
 #: The link relationship type to which an authenticated
+#: user can ``POST`` data to send an admin invitation to a site
+REL_SEND_SITE_ADMIN_INVITATION = u'send-site-admin-invitation'
+
+#: The link relationship type to which an authenticated
 #: user with site admin permissions can ``POST`` a code
 #: to be set as a generic site invitation.
 REL_GENERIC_SITE_INVITATION = u'generic-site-invitation'
@@ -49,6 +53,10 @@ REL_PENDING_INVITATIONS = u'pending-invitations'
 #: The link relationship to which an authenticated
 #: site admin can ``GET`` the outstanding site invitations
 REL_PENDING_SITE_INVITATIONS = u'pending-site-invitations'
+
+#: The link relationship to which an authenticated
+#: site admin can ``GET`` the outstanding site admin invitations
+REL_PENDING_SITE_ADMIN_INVITATIONS = u'pending-site-admin-invitations'
 
 #: The link relationship type to which an authenticated
 #: user can ``POST`` data to accept outstanding invitations. Also the name of a
