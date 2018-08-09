@@ -38,10 +38,6 @@ REL_SEND_INVITATION = u'send-invitation'
 REL_SEND_SITE_INVITATION = u'send-site-invitation'
 
 #: The link relationship type to which an authenticated
-#: user can ``POST`` a csv file to send an invitation to a site
-REL_SEND_SITE_CSV_INVITATION = u'send-site-csv-invitation'
-
-#: The link relationship type to which an authenticated
 #: user with site admin permissions can ``POST`` a code
 #: to be set as a generic site invitation.
 REL_GENERIC_SITE_INVITATION = u'generic-site-invitation'

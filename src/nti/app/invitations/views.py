@@ -56,7 +56,6 @@ from nti.app.invitations import MessageFactory as _
 from nti.app.invitations import GENERIC_SITE_INVITATION_MIMETYPE
 from nti.app.invitations import REL_ACCEPT_SITE_INVITATION
 from nti.app.invitations import REL_GENERIC_SITE_INVITATION
-from nti.app.invitations import REL_SEND_SITE_CSV_INVITATION
 from nti.app.invitations import REL_SEND_SITE_INVITATION
 from nti.app.invitations import SITE_INVITATION_MIMETYPE
 from nti.app.invitations import SITE_INVITATION_SESSION_KEY
@@ -448,7 +447,7 @@ class SendDFLInvitationView(AbstractAuthenticatedView,
         return self._do_call()
 
 
-@view_defaults(route_name='objects.generic.traversal',
+@view_config(route_name='objects.generic.traversal',
                renderer='rest',
                context=InvitationsPathAdapter,
                request_method='POST',
@@ -497,29 +496,7 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
                     self.invalid_emails.append(email)
                     continue
                 result.append({'email': email, 'realname': realname})
-        else:
-            self.warnings.append(_(u"No CSV source found."))
         return result
-
-    @view_config(name=REL_SEND_SITE_CSV_INVITATION)
-    def upload_csv_invitations(self):
-        self.check_permissions()
-        values = {}
-        try:
-            values['invitations'] = self.parse_csv()
-        except:
-            logger.exception('Failed to parse CSV file')
-            raise_json_error(
-                self.request,
-                hexc.HTTPUnprocessableEntity,
-                {
-                    'message': _(u'Could not parse csv file.'),
-                    'code': 'InvalidCSVFileCodeError',
-                },
-                None)
-        # Get the invitation message and any other values
-        values.update(self.readInput())
-        return self._do_call(values)
 
     def readInput(self, value=None):
         result = None
@@ -528,7 +505,7 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
             result = CaseInsensitiveDict(result)
         return result or {}
 
-    def _validate_invitations(self, values):
+    def _validate_json_invitations(self, values):
         # Parse through the submitted emails and names to make sure all values are
         # provided and emails are valid. Because these values are coming from the
         # view, we would expect that warnings and invalid emails are rare here
@@ -553,24 +530,26 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
                 self.invalid_emails.append(email)
                 continue
 
-    @view_config(name=REL_SEND_SITE_INVITATION)
-    def send_site_invitations(self):
-        self.check_permissions()
+    def get_site_invitations(self):
         values = self.readInput()
-        invitations = values.get('invitations')
-        if invitations is not None:
-            self._validate_invitations(invitations)
-        else:
+        json_invitations = values.get('invitations', [])
+        self._validate_json_invitations(json_invitations)
+        try:
+            csv_invitations = self.parse_csv()
+        except:
+            logger.exception('Failed to parse CSV file')
             raise_json_error(
                 self.request,
-                hexc.HTTPExpectationFailed,
+                hexc.HTTPUnprocessableEntity,
                 {
-                    'message': _(u'Invitations are a required field.'),
-                    'code': 'InvalidSiteInvitationData'
+                    'message': _(u'Could not parse csv file.'),
+                    'code': 'InvalidCSVFileCodeError',
                 },
-                None
-            )
-        return self._do_call(values)
+                None)
+        # Join csv and json invitations
+        invitations = json_invitations + csv_invitations
+        values['invitations'] = invitations
+        return values
 
     def create_invitation(self, email, realname, message):
         invitation = SiteInvitation()
@@ -581,7 +560,9 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
         self.invitations.add(invitation)
         return invitation
 
-    def _do_call(self, values):
+    def __call__(self):
+        self.check_permissions()
+        values = self.get_site_invitations()
         # At this point we should have a values dict containing invitation destinations and message
         if self.warnings or self.invalid_emails:
             logger.info(u'Site Invitation input contains missing or invalid values.')

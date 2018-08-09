@@ -48,10 +48,7 @@ class TestSiteInvitationViews(ApplicationLayerTest):
             data = {}
             res = self.testapp.post_json(site_invitation_url,
                                          data,
-                                         status=417)
-            body = res.json_body
-            assert_that(body[u'message'], is_(u'Invitations are a required field.'))
-            assert_that(body[u'code'], is_(u'InvalidSiteInvitationData'))
+                                         status=200)
 
             # Send request with missing fields
             data = {'invitations':
@@ -116,7 +113,7 @@ class TestSiteInvitationViews(ApplicationLayerTest):
 
     @WithSharedApplicationMockDS(testapp=True, users=True)
     def test_send_site_csv_invitations(self):
-        site_csv_invitation_url = '/dataserver2/Invitations/@@send-site-csv-invitation'
+        site_csv_invitation_url = '/dataserver2/Invitations/@@send-site-invitation'
         with mock_dataserver.mock_db_trans(self.ds):
             # test invalid email
             data = [
