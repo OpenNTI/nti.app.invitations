@@ -6,6 +6,7 @@ from __future__ import absolute_import
 from __future__ import division
 
 from nti.app.invitations import SITE_INVITATION_MIMETYPE
+from nti.app.invitations import SITE_ADMIN_INVITATION_MIMETYPE
 
 from nti.invitations.interfaces import IDisabledInvitation
 from nti.invitations.interfaces import InvitationActorError
@@ -23,14 +24,14 @@ __docformat__ = "restructuredtext en"
 logger = __import__('logging').getLogger(__name__)
 
 
-def pending_site_invitations_for_email(user):
-    email = getattr(user, 'email', user)
+def pending_site_invitation_for_email(email):
     current_site = getSite().__name__
     pending_invitations = get_pending_invitations(receivers=email,
-                                                  mimeTypes=SITE_INVITATION_MIMETYPE)
-    for pending in pending_invitations:
-        if pending.target_site == current_site:
-            return pending
+                                                  mimeTypes=(SITE_INVITATION_MIMETYPE,
+                                                             SITE_ADMIN_INVITATION_MIMETYPE))
+    for pending_invite in pending_invitations:
+        if pending_invite.target_site == current_site:
+            return pending_invite
 
 
 def accept_site_invitation(user, invitation):

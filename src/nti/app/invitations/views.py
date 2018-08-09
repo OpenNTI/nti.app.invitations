@@ -79,7 +79,7 @@ from nti.app.invitations.invitations import JoinEntityInvitation
 from nti.app.invitations.invitations import SiteAdminInvitation
 from nti.app.invitations.invitations import SiteInvitation
 
-from nti.app.invitations.utils import pending_site_invitations_for_email
+from nti.app.invitations.utils import pending_site_invitation_for_email
 
 from nti.dataserver import authorization as nauth
 
@@ -92,6 +92,8 @@ from nti.dataserver.interfaces import IDynamicSharingTargetFriendsList
 from nti.dataserver.users.interfaces import IUserProfile
 
 from nti.dataserver.users.users import User
+
+from nti.externalization.externalization import to_external_object
 
 from nti.externalization.integer_strings import to_external_string
 from nti.externalization.integer_strings import from_external_string
@@ -111,7 +113,10 @@ from nti.invitations.utils import get_pending_invitations
 
 from nti.site.site import getSite
 
+from nti.links import Link
+
 ITEMS = StandardExternalFields.ITEMS
+LINKS = StandardExternalFields.LINKS
 TOTAL = StandardExternalFields.TOTAL
 ITEM_COUNT = StandardExternalFields.ITEM_COUNT
 
@@ -451,14 +456,13 @@ class SendDFLInvitationView(AbstractAuthenticatedView,
 
 
 @view_config(route_name='objects.generic.traversal',
-               renderer='rest',
-               context=InvitationsPathAdapter,
-               request_method='POST',
-               permission=nauth.ACT_READ,  # Do the permission check in the view
-               name=REL_SEND_SITE_INVITATION)
+             renderer='rest',
+             context=InvitationsPathAdapter,
+             request_method='POST',
+             permission=nauth.ACT_READ,  # Do the permission check in the view
+             name=REL_SEND_SITE_INVITATION)
 class SendSiteInvitationCodeView(AbstractAuthenticatedView,
                                  ModeledContentUploadRequestUtilsMixin):
-
     _invitation_type = SiteInvitation
 
     def __init__(self, request):
@@ -565,9 +569,22 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
         self.invitations.add(invitation)
         return invitation
 
+    def update_invitation(self, invitation, email, realname, message):
+        old_code = invitation.code
+        self.invitations.remove(invitation)
+        new_invitation = self._invitation_type()
+        new_invitation.receiver_email = email
+        new_invitation.sender = self.remoteUser.username
+        new_invitation.receiver_name = realname
+        new_invitation.message = message
+        new_invitation.code = old_code
+        self.invitations.add(new_invitation)
+        return new_invitation
+
     def __call__(self):
         self.check_permissions()
         values = self.get_site_invitations()
+        force = self.request.params.get('force')
         # At this point we should have a values dict containing invitation destinations and message
         if self.warnings or self.invalid_emails:
             logger.info(u'Site Invitation input contains missing or invalid values.')
@@ -589,23 +606,43 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
         result.__parent__ = self.request.context
 
         message = values.get('message')
-
+        pending_invitations = []
+        challenge = LocatedExternalDict()
         # pylint: disable=no-member
         for user_dict in values['invitations']:
             email = user_dict['email']
             realname = user_dict['realname']
-            pending_invitation = pending_site_invitations_for_email(email)
+            pending_invitation = pending_site_invitation_for_email(email)
             # Check if this user already has an invite to this site
-            # we don't want to have multiple invites for the same user floating around
-            # so just send them another email
             if pending_invitation is not None:
-                invitation = pending_invitation
+                if force:
+                    invitation = self.update_invitation(pending_invitation,
+                                                        email,
+                                                        realname,
+                                                        message)
+                    items.append(invitation)
+                    notify(InvitationSentEvent(invitation, email))
+                else:
+                    pending_invitations.append(pending_invitation)
             else:
                 invitation = self.create_invitation(email, realname, message)
-            items.append(invitation)
-            notify(InvitationSentEvent(invitation, email))
-
-        result[TOTAL] = result[ITEM_COUNT] = len(items)
+                items.append(invitation)
+                notify(InvitationSentEvent(invitation, email))
+        if len(pending_invitations) > 0:
+            links = (
+                Link(self.request.path,
+                     rel='confirm',
+                     params={'force': True},
+                     method='POST'),
+            )
+            challenge[LINKS] = to_external_object(links)
+            challenge[u'code'] = u'UpdatePendingInvitations'
+            challenge[u'message'] = u'One or more pending invitations will be updated.'
+            challenge[u'ChallengeItems'] = to_external_object(pending_invitations)
+            challenge[u'ChallengeItemCount'] = len(pending_invitations)
+        result[ITEM_COUNT] = len(items)
+        result[u'Challenge'] = challenge
+        result[TOTAL] = len(items) + len(pending_invitations)
         return result
 
 
@@ -663,7 +700,6 @@ class AcceptSiteInvitationByCodeView(AcceptSiteInvitationView):
              request_method='GET',
              name=REL_PENDING_SITE_INVITATIONS)
 class GetPendingSiteInvitationsView(AbstractAuthenticatedView):
-
     _invitation_mime_type = SITE_INVITATION_MIMETYPE
 
     def _do_call(self):
@@ -700,7 +736,8 @@ class SetGenericSiteInvitationCode(AbstractAuthenticatedView,
 
     def __call__(self):
         if not is_admin_or_site_admin(self.remoteUser):
-            logger.info(u'User %s failed permissions check for creating a generic site invitation.' % (self.remoteUser,))
+            logger.info(
+                u'User %s failed permissions check for creating a generic site invitation.' % (self.remoteUser,))
             raise hexc.HTTPForbidden()
         input = self.readInput()
         code = input.get('code')
@@ -740,7 +777,6 @@ class SetGenericSiteInvitationCode(AbstractAuthenticatedView,
              request_method='GET',
              name=REL_GENERIC_SITE_INVITATION)
 class GetGenericSiteInvitationCode(GetPendingSiteInvitationsView):
-
     _invitation_mime_type = GENERIC_SITE_INVITATION_MIMETYPE
 
 
@@ -776,7 +812,6 @@ class DeleteGenericSiteInvitationCode(AbstractAuthenticatedView):
              request_method='POST',
              name=REL_SEND_SITE_ADMIN_INVITATION)
 class SendSiteAdminInvitationView(SendSiteInvitationCodeView):
-
     _invitation_type = SiteAdminInvitation
 
 
@@ -787,5 +822,4 @@ class SendSiteAdminInvitationView(SendSiteInvitationCodeView):
              request_method='GET',
              name=REL_PENDING_SITE_ADMIN_INVITATIONS)
 class GetPendingSiteAdminInvitationsView(GetPendingSiteInvitationsView):
-
     _invitation_mime_type = SITE_ADMIN_INVITATION_MIMETYPE

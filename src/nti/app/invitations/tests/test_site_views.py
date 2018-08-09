@@ -14,6 +14,8 @@ import tempfile
 
 from zope import component
 
+from nti.app.invitations.interfaces import ISiteAdminInvitation
+
 from nti.app.invitations.invitations import JoinEntityInvitation
 from nti.app.invitations.invitations import SiteInvitation
 
@@ -162,15 +164,16 @@ class TestSiteInvitationViews(ApplicationLayerTest):
             assert_that(body['Items'], has_length(1))
 
             # Test duplicate invite
-            original_invitation = body['Items'][0]
             res = self.testapp.post(site_csv_invitation_url,
                                     {'message': 'Test repeat invitation'},
                                     upload_files=[('csv', 'test.csv'), ],
                                     status=200)
             body = res.json_body
-            assert_that(body['Items'], has_length(1))
-            invitation = body['Items'][0]
-            assert_that(invitation, is_(original_invitation))
+            assert_that(body[u'message'],
+                        is_(u'The provided input is missing values or contains invalid email addresses.'))
+            assert_that(body[u'code'], is_(u'InvalidSiteInvitationData'))
+            assert_that(body[u'Warnings'], is_([u'Email address: test@email.com already has a pending invitation to this site.']))
+            assert_that(body[u'InvalidEmails'], is_([]))
 
     @WithSharedApplicationMockDS(testapp=True, users=True)
     def test_accept_site_invitation(self):
@@ -335,3 +338,46 @@ class TestSiteInvitationViews(ApplicationLayerTest):
         self.testapp.get('/dataserver2/Invitations/@@accept-site-invitation',
                          params={'code': 'generic_code1'},
                          status=302)
+
+    @WithSharedApplicationMockDS
+    def test_send_site_admin_invitation(self):
+        # The core functionality of these views are covered above
+        # We are verifying that the right invite is being created here
+        site_invitation_url = '/dataserver2/Invitations/@@send-site-admin-invitations'
+        with mock_dataserver.mock_db_trans(self.ds):
+            data = {
+                'invitations':
+                    [
+                        {'email': 'good@email.com',
+                         'realname': 'Good Email'},
+                        {'email': 'passing@test.com',
+                         'realname': 'Passing Test'}
+                    ],
+                'message': 'Passing Test Case'
+            }
+            res = self.testapp.post_json(site_invitation_url,
+                                         data,
+                                         status=200)
+            body = res.json_body
+            assert_that(body['Items'], has_length(2))
+
+            invitations = component.getUtility(IInvitationsContainer)
+            assert_that(invitations, has_length(2))
+            for invitation in invitations:
+                assert_that(ISiteAdminInvitation.providedBy(invitation), is_(True))
+
+    @WithSharedApplicationMockDS
+    def test_pending_site_admin_invitations(self):
+        pending_url = '/dataserver2/Invitations/@@pending-site-admin-invitations'
+        with mock_dataserver.mock_db_trans(self.ds):
+            self._create_user(u'lahey', external_value={'email': u'lahey@tpb.net'})
+            site_inv = SiteInvitation(receiver=u'ricky@tpb.net',
+                                      sender=u'lahey')
+            admin_inv = SiteInvitation(receiver=u'julian@tpb.net',
+                                       sender=u'sjohnson') # Site admin user
+            invitations = component.getUtility(IInvitationsContainer)
+            invitations.add(site_inv)
+            invitations.add(admin_inv)
+            res = self.testapp.get(pending_url)
+            body = res.json_body
+            assert_that(body['Items', has_length(1)])
