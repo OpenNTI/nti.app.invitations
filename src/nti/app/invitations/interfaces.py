@@ -78,7 +78,7 @@ class IChallengeLogonProvider(interface.Interface):
     a site-by-site basis for special login cases (OAUTH, etc)
     """
 
-    def logon_url():
+    def logon_url(request):
         """
         :return: The logon destination for the site this is configured in
         """

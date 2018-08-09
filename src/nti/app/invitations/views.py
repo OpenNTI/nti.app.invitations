@@ -637,7 +637,7 @@ class AcceptSiteInvitationView(AcceptInvitationMixin):
             logger.warn(u'No challenge logon provider for site %s' % getSite())
             return hexc.HTTPNotFound()
         self.request.session[SITE_INVITATION_SESSION_KEY] = code
-        logon_url = url_provider.logon_url()
+        logon_url = url_provider.logon_url(self.request)
         return hexc.HTTPFound(logon_url)
 
     def __call__(self):

@@ -13,8 +13,6 @@ from nti.schema.fieldproperty import createDirectFieldProperties
 
 from nti.schema.schema import SchemaConfigured
 
-from nti.site.site import getSite
-
 __docformat__ = "restructuredtext en"
 
 logger = __import__('logging').getLogger(__name__)
@@ -24,5 +22,5 @@ logger = __import__('logging').getLogger(__name__)
 class ChallengeLogonProvider(SchemaConfigured):
     createDirectFieldProperties(IChallengeLogonProvider)
 
-    def logon_url(self):
-        return getSite().__name__
+    def logon_url(self, request):
+        return request.application_url
