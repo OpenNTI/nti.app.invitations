@@ -611,14 +611,13 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
 
         message = values.get('message')
         pending_invitations = []
-        challenge = LocatedExternalDict()
         # pylint: disable=no-member
         for user_dict in values['invitations']:
             email = user_dict['email']
             realname = user_dict['realname']
             pending_invitation = pending_site_invitation_for_email(email)
             # Check if this user already has an invite to this site
-            if pending_invitation is not None:
+            if pending_invitation is not None and type(pending_invitation) is not self._invitation_type:
                 if force:
                     invitation = self.update_invitation(pending_invitation,
                                                         email,
@@ -633,6 +632,12 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
                 items.append(invitation)
                 notify(InvitationSentEvent(invitation, email))
         if len(pending_invitations) > 0:
+            challenge = dict()
+            challenge[ITEMS] = to_external_object(pending_invitations)
+            challenge[ITEM_COUNT] = challenge[TOTAL] = len(pending_invitations)
+            challenge['message'] = _(u'%s pending invitations will be updated to a different role.' %
+                                     len(pending_invitations))
+            challenge['code'] = u'UpdatePendingInvitations'
             links = (
                 Link(self.request.path,
                      rel='confirm',
@@ -640,13 +645,11 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
                      method='POST'),
             )
             challenge[LINKS] = to_external_object(links)
-            challenge[u'code'] = u'UpdatePendingInvitations'
-            challenge[u'message'] = u'One or more pending invitations will be updated.'
-            challenge[u'ChallengeItems'] = to_external_object(pending_invitations)
-            challenge[u'ChallengeItemCount'] = len(pending_invitations)
-            result[u'Challenge'] = challenge
-        result[ITEM_COUNT] = len(items)
-        result[TOTAL] = len(items) + len(pending_invitations)
+            raise_json_error(self.request,
+                             hexc.HTTPConflict,
+                             challenge,
+                             None)
+        result[TOTAL] = result[ITEM_COUNT] = len(items)
         return result
 
 
