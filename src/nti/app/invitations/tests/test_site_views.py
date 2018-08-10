@@ -398,20 +398,20 @@ class TestSiteInvitationViews(ApplicationLayerTest):
                                      data,
                                      status=200)
         body = res.json_body
-        assert_that(body['Items'], has_length(1))
-        assert_that(body['Challenge']['ChallengeItems'], has_length(2))
+        assert_that(body['Items'], has_length(3))
 
         # Test challenge to different endpoint
         site_invitation_url = '/dataserver2/Invitations/@@send-site-admin-invitation'
         res = self.testapp.post_json(site_invitation_url,
                                      data,
-                                     status=200)
+                                     status=409)
         body = res.json_body
-        assert_that(body['Items'], has_length(0))
-        assert_that(body['Challenge']['ChallengeItems'], has_length(3))
+        assert_that(body[ITEMS], has_length(3))
+        assert_that(body['code'], is_(u'UpdatePendingInvitations'))
+        assert_that(body['message'], is_(u'3 pending invitations will be updated to a different role.'))
 
         # Test force
-        url = body['Challenge']['Links'][0]['href']
+        url = body['Links'][0]['href']
         res = self.testapp.post_json(url,
                                      data,
                                      status=200)
