@@ -26,6 +26,7 @@ from nti.dataserver.interfaces import IUser
 from nti.dataserver.users.interfaces import IUserProfile
 from nti.dataserver.users.interfaces import IUserProfileSchemaProvider
 
+from nti.invitations.interfaces import InvitationCodeError
 from nti.invitations.interfaces import InvitationValidationError
 from nti.invitations.interfaces import IInvitationsContainer
 
@@ -56,28 +57,30 @@ def _validate_site_invitation(user, event):
     invitation_code = request.session.get(SITE_INVITATION_SESSION_KEY)
     invitations = component.queryUtility(IInvitationsContainer)
     if invitation_code is not None:
-        if invitations is None:
-            logger.warn(u'There is no invitations container for this site')
-            return
-        else:
-            # We only have the code in the session, not the object
-            invitation = invitations.get_invitation_by_code(invitation_code)
-            if invitation is None:
-                # There is a possibility that the invitation tied to this code
-                # has been rescended and the user now has a new invitation
-                # so we will check if there is one for this email
-                profile_iface = IUserProfileSchemaProvider(user).getSchema()
-                profile = profile_iface(user)
-                email = getattr(profile, 'email', None)
-                invitation = pending_site_invitation_for_email(email)
-            result = accept_site_invitation(user, invitation)
-            if not result:
-                logger.exception(u'Failed to accept invitation for %s' % invitation.receiver)
-                raise InvitationValidationError
+        # Make sure the container exists
+        assert invitations is not None
+
+        # We only have the code in the session, not the object
+        invitation = invitations.get_invitation_by_code(invitation_code)
+        if invitation is None:
+            # There is a possibility that the invitation tied to this code
+            # has been rescended and the user now has a new invitation
+            # so we will check if there is one for this email
+            profile_iface = IUserProfileSchemaProvider(user).getSchema()
+            profile = profile_iface(user)
+            email = getattr(profile, 'email', None)
+            invitation = pending_site_invitation_for_email(email)
+        if invitation is None:
+            logger.info(u'Unable to find an invitation for user %s' % user)
+            raise InvitationCodeError
+        result = accept_site_invitation(user, invitation)
+        if not result:
+            logger.exception(u'Failed to accept invitation for %s' % invitation.receiver)
+            raise InvitationValidationError
 
 
 @component.adapter(IUser, IUserCreatedWithRequestEvent)
-def _require_invite_for_user_creation(user, event):
+def require_invite_for_user_creation(user, event):
     request = event.request
     invitation = request.session.get(SITE_INVITATION_SESSION_KEY)
     if invitation is None:

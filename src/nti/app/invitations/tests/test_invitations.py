@@ -73,7 +73,8 @@ class TesInvitations(ApplicationLayerTest):
             self._create_user(u"lahey", external_value={'email': u"lahey@tpb.net"})
             invitation = SiteInvitation(code=u'Sunnyvale1',
                                         receiver=u'ricky@tpb.net',
-                                        sender=u'lahey')
+                                        sender=u'lahey',
+                                        target_site=u'dataserver2')
             component.getUtility(IInvitationsContainer).add(invitation)
             actor = DefaultSiteInvitationActor()
 
@@ -105,7 +106,8 @@ class TesInvitations(ApplicationLayerTest):
         with mock_dataserver.mock_db_trans(self.ds):
             invitation = SiteInvitation(code=u'Sunnyvale2',
                                         receiver=u'julian@tpb.net',
-                                        sender=u'lahey')
+                                        sender=u'lahey',
+                                        target_site=u'dataserver2')
             component.getUtility(IInvitationsContainer).add(invitation)
             result = actor.accept(ricky_user, invitation)
             assert_that(result, is_(False))
@@ -130,7 +132,8 @@ class TesInvitations(ApplicationLayerTest):
         with mock_dataserver.mock_db_trans(self.ds):
             self._create_user(u"lahey", external_value={'email': u"lahey@tpb.net"})
             invitation = GenericSiteInvitation(code=u'Sunnyvale',
-                                               sender=u'lahey')
+                                               sender=u'lahey',
+                                               target_site=u'dataserver2')
             component.getUtility(IInvitationsContainer).add(invitation)
             actor = DefaultGenericSiteInvitationActor()
 
@@ -172,7 +175,8 @@ class TesInvitations(ApplicationLayerTest):
             self._create_user(u"lahey", external_value={'email': u"lahey@tpb.net"})
             invitation = SiteAdminInvitation(code=u'Sunnyvale1',
                                              receiver=u'ricky@tpb.net',
-                                             sender=u'sjohnson@nextthought.com')  # admin user
+                                             sender=u'sjohnson@nextthought.com',
+                                             target_site=u'dataserver2')
             component.getUtility(IInvitationsContainer).add(invitation)
             actor = DefaultSiteAdminInvitationActor()
 
@@ -200,30 +204,6 @@ class TesInvitations(ApplicationLayerTest):
 
             container = component.getUtility(IInvitationsContainer)
             assert_that(container, has_length(1))
-
-        # Test invalid permissions
-        with mock_dataserver.mock_db_trans(self.ds):
-            invitation = SiteAdminInvitation(code=u'Sunnyvale2',
-                                             receiver=u'julian@tpb.net',
-                                             sender=u'lahey')
-            invitations = component.getUtility(IInvitationsContainer)
-            invitations.add(invitation)
-
-            julian_user = self._create_user(u"julian", external_value={'email': u"julian@tpb.net"})
-            result = actor.accept(julian_user, invitation)
-            assert_that(result, is_(False))
-            assert_that(invitation.is_accepted(), is_(False))
-            assert_that(invitation.receiver, is_(u'julian@tpb.net'))
-
-            assert_that(is_site_admin(julian_user), is_(False))
-            invitations = get_sent_invitations(u'lahey')
-            assert_that(invitations, has_length(1))
-
-            invitations = get_pending_invitations()
-            assert_that(invitations, has_length(1))
-
-            container = component.getUtility(IInvitationsContainer)
-            assert_that(container, has_length(2))
 
     @WithSharedApplicationMockDS
     def test_accept_site_invitation(self):

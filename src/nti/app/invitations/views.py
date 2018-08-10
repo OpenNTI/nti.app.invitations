@@ -566,6 +566,8 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
         invitation.sender = self.remoteUser.username
         invitation.receiver_name = realname
         invitation.message = message
+        # TODO if this is changed to not be forced to the current site, sender permission's check needs updated
+        invitation.target_site = getSite().__name__
         self.invitations.add(invitation)
         return invitation
 
@@ -578,6 +580,8 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
         new_invitation.receiver_name = realname
         new_invitation.message = message
         new_invitation.code = old_code
+        # TODO if this is changed to not be forced to the current site, sender permission's check needs updated
+        new_invitation.target_site = getSite().__name__
         self.invitations.add(new_invitation)
         return new_invitation
 

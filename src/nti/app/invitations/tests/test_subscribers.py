@@ -10,14 +10,22 @@ from __future__ import absolute_import
 from hamcrest import is_not, is_
 from hamcrest import has_length
 from hamcrest import assert_that
+
 from zope.component import getGlobalSiteManager
+
 from zope.event import notify
 
 from nti.app.invitations import SITE_INVITATION_SESSION_KEY
+
 from nti.app.invitations.interfaces import InvitationRequiredError
+
 from nti.app.invitations.invitations import SiteInvitation
-from nti.app.invitations.subscribers import _validate_site_invitation, _require_invite_for_user_creation
+
+from nti.app.invitations.subscribers import _validate_site_invitation
+from nti.app.invitations.subscribers import require_invite_for_user_creation
+
 from nti.app.testing.request_response import DummyRequest
+
 from nti.appserver.interfaces import UserCreatedWithRequestEvent
 
 does_not = is_not
@@ -86,14 +94,15 @@ class TestSubscribers(ApplicationLayerTest):
             request = DummyRequest()
             event = UserCreatedWithRequestEvent(ricky, request)
             _validate_site_invitation(ricky, event)
-        except Exception:
-            self.fail(u'Unexpected exception in subscriber.')
+        except Exception as e:
+            self.fail(u'Unexpected exception in subscriber. %s' % e.message)
 
         # Test failed acceptance
         with mock_dataserver.mock_db_trans(self.ds):
             invitation = SiteInvitation(code=u'Sunnyvale1',
                                         sender=u'lahey',
-                                        receiver=u'ricky@tpb.net')
+                                        receiver=u'ricky@tpb.net',
+                                        target_site=u'dataserver2')
             invitations = component.getUtility(IInvitationsContainer)
             invitations.add(invitation)
 
@@ -119,7 +128,8 @@ class TestSubscribers(ApplicationLayerTest):
             invitations.remove(invitation)
             invitation = SiteInvitation(code=u'Sunnyvale2',
                                         sender=u'lahey',
-                                        receiver=u'ricky@tpb.net')
+                                        receiver=u'ricky@tpb.net',
+                                        target_site=u'dataserver2')
             invitations.add(invitation)
             _validate_site_invitation(ricky, event)
             ricky_invites = get_invitations(receivers=u'ricky')
@@ -139,23 +149,30 @@ class TestSubscribers(ApplicationLayerTest):
         request = DummyRequest()
         event = UserCreatedWithRequestEvent(user, request)
         with self.assertRaises(InvitationRequiredError):
-            _require_invite_for_user_creation(user, event)
+            require_invite_for_user_creation(user, event)
 
         # Test the subscriber isn't hit without zcml registration
         try:
             notify(event)
-        except Exception:
-            self.fail(u'Unexpected exception in subscriber.')
+        except Exception as e:
+            self.fail(u'Unexpected exception in subscriber. %s' % e.message)
 
         gsm = getGlobalSiteManager()
-        gsm.registerHandler(_require_invite_for_user_creation)
+        gsm.registerHandler(require_invite_for_user_creation)
         with self.assertRaises(InvitationRequiredError):
             notify(event)
 
-        event.request.session[SITE_INVITATION_SESSION_KEY] = u'code'
-        try:
-            notify(event)
-        except Exception:
-            self.fail(u'Unexpected exception in subscriber.')
+        with mock_dataserver.mock_db_trans(self.ds):
+            invitations = component.getUtility(IInvitationsContainer)
+            invitation = SiteInvitation(code=u'code',
+                                        sender=u'sjohnson@nextthought.com',
+                                        receiver=u'user@test.com',
+                                        target_site=u'dataserver2')
+            invitations.add(invitation)
+            event.request.session[SITE_INVITATION_SESSION_KEY] = u'code'
+            try:
+                notify(event)
+            except Exception as e:
+                self.fail(u'Unexpected exception in subscriber. %s' % e.message)
 
-        gsm.unregisterHandler(_require_invite_for_user_creation)
+        gsm.unregisterHandler(require_invite_for_user_creation)

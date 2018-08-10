@@ -74,11 +74,6 @@ class SiteInvitation(Invitation):
     Code = alias('code')
 
     @readproperty
-    def target_site(self):
-        # If a target site is not explicitly set we will assume this invitation is for the current site
-        return getSite().__name__
-
-    @readproperty
     def receiver_name(self):
         return getattr(self.receiver, 'realname', None)
 
@@ -186,11 +181,6 @@ class DefaultSiteAdminInvitationActor(SiteInvitationActorMixin):
 
     def accept(self, user, invitation=None):
         receiver_profile = self.user_profile(user)
-        sender_user = User.get_user(invitation.sender)
-        # Check that the sender had the privileges to send this invite
-        if not is_admin_or_site_admin(sender_user):
-            logger.info(u'User %s failed permission check to grant new user site admin privileges' % invitation.sender)
-            return False
         if self.check_valid_invitation(receiver_profile, invitation):
             invitation.accepted = True
             invitation.receiver = getattr(user, 'username', user)
