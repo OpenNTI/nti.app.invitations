@@ -24,7 +24,6 @@ from nti.appserver.interfaces import IUserCreatedWithRequestEvent
 from nti.dataserver.interfaces import IUser
 
 from nti.dataserver.users.interfaces import IUserProfile
-from nti.dataserver.users.interfaces import IUserProfileSchemaProvider
 
 from nti.invitations.interfaces import InvitationCodeError
 from nti.invitations.interfaces import InvitationValidationError
@@ -41,7 +40,7 @@ def _user_removed(user, unused_event):
     # check unaccepted invitations sent via username
     invitations.update(get_sent_invitations(user.username))
     # check unaccepted invitations sent via user's email
-    profile = IUserProfile(user, None)
+    profile = IUserProfile(user)
     email = getattr(profile, 'email', None)
     if email:
         invitations.update(get_sent_invitations(email))
@@ -66,8 +65,7 @@ def _validate_site_invitation(user, event):
             # There is a possibility that the invitation tied to this code
             # has been rescended and the user now has a new invitation
             # so we will check if there is one for this email
-            profile_iface = IUserProfileSchemaProvider(user).getSchema()
-            profile = profile_iface(user)
+            profile = IUserProfile(user)
             email = getattr(profile, 'email', None)
             invitation = pending_site_invitation_for_email(email)
         if invitation is None:
