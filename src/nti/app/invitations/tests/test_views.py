@@ -12,6 +12,7 @@ from hamcrest import has_entry
 from hamcrest import has_length
 from hamcrest import assert_that
 from hamcrest import contains_string
+
 does_not = is_not
 
 import fudge
@@ -46,7 +47,6 @@ class TestInvitationViews(ApplicationLayerTest):
 
     @WithSharedApplicationMockDS
     def test_invalid_invitation_code(self):
-
         with mock_dataserver.mock_db_trans(self.ds):
             self._create_user()
 
@@ -71,7 +71,6 @@ class TestInvitationViews(ApplicationLayerTest):
 
     @WithSharedApplicationMockDS
     def test_wrong_user(self):
-
         with mock_dataserver.mock_db_trans(self.ds):
             self._create_user()
             self._create_user(u'ossmkitty')
@@ -88,7 +87,6 @@ class TestInvitationViews(ApplicationLayerTest):
     @WithSharedApplicationMockDS
     @fudge.patch('nti.app.invitations.views.accept_invitation')
     def test_validation_accept_invitation(self, mock_ai):
-
         with mock_dataserver.mock_db_trans(self.ds):
             invitations = component.getUtility(IInvitationsContainer)
             invitation = Invitation(receiver='ossmkitty',
@@ -161,7 +159,6 @@ class TestInvitationViews(ApplicationLayerTest):
 
     @WithSharedApplicationMockDS
     def test_valid_code_community(self):
-
         with mock_dataserver.mock_db_trans(self.ds):
             self._create_user()
             comm = Community.create_community(username=u'Bankai')
@@ -181,7 +178,6 @@ class TestInvitationViews(ApplicationLayerTest):
 
     @WithSharedApplicationMockDS
     def test_valid_code_friends(self):
-
         with mock_dataserver.mock_db_trans(self.ds):
             self._create_user()
             owner = self._create_user('ichigo')
@@ -204,7 +200,6 @@ class TestInvitationViews(ApplicationLayerTest):
 
     @WithSharedApplicationMockDS
     def test_pending_invitations(self):
-
         with mock_dataserver.mock_db_trans(self.ds):
             self._create_user()
             comm = Community.create_community(username=u'Bankai')
@@ -233,7 +228,6 @@ class TestInvitationViews(ApplicationLayerTest):
 
     @WithSharedApplicationMockDS
     def test_decline_invitations(self):
-
         with mock_dataserver.mock_db_trans(self.ds):
             self._create_user()
             comm = Community.create_community(username=u'Bankai')
@@ -248,3 +242,4 @@ class TestInvitationViews(ApplicationLayerTest):
         testapp.post('/dataserver2/Invitations/%s/@@decline' % code,
                      extra_environ=self._make_extra_environ(),
                      status=204)
+

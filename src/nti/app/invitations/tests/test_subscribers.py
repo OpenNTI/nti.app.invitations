@@ -7,9 +7,27 @@ from __future__ import absolute_import
 
 # pylint: disable=protected-access,too-many-public-methods,arguments-differ
 
-from hamcrest import is_not
+from hamcrest import is_not, is_
 from hamcrest import has_length
 from hamcrest import assert_that
+
+from zope.component import getGlobalSiteManager
+
+from zope.event import notify
+
+from nti.app.invitations import SITE_INVITATION_SESSION_KEY
+
+from nti.app.invitations.interfaces import InvitationRequiredError
+
+from nti.app.invitations.invitations import SiteInvitation
+
+from nti.app.invitations.subscribers import _validate_site_invitation
+from nti.app.invitations.subscribers import require_invite_for_user_creation
+
+from nti.app.testing.request_response import DummyRequest
+
+from nti.appserver.interfaces import UserCreatedWithRequestEvent
+
 does_not = is_not
 
 from zope import component
@@ -22,10 +40,12 @@ from nti.dataserver.tests import mock_dataserver
 
 from nti.dataserver.users.users import User
 
+from nti.invitations.interfaces import InvitationValidationError
 from nti.invitations.interfaces import IInvitationsContainer
 
 from nti.invitations.model import Invitation
 
+from nti.invitations.utils import get_invitations
 from nti.invitations.utils import get_sent_invitations
 from nti.invitations.utils import get_pending_invitations
 
@@ -62,3 +82,97 @@ class TestSubscribers(ApplicationLayerTest):
 
             container = component.getUtility(IInvitationsContainer)
             assert_that(container, has_length(0))
+
+    @WithSharedApplicationMockDS
+    def test_validate_site_invitation(self):
+        with mock_dataserver.mock_db_trans(self.ds):
+            ricky = self._create_user(u'ricky', external_value={'email': u'ricky@tpb.net'})
+            lahey = self._create_user(u'lahey', external_value={'email': u'lahey@tpb.net'})
+
+        # Make sure no exceptions are raised without an invitation
+        try:
+            request = DummyRequest()
+            event = UserCreatedWithRequestEvent(ricky, request)
+            _validate_site_invitation(ricky, event)
+        except Exception as e:
+            self.fail(u'Unexpected exception in subscriber. %s' % e.message)
+
+        # Test failed acceptance
+        with mock_dataserver.mock_db_trans(self.ds):
+            invitation = SiteInvitation(code=u'Sunnyvale1',
+                                        sender=u'lahey',
+                                        receiver=u'ricky@tpb.net',
+                                        target_site=u'dataserver2')
+            invitations = component.getUtility(IInvitationsContainer)
+            invitations.add(invitation)
+
+            event.request.session[SITE_INVITATION_SESSION_KEY] = invitation.code
+            with self.assertRaises(InvitationValidationError):
+                _validate_site_invitation(lahey, event)
+
+        # Test valid acceptance
+        with mock_dataserver.mock_db_trans(self.ds):
+            event.request.session[SITE_INVITATION_SESSION_KEY] = invitation.code
+            _validate_site_invitation(ricky, event)
+            ricky_invites = get_invitations(receivers=u'ricky')
+            assert_that(ricky_invites, has_length(1))
+            invite = ricky_invites[0]
+            assert_that(invite.is_accepted(), is_(True))
+            assert_that(invite.receiver, is_(u'ricky'))
+            assert_that(invite.sender, is_(u'lahey'))
+
+        # Test new invitation code
+        with mock_dataserver.mock_db_trans(self.ds):
+            event.request.session[SITE_INVITATION_SESSION_KEY] = invitation.code
+            invitations = component.getUtility(IInvitationsContainer)
+            invitations.remove(invitation)
+            invitation = SiteInvitation(code=u'Sunnyvale2',
+                                        sender=u'lahey',
+                                        receiver=u'ricky@tpb.net',
+                                        target_site=u'dataserver2')
+            invitations.add(invitation)
+            _validate_site_invitation(ricky, event)
+            ricky_invites = get_invitations(receivers=u'ricky')
+            assert_that(ricky_invites, has_length(1))
+            invite = ricky_invites[0]
+            assert_that(invite.is_accepted(), is_(True))
+            assert_that(invite.receiver, is_(u'ricky'))
+            assert_that(invite.sender, is_(u'lahey'))
+
+    @WithSharedApplicationMockDS
+    def test_invitation_required_for_user_creation(self):
+
+        with mock_dataserver.mock_db_trans(self.ds):
+            user = self._create_user(u'testuser', external_value={'email': u'user@test.com'})
+
+        # Test the subscriber
+        request = DummyRequest()
+        event = UserCreatedWithRequestEvent(user, request)
+        with self.assertRaises(InvitationRequiredError):
+            require_invite_for_user_creation(user, event)
+
+        # Test the subscriber isn't hit without zcml registration
+        try:
+            notify(event)
+        except Exception as e:
+            self.fail(u'Unexpected exception in subscriber. %s' % e.message)
+
+        gsm = getGlobalSiteManager()
+        gsm.registerHandler(require_invite_for_user_creation)
+        with self.assertRaises(InvitationRequiredError):
+            notify(event)
+
+        with mock_dataserver.mock_db_trans(self.ds):
+            invitations = component.getUtility(IInvitationsContainer)
+            invitation = SiteInvitation(code=u'code',
+                                        sender=u'sjohnson@nextthought.com',
+                                        receiver=u'user@test.com',
+                                        target_site=u'dataserver2')
+            invitations.add(invitation)
+            event.request.session[SITE_INVITATION_SESSION_KEY] = u'code'
+            try:
+                notify(event)
+            except Exception as e:
+                self.fail(u'Unexpected exception in subscriber. %s' % e.message)
+
+        gsm.unregisterHandler(require_invite_for_user_creation)

@@ -21,6 +21,10 @@ INVITATIONS = u'Invitations'
 #: whose value is an invitation code.
 REL_ACCEPT_INVITATION = u'accept-invitation'
 
+#: The link relationship type to which an anonymous, unauthenticated
+#: user can ``GET`` data to accept outstanding site invitations.
+REL_ACCEPT_SITE_INVITATION = u'accept-site-invitation'
+
 #: The link relationship type to which an authenticated
 #: user can ``POST`` data to decline outstanding invitations.
 REL_DECLINE_INVITATION = u'decline-invitation'
@@ -30,8 +34,29 @@ REL_DECLINE_INVITATION = u'decline-invitation'
 REL_SEND_INVITATION = u'send-invitation'
 
 #: The link relationship type to which an authenticated
+#: user can ``POST`` data to send an invitation to a site
+REL_SEND_SITE_INVITATION = u'send-site-invitation'
+
+#: The link relationship type to which an authenticated
+#: user can ``POST`` data to send an admin invitation to a site
+REL_SEND_SITE_ADMIN_INVITATION = u'send-site-admin-invitation'
+
+#: The link relationship type to which an authenticated
+#: user with site admin permissions can ``POST`` a code
+#: to be set as a generic site invitation.
+REL_GENERIC_SITE_INVITATION = u'generic-site-invitation'
+
+#: The link relationship type to which an authenticated
 #: user can ``GET`` the outstanding invitations.
 REL_PENDING_INVITATIONS = u'pending-invitations'
+
+#: The link relationship to which an authenticated
+#: site admin can ``GET`` the outstanding site invitations
+REL_PENDING_SITE_INVITATIONS = u'pending-site-invitations'
+
+#: The link relationship to which an authenticated
+#: site admin can ``GET`` the outstanding site admin invitations
+REL_PENDING_SITE_ADMIN_INVITATIONS = u'pending-site-admin-invitations'
 
 #: The link relationship type to which an authenticated
 #: user can ``POST`` data to accept outstanding invitations. Also the name of a
@@ -49,3 +74,22 @@ REL_ACCEPT_INVITATIONS = u'accept-invitations'
 #: There is no way to disable the code at this time (in the future that could be done with a
 #: ``DELETE`` to this link type). See also :func:`get_default_trivial_invitation_code`
 REL_TRIVIAL_DEFAULT_INVITATION_CODE = u'default-trivial-invitation-code'
+
+#: The mimeType for Site Invitations. It is defined here so that is can be used
+#: elsewhere as a parameter for querying the invitation catalog
+SITE_INVITATION_MIMETYPE = u'application/vnd.nextthought.siteinvitation'
+
+#: The mimeType for Join Entity Invitations. It is defined here so that is can be used
+#: elsewhere as a parameter for querying the invitation catalog
+JOIN_ENTITY_INVITATION_MIMETYPE = u'application/vnd.nextthought.joinentityinvitation'
+
+#: The mimeType for Generic Site Invitations. It is defined here so that is can be used
+#: elsewhere as a parameter for querying the invitation catalog
+GENERIC_SITE_INVITATION_MIMETYPE = u'application/vnd.nextthought.genericsiteinvitation'
+
+#: The mimeType for Site Admin Invitations. It is defined here so that is can be used
+#: elsewhere as a parameter for querying the invitation catalog
+SITE_ADMIN_INVITATION_MIMETYPE = u'application/vnd.nextthought.siteadmininvitation'
+
+#: The key for a request session that has a user's invitation code
+SITE_INVITATION_SESSION_KEY = u'site_invitation_code'

@@ -57,4 +57,17 @@
 			 provides=".interfaces.IJoinEntityInvitationActor"
 			 for=".interfaces.IJoinEntityInvitation" />
 
+	<utility factory=".logon.ChallengeLogonProvider"
+			 provides=".interfaces.IChallengeLogonProvider" />
+
+	<adapter factory=".invitations.DefaultSiteInvitationActor"
+			 provides=".interfaces.ISiteInvitationActor"
+			 for=".interfaces.ISiteInvitation" />
+
+	<adapter factory=".invitations.DefaultGenericSiteInvitationActor"
+			 provides=".interfaces.ISiteInvitationActor"
+			 for=".interfaces.IGenericSiteInvitation" />
+
+	<subscriber handler=".subscribers._validate_site_invitation" />
+
 </configure>
