@@ -32,6 +32,8 @@ from zope import interface
 
 from zope.cachedescriptors.property import Lazy
 
+from zope.component.hooks import getSite
+
 from zope.location.interfaces import IContained
 
 from zope.event import notify
@@ -53,6 +55,7 @@ from nti.app.externalization.error import handle_validation_error
 from nti.app.externalization.error import handle_possible_validation_error
 
 from nti.app.invitations import MessageFactory as _
+
 from nti.app.invitations import GENERIC_SITE_INVITATION_MIMETYPE
 from nti.app.invitations import REL_ACCEPT_SITE_INVITATION
 from nti.app.invitations import REL_GENERIC_SITE_INVITATION
@@ -110,8 +113,6 @@ from nti.invitations.interfaces import DuplicateInvitationCodeError
 
 from nti.invitations.utils import accept_invitation
 from nti.invitations.utils import get_pending_invitations
-
-from nti.site.site import getSite
 
 from nti.links import Link
 
