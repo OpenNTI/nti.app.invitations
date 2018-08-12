@@ -8,9 +8,9 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import absolute_import
 
-from zope import component
-
 from zc.intid.interfaces import IBeforeIdRemovedEvent
+
+from zope import component
 
 from nti.app.invitations import SITE_INVITATION_SESSION_KEY
 
@@ -26,8 +26,8 @@ from nti.dataserver.interfaces import IUser
 from nti.dataserver.users.interfaces import IUserProfile
 
 from nti.invitations.interfaces import InvitationCodeError
-from nti.invitations.interfaces import InvitationValidationError
 from nti.invitations.interfaces import IInvitationsContainer
+from nti.invitations.interfaces import InvitationValidationError
 
 from nti.invitations.utils import get_sent_invitations
 
@@ -65,7 +65,7 @@ def _validate_site_invitation(user, event):
             # There is a possibility that the invitation tied to this code
             # has been rescended and the user now has a new invitation
             # so we will check if there is one for this email
-            profile = IUserProfile(user)
+            profile = IUserProfile(user, None)
             email = getattr(profile, 'email', None)
             invitation = pending_site_invitation_for_email(email)
         if invitation is None:
@@ -78,7 +78,7 @@ def _validate_site_invitation(user, event):
 
 
 @component.adapter(IUser, IUserCreatedWithRequestEvent)
-def require_invite_for_user_creation(user, event):
+def require_invite_for_user_creation(unused_user, event):
     request = event.request
     invitation = request.session.get(SITE_INVITATION_SESSION_KEY)
     if invitation is None:

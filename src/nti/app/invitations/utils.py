@@ -1,31 +1,32 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+"""
+.. $Id$
+"""
 
+from __future__ import division
 from __future__ import print_function
 from __future__ import absolute_import
-from __future__ import division
+
+from zope.component.hooks import getSite
 
 from nti.app.invitations import SITE_INVITATION_MIMETYPE
 from nti.app.invitations import SITE_ADMIN_INVITATION_MIMETYPE
 
 from nti.invitations.interfaces import IDisabledInvitation
 from nti.invitations.interfaces import InvitationActorError
-from nti.invitations.interfaces import InvitationAlreadyAcceptedError
-from nti.invitations.interfaces import InvitationDisabledError
 from nti.invitations.interfaces import InvitationExpiredError
+from nti.invitations.interfaces import InvitationDisabledError
+from nti.invitations.interfaces import InvitationAlreadyAcceptedError
 
 from nti.invitations.utils import get_invitation_actor
 from nti.invitations.utils import get_pending_invitations
-
-from nti.site.site import getSite
-
-__docformat__ = "restructuredtext en"
 
 logger = __import__('logging').getLogger(__name__)
 
 
 def pending_site_invitation_for_email(email):
-    current_site = getSite().__name__
+    current_site = getattr(getSite(), '__name__', None)
     pending_invitations = get_pending_invitations(receivers=email,
                                                   mimeTypes=(SITE_INVITATION_MIMETYPE,
                                                              SITE_ADMIN_INVITATION_MIMETYPE))
