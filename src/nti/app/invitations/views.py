@@ -56,31 +56,31 @@ from nti.app.externalization.error import handle_possible_validation_error
 
 from nti.app.invitations import MessageFactory as _
 
-from nti.app.invitations import GENERIC_SITE_INVITATION_MIMETYPE
-from nti.app.invitations import REL_ACCEPT_SITE_INVITATION
-from nti.app.invitations import REL_GENERIC_SITE_INVITATION
-from nti.app.invitations import REL_SEND_SITE_INVITATION
-from nti.app.invitations import SITE_ADMIN_INVITATION_MIMETYPE
-from nti.app.invitations import SITE_INVITATION_MIMETYPE
-from nti.app.invitations import SITE_INVITATION_SESSION_KEY
-from nti.app.invitations import REL_SEND_SITE_ADMIN_INVITATION
 from nti.app.invitations import INVITATIONS
 from nti.app.invitations import REL_SEND_INVITATION
 from nti.app.invitations import REL_ACCEPT_INVITATION
 from nti.app.invitations import REL_ACCEPT_INVITATIONS
 from nti.app.invitations import REL_DECLINE_INVITATION
 from nti.app.invitations import REL_PENDING_INVITATIONS
-from nti.app.invitations import REL_PENDING_SITE_ADMIN_INVITATIONS
+from nti.app.invitations import REL_SEND_SITE_INVITATION
+from nti.app.invitations import SITE_INVITATION_MIMETYPE
+from nti.app.invitations import REL_ACCEPT_SITE_INVITATION
+from nti.app.invitations import REL_GENERIC_SITE_INVITATION
+from nti.app.invitations import SITE_INVITATION_SESSION_KEY
 from nti.app.invitations import REL_PENDING_SITE_INVITATIONS
+from nti.app.invitations import REL_SEND_SITE_ADMIN_INVITATION
+from nti.app.invitations import SITE_ADMIN_INVITATION_MIMETYPE
+from nti.app.invitations import GENERIC_SITE_INVITATION_MIMETYPE
+from nti.app.invitations import REL_PENDING_SITE_ADMIN_INVITATIONS
 from nti.app.invitations import REL_TRIVIAL_DEFAULT_INVITATION_CODE
 
-from nti.app.invitations.interfaces import IChallengeLogonProvider
 from nti.app.invitations.interfaces import ISiteInvitation
+from nti.app.invitations.interfaces import IChallengeLogonProvider
 
-from nti.app.invitations.invitations import GenericSiteInvitation
-from nti.app.invitations.invitations import JoinEntityInvitation
-from nti.app.invitations.invitations import SiteAdminInvitation
 from nti.app.invitations.invitations import SiteInvitation
+from nti.app.invitations.invitations import SiteAdminInvitation
+from nti.app.invitations.invitations import JoinEntityInvitation
+from nti.app.invitations.invitations import GenericSiteInvitation
 
 from nti.app.invitations.utils import pending_site_invitation_for_email
 
@@ -207,8 +207,7 @@ class AcceptInvitationMixin(AbstractView):
 
     def _do_validation(self, invite_code):
         request = self.request
-        if not invite_code \
-                or invite_code not in self.invitations:
+        if not invite_code or invite_code not in self.invitations:
             raise_json_error(request,
                              hexc.HTTPUnprocessableEntity,
                              {
