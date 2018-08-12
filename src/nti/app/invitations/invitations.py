@@ -19,31 +19,31 @@ from zope.event import notify
 
 from zope.securitypolicy.interfaces import IPrincipalRoleManager
 
-from nti.app.invitations import GENERIC_SITE_INVITATION_MIMETYPE
-from nti.app.invitations import JOIN_ENTITY_INVITATION_MIMETYPE
-from nti.app.invitations import SITE_ADMIN_INVITATION_MIMETYPE
 from nti.app.invitations import SITE_INVITATION_MIMETYPE
+from nti.app.invitations import SITE_ADMIN_INVITATION_MIMETYPE
+from nti.app.invitations import JOIN_ENTITY_INVITATION_MIMETYPE
+from nti.app.invitations import GENERIC_SITE_INVITATION_MIMETYPE
 
-from nti.app.invitations.interfaces import IGenericSiteInvitation
-from nti.app.invitations.interfaces import IJoinEntityInvitation
-from nti.app.invitations.interfaces import IJoinEntityInvitationActor
-from nti.app.invitations.interfaces import ISiteAdminInvitation
 from nti.app.invitations.interfaces import ISiteInvitation
 from nti.app.invitations.interfaces import ISiteInvitationActor
+from nti.app.invitations.interfaces import ISiteAdminInvitation
+from nti.app.invitations.interfaces import IJoinEntityInvitation
+from nti.app.invitations.interfaces import IGenericSiteInvitation
+from nti.app.invitations.interfaces import IJoinEntityInvitationActor
 
-from nti.dataserver.authorization import is_admin_or_site_admin
 from nti.dataserver.authorization import ROLE_SITE_ADMIN
 
 from nti.dataserver.interfaces import ICommunity
 from nti.dataserver.interfaces import IFriendsList
-from nti.dataserver.users import User
 
 from nti.dataserver.users.entity import Entity
 
-from nti.dataserver.users.interfaces import IUserProfileSchemaProvider
+from nti.dataserver.users.interfaces import IUserProfile
 
-from nti.invitations.interfaces import InvitationAcceptedEvent
+from nti.dataserver.users.users import User
+
 from nti.invitations.interfaces import IInvitationsContainer
+from nti.invitations.interfaces import InvitationAcceptedEvent
 
 from nti.invitations.model import Invitation
 
@@ -80,13 +80,11 @@ class SiteInvitation(Invitation):
 
 @interface.implementer(IGenericSiteInvitation)
 class GenericSiteInvitation(SiteInvitation):
-
     mimeType = mime_type = GENERIC_SITE_INVITATION_MIMETYPE
 
 
 @interface.implementer(ISiteAdminInvitation)
 class SiteAdminInvitation(SiteInvitation):
-
     mimeType = mime_type = SITE_ADMIN_INVITATION_MIMETYPE
 
 
@@ -125,8 +123,7 @@ class SiteInvitationActorMixin(object):
     def user_profile(self, user):
         if isinstance(user, six.string_types):
             user = User.get_user(user)
-        profile_iface = IUserProfileSchemaProvider(user).getSchema()
-        profile = profile_iface(user)
+        profile = IUserProfile(user)
         return profile
 
     def check_valid_invitation(self, profile, invitation):
