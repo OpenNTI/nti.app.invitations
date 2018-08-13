@@ -36,6 +36,14 @@ class IUserInvitationsLinkProvider(interface.Interface):
         """
 
 
+class ISiteInvitationsLinkProvider(interface.Interface):
+
+    def links(workspace):
+        """
+        :return: an iterable of site invitation links
+        """
+
+
 class IJoinEntityInvitation(IInvitation):
     """
     Interface for a invitation to join entities
