@@ -40,6 +40,9 @@
 	<subscriber	factory=".workspaces._DefaultUserInvitationsLinksProvider"
 				provides=".interfaces.IUserInvitationsLinkProvider"/>
 
+	<subscriber factory=".workspaces._DefaultSiteInvitationsLinksProvider"
+				provides=".interfaces.IUserInvitationsLinkProvider" />
+
 	<!-- Subscriber -->
 	<subscriber handler=".subscribers._user_removed" />
 
@@ -51,6 +54,11 @@
 				provides="nti.externalization.interfaces.IExternalMappingDecorator"
 				for="nti.dataserver.interfaces.IUser
 					 pyramid.interfaces.IRequest"/>
+
+	<subscriber factory=".decorators.SiteInvitationLinkProvider"
+				provides="nti.externalization.interfaces.IExternalMappingDecorator"
+				for=".interfaces.ISiteInvitation
+					 pyramid.interfaces.IRequest" />
 	
 	<!-- Invitations -->
 	<adapter factory=".invitations.JoinEntityInvitationActor"
