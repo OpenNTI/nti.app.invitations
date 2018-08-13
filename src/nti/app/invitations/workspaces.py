@@ -20,6 +20,7 @@ from nti.dataserver.authentication import  get_current_request
 
 from nti.app.invitations import INVITATIONS
 from nti.app.invitations import REL_GENERIC_SITE_INVITATION
+from nti.app.invitations import REL_DELETE_SITE_INVITATIONS
 from nti.app.invitations import REL_SEND_SITE_ADMIN_INVITATION
 from nti.app.invitations import REL_SEND_SITE_INVITATION
 from nti.app.invitations import REL_PENDING_SITE_INVITATIONS
@@ -195,7 +196,8 @@ class _DefaultSiteInvitationsLinksProvider(object):
             return result
 
         for name in (REL_SEND_SITE_INVITATION,
-                     REL_SEND_SITE_ADMIN_INVITATION):
+                     REL_SEND_SITE_ADMIN_INVITATION,
+                     REL_DELETE_SITE_INVITATIONS):
             link = self._create_link(name, name, 'POST', InvitationsPathAdapter)
             result.append(link)
 

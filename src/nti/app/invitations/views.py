@@ -73,6 +73,7 @@ from nti.app.invitations import SITE_ADMIN_INVITATION_MIMETYPE
 from nti.app.invitations import GENERIC_SITE_INVITATION_MIMETYPE
 from nti.app.invitations import REL_PENDING_SITE_ADMIN_INVITATIONS
 from nti.app.invitations import REL_TRIVIAL_DEFAULT_INVITATION_CODE
+from nti.app.invitations import REL_DELETE_SITE_INVITATIONS
 
 from nti.app.invitations.interfaces import ISiteInvitation
 from nti.app.invitations.interfaces import IChallengeLogonProvider
@@ -453,6 +454,33 @@ class SendDFLInvitationView(AbstractAuthenticatedView,
 
     def __call__(self):
         return self._do_call()
+
+
+@view_config(route_name='objects.generic.traversal',
+             renderer='rest',
+             context=InvitationsPathAdapter,
+             request_method='POST',
+             permission=nauth.ACT_READ,
+             name=REL_DELETE_SITE_INVITATIONS)
+class DeleteSiteInvitationsView(AbstractAuthenticatedView,
+                                ModeledContentUploadRequestUtilsMixin):
+
+    @Lazy
+    def invitations(self):
+        return component.getUtility(IInvitationsContainer)
+
+    def __call__(self):
+        if not is_admin_or_site_admin(self.remoteUser):
+            return hexc.HTTPForbidden()
+
+        values = self.readInput()
+        emails = values.get('emails')
+        invitations = get_pending_invitations(receivers=emails,
+                                              mimeTypes=(SITE_ADMIN_INVITATION_MIMETYPE,
+                                                         SITE_INVITATION_MIMETYPE))
+        for invitation in invitations:
+            self.invitations.remove(invitation)
+        return invitations
 
 
 @view_config(route_name='objects.generic.traversal',
