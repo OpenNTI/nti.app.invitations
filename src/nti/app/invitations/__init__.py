@@ -42,6 +42,10 @@ REL_SEND_SITE_INVITATION = u'send-site-invitation'
 REL_SEND_SITE_ADMIN_INVITATION = u'send-site-admin-invitation'
 
 #: The link relationship type to which an authenticated
+#: user can ``POST`` emails to delete invitations to a site
+REL_DELETE_SITE_INVITATIONS = u'delete-site-invitations'
+
+#: The link relationship type to which an authenticated
 #: user with site admin permissions can ``POST`` a code
 #: to be set as a generic site invitation.
 REL_GENERIC_SITE_INVITATION = u'generic-site-invitation'

@@ -417,3 +417,27 @@ class TestSiteInvitationViews(ApplicationLayerTest):
                                      status=200)
         body = res.json_body
         assert_that(body['Items'], has_length(3))
+
+    @WithSharedApplicationMockDS(testapp=True, users=True)
+    def test_delete_invitations(self):
+        emails = []
+        with mock_dataserver.mock_db_trans(self.ds):
+            invitations = component.getUtility(IInvitationsContainer)
+            for i in range(5):
+                email = "test%s@test.com" % i
+                emails.append(email)
+                inv = SiteInvitation(receiver=email,
+                                     sender="sjohnson@nextthought.com")
+                invitations.add(inv)
+
+            assert_that(invitations, has_length(5))
+
+        url = '/dataserver2/Invitations/@@delete-site-invitations'
+
+        res = self.testapp.post_json(url,
+                                     {'emails': emails},
+                                     status=200)
+
+        assert_that(res.json_body, has_length(5))
+        with mock_dataserver.mock_db_trans(self.ds):
+            assert_that(invitations, has_length(0))
