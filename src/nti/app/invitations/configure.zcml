@@ -41,7 +41,7 @@
 				provides=".interfaces.IUserInvitationsLinkProvider"/>
 
 	<subscriber factory=".workspaces._DefaultSiteInvitationsLinksProvider"
-				provides=".interfaces.ISiteInvitationsLinkProvider" />
+				provides=".interfaces.IUserInvitationsLinkProvider" />
 
 	<!-- Subscriber -->
 	<subscriber handler=".subscribers._user_removed" />
@@ -55,12 +55,7 @@
 				for="nti.dataserver.interfaces.IUser
 					 pyramid.interfaces.IRequest"/>
 
-	<subscriber factory=".decorators.SiteInvitationDeleteLinkProvider"
-				provides="nti.externalization.interfaces.IExternalMappingDecorator"
-				for=".interfaces.ISiteInvitation
-					 pyramid.interfaces.IRequest" />
-
-	<subscriber factory=".decorators.SiteInvitationAcceptLinkProvider"
+	<subscriber factory=".decorators.SiteInvitationLinkProvider"
 				provides="nti.externalization.interfaces.IExternalMappingDecorator"
 				for=".interfaces.ISiteInvitation
 					 pyramid.interfaces.IRequest" />

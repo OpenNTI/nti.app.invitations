@@ -30,7 +30,6 @@ from nti.app.invitations import REL_ACCEPT_INVITATIONS
 from nti.app.invitations import REL_PENDING_INVITATIONS
 
 from nti.app.invitations.interfaces import IInvitationsWorkspace
-from nti.app.invitations.interfaces import ISiteInvitationsLinkProvider
 from nti.app.invitations.interfaces import IUserInvitationsLinkProvider
 
 from nti.app.invitations.views import InvitationsPathAdapter
@@ -121,7 +120,7 @@ class _InvitationsCollection(object):
         for provider in list(component.subscribers((self._user,),
                                                    IUserInvitationsLinkProvider) +
                              component.subscribers((self._dataserver, self._user),
-                                                   ISiteInvitationsLinkProvider)):
+                                                   IUserInvitationsLinkProvider)):
             links = provider.links(self.__parent__)
             result.extend(links or ())
         return result
@@ -171,7 +170,7 @@ class _DefaultUserInvitationsLinksProvider(object):
 
 
 @component.adapter(IDataserverFolder, IUser)
-@interface.implementer(ISiteInvitationsLinkProvider)
+@interface.implementer(IUserInvitationsLinkProvider)
 class _DefaultSiteInvitationsLinksProvider(object):
 
     def __init__(self, ds=None, user=None):

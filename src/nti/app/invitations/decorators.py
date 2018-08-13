@@ -16,16 +16,16 @@ from zope import interface
 from zope.location.interfaces import ILocation
 
 from nti.app.invitations import REL_ACCEPT_INVITATIONS
-from nti.app.invitations import REL_ACCEPT_SITE_INVITATION
 from nti.app.invitations import REL_TRIVIAL_DEFAULT_INVITATION_CODE
 
 from nti.app.invitations.interfaces import ISiteInvitation
 
 from nti.app.renderers.decorators import AbstractTwoStateViewLinkDecorator
 from nti.app.renderers.decorators import AbstractAuthenticatedRequestAwareDecorator
-from nti.app.renderers.decorators import AbstractRequestAwareDecorator
 
 from nti.appserver.pyramid_authorization import is_writable
+
+from nti.dataserver.authorization import is_admin_or_site_admin
 
 from nti.dataserver.interfaces import IUser
 from nti.dataserver.interfaces import IDynamicSharingTargetFriendsList
@@ -67,21 +67,12 @@ class LegacyAcceptInvitationsLinkProvider(AbstractAuthenticatedRequestAwareDecor
 
 @component.adapter(ISiteInvitation, IRequest)
 @interface.implementer(IExternalMappingDecorator)
-class SiteInvitationDeleteLinkProvider(AbstractAuthenticatedRequestAwareDecorator):
+class SiteInvitationLinkProvider(AbstractAuthenticatedRequestAwareDecorator):
 
     def _do_decorate_external(self, context, result):
         _links = result.setdefault(LINKS, [])
-        _links.append(
-            Link(context, rel='delete', elements=('@@decline',))
-        )
 
-
-@component.adapter(ISiteInvitation, IRequest)
-@interface.implementer(IExternalMappingDecorator)
-class SiteInvitationAcceptLinkProvider(AbstractRequestAwareDecorator):
-
-    def _do_decorate_external(self, context, result):
-        _links = result.setdefault(LINKS, [])
-        _links.append(
-            Link(context, rel=REL_ACCEPT_SITE_INVITATION, elements=('@@' + REL_ACCEPT_SITE_INVITATION,))
-        )
+        if is_admin_or_site_admin(self.remoteUser):
+            _links.append(
+                Link(context, rel='delete', elements=('@@decline',))
+            )
