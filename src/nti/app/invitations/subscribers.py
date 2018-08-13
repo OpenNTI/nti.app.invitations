@@ -204,8 +204,6 @@ def send_invitation_email(invitation,
 
 @component.adapter(ISiteInvitation, IInvitationSentEvent)
 def _on_site_invitation_sent(invitation, event):
-    from IPython.terminal.debugger import set_trace;set_trace()
-
     request = getattr(event, 'request', None) or get_current_request()
     sender = User.get_user(invitation.sender)
     send_invitation_email(invitation,
