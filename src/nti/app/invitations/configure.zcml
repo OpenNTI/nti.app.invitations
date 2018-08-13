@@ -46,6 +46,8 @@
 	<!-- Subscriber -->
 	<subscriber handler=".subscribers._user_removed" />
 
+	<subscriber handler=".subscribers._on_site_invitation_sent" />
+
 	<!-- Decorators -->
 	<subscriber	factory=".decorators.DFLGetInvitationLinkProvider"
 				provides="nti.externalization.interfaces.IExternalMappingDecorator"/>
