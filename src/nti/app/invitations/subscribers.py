@@ -22,6 +22,7 @@ from zope.component.hooks import getSite
 
 from zope.i18n import translate
 
+from nti.app.invitations import REL_ACCEPT_SITE_INVITATION
 from nti.app.invitations import SITE_INVITATION_SESSION_KEY
 from nti.app.invitations import INVITATIONS
 
@@ -166,8 +167,9 @@ def send_invitation_email(invitation,
 
     params = {'code': invitation.code}
     query = urllib_parse.urlencode(params)
-    url = '/%s/%s?%s' % (get_ds2(request),
+    url = '/%s/%s/%s?%s' % (get_ds2(request),
                          INVITATIONS,
+                         '@@' + REL_ACCEPT_SITE_INVITATION,
                          query)
     redemption_link = urllib_parse.urljoin(request.application_url, url)
     receiver_name = receiver_name
