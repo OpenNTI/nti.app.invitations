@@ -15,6 +15,8 @@ import tempfile
 
 from zope import component
 
+from nti.app.invitations import SITE_INVITATION_MIMETYPE
+
 from nti.app.invitations.interfaces import ISiteAdminInvitation
 
 from nti.app.invitations.invitations import JoinEntityInvitation
@@ -358,7 +360,7 @@ class TestSiteInvitationViews(ApplicationLayerTest):
 
     @WithSharedApplicationMockDS(testapp=True, users=True)
     def test_pending_site_admin_invitations(self):
-        pending_url = '/dataserver2/Invitations/@@pending-site-admin-invitations'
+        pending_url = '/dataserver2/Invitations/@@pending-site-invitations'
         with mock_dataserver.mock_db_trans(self.ds):
             self._create_user(u'lahey', external_value={'email': u'lahey@tpb.net'})
             site_inv = SiteInvitation(receiver=u'ricky@tpb.net',
@@ -368,7 +370,8 @@ class TestSiteInvitationViews(ApplicationLayerTest):
             invitations = component.getUtility(IInvitationsContainer)
             invitations.add(site_inv)
             invitations.add(admin_inv)
-        res = self.testapp.get(pending_url)
+        res = self.testapp.get(pending_url,
+                               params={'exclude': SITE_INVITATION_MIMETYPE})
         body = res.json_body
         assert_that(body['Items'], has_length(1))
 

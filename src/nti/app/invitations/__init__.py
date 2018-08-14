@@ -58,10 +58,6 @@ REL_PENDING_INVITATIONS = u'pending-invitations'
 #: site admin can ``GET`` the outstanding site invitations
 REL_PENDING_SITE_INVITATIONS = u'pending-site-invitations'
 
-#: The link relationship to which an authenticated
-#: site admin can ``GET`` the outstanding site admin invitations
-REL_PENDING_SITE_ADMIN_INVITATIONS = u'pending-site-admin-invitations'
-
 #: The link relationship type to which an authenticated
 #: user can ``POST`` data to accept outstanding invitations. Also the name of a
 #: view to handle this feedback: :func:`accept_invitations_view`
