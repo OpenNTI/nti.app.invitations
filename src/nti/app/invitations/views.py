@@ -729,10 +729,10 @@ class GetPendingSiteInvitationsView(AbstractAuthenticatedView,
                           SITE_ADMIN_INVITATION_MIMETYPE)
 
     def _do_sort_email(self, items, reverse):
-        return sorted(items, key=lambda item: item.receiver_email, reverse=reverse)
+        return sorted(items, key=lambda item: item.receiver, reverse=reverse)
 
     def _do_sort_created_time(self, items, reverse):
-        return sorted(items, key=lambda item: item.CreatedTime, reverse=reverse)
+        return sorted(items, key=lambda item: item.createdTime, reverse=reverse)
 
     def _do_call(self):
         if not is_admin_or_site_admin(self.remoteUser):

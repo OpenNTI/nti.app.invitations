@@ -84,6 +84,10 @@
 			 provides=".interfaces.ISiteInvitationActor"
 			 for=".interfaces.IGenericSiteInvitation" />
 
+	<adapter factory=".invitations.DefaultSiteAdminInvitationActor"
+		     provides=".interfaces.ISiteInvitationActor"
+		     for=".interfaces.ISiteAdminInvitation" />
+
 	<subscriber handler=".subscribers._validate_site_invitation" />
 
 </configure>
