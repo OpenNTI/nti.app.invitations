@@ -69,7 +69,6 @@ from nti.app.invitations import REL_ACCEPT_SITE_INVITATION
 from nti.app.invitations import REL_GENERIC_SITE_INVITATION
 from nti.app.invitations import SITE_INVITATION_SESSION_KEY
 from nti.app.invitations import REL_PENDING_SITE_INVITATIONS
-from nti.app.invitations import REL_SEND_SITE_ADMIN_INVITATION
 from nti.app.invitations import SITE_ADMIN_INVITATION_MIMETYPE
 from nti.app.invitations import GENERIC_SITE_INVITATION_MIMETYPE
 from nti.app.invitations import REL_TRIVIAL_DEFAULT_INVITATION_CODE
@@ -78,8 +77,6 @@ from nti.app.invitations import REL_DELETE_SITE_INVITATIONS
 from nti.app.invitations.interfaces import ISiteInvitation
 from nti.app.invitations.interfaces import IChallengeLogonProvider
 
-from nti.app.invitations.invitations import SiteInvitation
-from nti.app.invitations.invitations import SiteAdminInvitation
 from nti.app.invitations.invitations import JoinEntityInvitation
 from nti.app.invitations.invitations import GenericSiteInvitation
 
@@ -114,12 +111,14 @@ from nti.invitations.interfaces import DuplicateInvitationCodeError
 
 from nti.invitations.utils import accept_invitation
 from nti.invitations.utils import get_pending_invitations
+from nti.invitations.utils import get_random_invitation_code
 
 from nti.links import Link
 
 ITEMS = StandardExternalFields.ITEMS
 LINKS = StandardExternalFields.LINKS
 TOTAL = StandardExternalFields.TOTAL
+MIMETYPE = StandardExternalFields.MIMETYPE
 ITEM_COUNT = StandardExternalFields.ITEM_COUNT
 
 logger = __import__('logging').getLogger(__name__)
@@ -491,8 +490,6 @@ class DeleteSiteInvitationsView(AbstractAuthenticatedView,
              name=REL_SEND_SITE_INVITATION)
 class SendSiteInvitationCodeView(AbstractAuthenticatedView,
                                  ModeledContentUploadRequestUtilsMixin):
-    _invitation_type = SiteInvitation
-
     def __init__(self, request):
         super(SendSiteInvitationCodeView, self).__init__(request)
         self.warnings = list()
@@ -533,7 +530,7 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
                 if not isValidMailAddress(email):
                     self.invalid_emails.append(email)
                     continue
-                result.append({'email': email, 'realname': realname})
+                result.append({'receiver': email, 'receiver_name': realname})
         return result
 
     def readInput(self, value=None):
@@ -548,8 +545,8 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
         # provided and emails are valid. Because these values are coming from the
         # view, we would expect that warnings and invalid emails are rare here
         for invitation in values:
-            email = invitation.get('email')
-            realname = invitation.get('realname')
+            email = invitation.get('receiver')
+            realname = invitation.get('receiver_name')
             # These cases shouldn't happen
             if email is None and realname is None:
                 msg = u'Missing email and name for input'
@@ -589,39 +586,8 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
         values['invitations'] = invitations
         return values
 
-    def create_invitation(self, email, realname, message):
-        # pylint: disable=no-member
-        invitation = self._invitation_type()
-        invitation.receiver_email = email
-        invitation.sender = self.remoteUser.username
-        invitation.receiver_name = realname
-        invitation.message = message
-        # TODO if this is changed to not be forced to the current site, 
-        # sender permission's check needs updated
-        invitation.target_site = getSite().__name__
-        self.invitations.add(invitation)
-        return invitation
-
-    def update_invitation(self, invitation, email, realname, message):
-        # pylint: disable=no-member
-        old_code = invitation.code
-        self.invitations.remove(invitation)
-        new_invitation = self._invitation_type()
-        new_invitation.receiver_email = email
-        new_invitation.sender = self.remoteUser.username
-        new_invitation.receiver_name = realname
-        new_invitation.message = message
-        new_invitation.code = old_code
-        # TODO if this is changed to not be forced to the current site, 
-        # sender permission's check needs updated
-        new_invitation.target_site = getSite().__name__
-        self.invitations.add(new_invitation)
-        return new_invitation
-
-    def __call__(self):
-        self.check_permissions()
+    def preflight_input(self):
         values = self.get_site_invitations()
-        force = self.request.params.get('force')
         # At this point we should have a values dict containing invitation destinations and message
         if self.warnings or self.invalid_emails:
             logger.info('Site Invitation input contains missing or invalid values.')
@@ -636,54 +602,68 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
                 },
                 None
             )
+        return values
 
-        result = LocatedExternalDict()
-        result[ITEMS] = items = []
-        result.__name__ = self.request.view_name
-        result.__parent__ = self.request.context
+    def _handle_challenge(self, challenge_invitations):
+        challenge = dict()
+        challenge[ITEMS] = to_external_object(challenge_invitations)
+        challenge[ITEM_COUNT] = challenge[TOTAL] = len(challenge_invitations)
+        challenge['message'] = _(
+            u'%s pending invitations will be updated to a different role.' %
+            len(challenge_invitations)
+        )
+        challenge['code'] = u'UpdatePendingInvitations'
+        links = (
+            Link(self.request.path,
+                 rel='confirm',
+                 params={'force': True},
+                 method='POST'),
+        )
+        challenge[LINKS] = to_external_object(links)
+        raise_json_error(self.request,
+                         hexc.HTTPConflict,
+                         challenge,
+                         None)
 
+    def __call__(self):
+        self.check_permissions()
+        values = self.preflight_input()
+        force = self.request.params.get('force')
+        # Default to a regular site invitation
+        mimetype = values.get('mime_type') or values.get('mimeType') or SITE_INVITATION_MIMETYPE
         message = values.get('message')
-        pending_invitations = []
+        result = LocatedExternalDict()
+        items = []
+        challenge_invitations = []
         # pylint: disable=no-member
-        for user_dict in values['invitations']:
-            email = user_dict['email']
-            realname = user_dict['realname']
+        for ext_values in values['invitations']:
+            ext_values[MIMETYPE] = mimetype
+            ext_values['message'] = message
+            ext_values['code'] = get_random_invitation_code()
+            ext_values['target_site'] = getSite().__name__
+            invitation = self.readCreateUpdateContentObject(self.remoteUser, externalValue=ext_values)
+            email = ext_values['receiver']
             pending_invitation = pending_site_invitation_for_email(email)
             # Check if this user already has an invite to this site
-            if pending_invitation is not None and type(pending_invitation) is not self._invitation_type:
-                if force:
-                    invitation = self.update_invitation(pending_invitation,
-                                                        email,
-                                                        realname,
-                                                        message)
-                    items.append(invitation)
-                    notify(InvitationSentEvent(invitation, email))
+            if pending_invitation is not None:
+                if pending_invitation.mime_type == mimetype or force:
+                    old_code = pending_invitation.code
+                    invitation.code = old_code
+                    self.invitations.remove(pending_invitation)
                 else:
-                    pending_invitations.append(pending_invitation)
-            else:
-                invitation = self.create_invitation(email, realname, message)
-                items.append(invitation)
-                notify(InvitationSentEvent(invitation, email))
-        if len(pending_invitations) > 0:
-            challenge = dict()
-            challenge[ITEMS] = to_external_object(pending_invitations)
-            challenge[ITEM_COUNT] = challenge[TOTAL] = len(pending_invitations)
-            challenge['message'] = _(
-                u'%s pending invitations will be updated to a different role.' %
-                len(pending_invitations)
-            )
-            challenge['code'] = u'UpdatePendingInvitations'
-            links = (
-                Link(self.request.path,
-                     rel='confirm',
-                     params={'force': True},
-                     method='POST'),
-            )
-            challenge[LINKS] = to_external_object(links)
-            raise_json_error(self.request,
-                             hexc.HTTPConflict,
-                             challenge,
-                             None)
+                    # only challenge invitations that change the user role without the force param
+                    challenge_invitations.append(pending_invitation)
+                    continue
+            items.append(invitation)
+            self.invitations.add(invitation)
+            notify(InvitationSentEvent(invitation, email))
+
+        if len(challenge_invitations) > 0:
+            self._handle_challenge(challenge_invitations)
+
+        result[ITEMS] = items
+        result.__name__ = self.request.view_name
+        result.__parent__ = self.request.context
         result[TOTAL] = result[ITEM_COUNT] = len(items)
         return result
 
@@ -772,7 +752,7 @@ class GetPendingSiteInvitationsView(AbstractAuthenticatedView,
                 sort_method = getattr(self, '_do_sort_' + sort_name)
                 items = sort_method(items, sort_reverse)
             except AttributeError:
-                raise hexc.HTTPBadRequest("Unsupported sort option.")
+                pass
         result[ITEMS] = items
         result[TOTAL] = result[ITEM_COUNT] = len(items)
         result.__name__ = self.request.view_name
@@ -886,13 +866,3 @@ class DeleteGenericSiteInvitationCode(AbstractAuthenticatedView):
             self.invitations.remove(generic)
 
         return hexc.HTTPNoContent()
-
-
-@view_config(route_name='objects.generic.traversal',
-             renderer='rest',
-             context=InvitationsPathAdapter,
-             permission=nauth.ACT_READ,
-             request_method='POST',
-             name=REL_SEND_SITE_ADMIN_INVITATION)
-class SendSiteAdminInvitationView(SendSiteInvitationCodeView):
-    _invitation_type = SiteAdminInvitation

@@ -70,7 +70,10 @@ class SiteInvitation(Invitation):
 
     mimeType = mime_type = SITE_INVITATION_MIMETYPE
 
-    receiver_email = alias('receiver')
+    __external_class_name__ = "SiteInvitation"
+
+    __external_can_create__ = True
+
     Code = alias('code')
 
     @readproperty
@@ -82,10 +85,16 @@ class SiteInvitation(Invitation):
 class GenericSiteInvitation(SiteInvitation):
     mimeType = mime_type = GENERIC_SITE_INVITATION_MIMETYPE
 
+    __external_class_name__ = "GenericSiteInvitation"
+
+    _excluded_out_ivars = ('receiver',)
+
 
 @interface.implementer(ISiteAdminInvitation)
 class SiteAdminInvitation(SiteInvitation):
     mimeType = mime_type = SITE_ADMIN_INVITATION_MIMETYPE
+
+    __external_class_name__ = "SiteAdminInvitation"
 
 
 @interface.implementer(IJoinEntityInvitationActor)
