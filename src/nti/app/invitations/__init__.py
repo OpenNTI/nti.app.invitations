@@ -38,10 +38,6 @@ REL_SEND_INVITATION = u'send-invitation'
 REL_SEND_SITE_INVITATION = u'send-site-invitation'
 
 #: The link relationship type to which an authenticated
-#: user can ``POST`` data to send an admin invitation to a site
-REL_SEND_SITE_ADMIN_INVITATION = u'send-site-admin-invitation'
-
-#: The link relationship type to which an authenticated
 #: user can ``POST`` emails to delete invitations to a site
 REL_DELETE_SITE_INVITATIONS = u'delete-site-invitations'
 
