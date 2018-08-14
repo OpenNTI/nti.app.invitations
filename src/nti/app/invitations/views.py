@@ -740,7 +740,6 @@ class AcceptSiteInvitationByCodeView(AcceptSiteInvitationView):
 @view_config(route_name='objects.generic.traversal',
              renderer='rest',
              context=InvitationsPathAdapter,
-             permission=nauth.ACT_READ,
              request_method='GET',
              name=REL_PENDING_SITE_INVITATIONS)
 class GetPendingSiteInvitationsView(AbstractAuthenticatedView,
@@ -756,6 +755,9 @@ class GetPendingSiteInvitationsView(AbstractAuthenticatedView,
         return sorted(items, key=lambda item: item.CreatedTime, reverse=reverse)
 
     def _do_call(self):
+        if not is_admin_or_site_admin(self.remoteUser):
+            return hexc.HTTPForbidden()
+
         result = LocatedExternalDict()
         site = self.request.params.get('site') or getSite().__name__
         exclude = self.request.params.get('exclude', '')

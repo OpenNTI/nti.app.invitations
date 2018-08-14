@@ -444,3 +444,21 @@ class TestSiteInvitationViews(ApplicationLayerTest):
         assert_that(res.json_body, has_length(5))
         with mock_dataserver.mock_db_trans(self.ds):
             assert_that(invitations, has_length(0))
+
+    @WithSharedApplicationMockDS(testapp=True, users=True)
+    def test_sort_pending_invitations(self):
+        emails = []
+        with mock_dataserver.mock_db_trans(self.ds):
+            invitations = component.getUtility(IInvitationsContainer)
+            for i in range(5):
+                email = "%s@test.com" % i
+                emails.append(email)
+                inv = SiteInvitation(receiver=email,
+                                     sender="sjohnson@nextthought.com")
+                invitations.add(inv)
+
+        url = '/dataserver2/Invitations/@@pending-site-invitations'
+        res = self.testapp.get(url,
+                               params={'sortOn': 'email'})
+        for i, item in enumerate(res.json_body['Items']):
+            assert_that(item['receiver'], is_(emails[i]))
