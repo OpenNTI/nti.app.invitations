@@ -16,6 +16,7 @@ import tempfile
 from zope import component
 
 from nti.app.invitations import SITE_INVITATION_MIMETYPE
+from nti.app.invitations import SITE_ADMIN_INVITATION_MIMETYPE
 
 from nti.app.invitations.interfaces import ISiteAdminInvitation
 
@@ -59,8 +60,8 @@ class TestSiteInvitationViews(ApplicationLayerTest):
             # Send request with missing fields
             data = {'invitations':
                 [
-                    {'realname': 'No Email'},
-                    {'email': 'missingname@test.com'}
+                    {'receiver_name': 'No Email'},
+                    {'receiver': 'missingname@test.com'}
                 ],
                 'message': 'Missing Fields Test Case'}
             res = self.testapp.post_json(site_invitation_url,
@@ -77,8 +78,8 @@ class TestSiteInvitationViews(ApplicationLayerTest):
             # Send request with invalid email
             data = {'invitations':
                 [
-                    {'realname': 'Bad Email',
-                     'email': 'bademail'}
+                    {'receiver_name': 'Bad Email',
+                     'receiver': 'bademail'}
                 ],
                 'message': 'Bad Email Test Case'
             }
@@ -96,10 +97,10 @@ class TestSiteInvitationViews(ApplicationLayerTest):
             data = {
                 'invitations':
                     [
-                        {'email': 'good@email.com',
-                         'realname': 'Good Email'},
-                        {'email': 'passing@test.com',
-                         'realname': 'Passing Test'}
+                        {'receiver': 'good@email.com',
+                         'receiver_name': 'Good Email'},
+                        {'receiver': 'passing@test.com',
+                         'receiver_name': 'Passing Test'}
                     ],
                 'message': 'Passing Test Case'
             }
@@ -335,16 +336,17 @@ class TestSiteInvitationViews(ApplicationLayerTest):
     def test_send_site_admin_invitation(self):
         # The core functionality of these views are covered above
         # We are verifying that the right invite is being created here
-        site_invitation_url = '/dataserver2/Invitations/@@send-site-admin-invitation'
+        site_invitation_url = '/dataserver2/Invitations/@@send-site-invitation'
         data = {
             'invitations':
                 [
-                    {'email': 'good@email.com',
-                     'realname': 'Good Email'},
-                    {'email': 'passing@test.com',
-                     'realname': 'Passing Test'}
+                    {'receiver': 'good@email.com',
+                     'receiver_name': 'Good Email'},
+                    {'receiver': 'passing@test.com',
+                     'receiver_name': 'Passing Test'}
                 ],
-            'message': 'Passing Test Case'
+            'message': 'Passing Test Case',
+            'mimeType': SITE_ADMIN_INVITATION_MIMETYPE
         }
         res = self.testapp.post_json(site_invitation_url,
                                      data,
@@ -381,12 +383,12 @@ class TestSiteInvitationViews(ApplicationLayerTest):
         data = {
             'invitations':
                 [
-                    {'email': 'good@email.com',
-                     'realname': 'Good Email'},
-                    {'email': 'passing@test.com',
-                     'realname': 'Passing Test'}
+                    {'receiver': 'good@email.com',
+                     'receiver_name': 'Good Email'},
+                    {'receiver': 'passing@test.com',
+                     'receiver_name': 'Passing Test'}
                 ],
-            'message': 'Passing Test Case'
+            'message': 'Passing Test Case',
         }
         res = self.testapp.post_json(site_invitation_url,
                                      data,
@@ -394,9 +396,10 @@ class TestSiteInvitationViews(ApplicationLayerTest):
         body = res.json_body
         assert_that(body['Items'], has_length(2))
 
-        # Test mixed challenge and good
-        data['invitations'].append({'email': 'new@email.com',
-                                    'realname': 'New Email'})
+        # Test resending
+        data['invitations'].append({'receiver': 'new@email.com',
+                                    'receiver_name': 'New Email'})
+
         res = self.testapp.post_json(site_invitation_url,
                                      data,
                                      status=200)
@@ -404,7 +407,8 @@ class TestSiteInvitationViews(ApplicationLayerTest):
         assert_that(body['Items'], has_length(3))
 
         # Test challenge to different endpoint
-        site_invitation_url = '/dataserver2/Invitations/@@send-site-admin-invitation'
+        site_invitation_url = '/dataserver2/Invitations/@@send-site-invitation'
+        data['mimeType'] = SITE_ADMIN_INVITATION_MIMETYPE
         res = self.testapp.post_json(site_invitation_url,
                                      data,
                                      status=409)
@@ -460,5 +464,11 @@ class TestSiteInvitationViews(ApplicationLayerTest):
         url = '/dataserver2/Invitations/@@pending-site-invitations'
         res = self.testapp.get(url,
                                params={'sortOn': 'email'})
+        for i, item in enumerate(res.json_body['Items']):
+            assert_that(item['receiver'], is_(emails[i]))
+
+        url = '/dataserver2/Invitations/@@pending-site-invitations'
+        res = self.testapp.get(url,
+                               params={'sortOn': 'created_time'})
         for i, item in enumerate(res.json_body['Items']):
             assert_that(item['receiver'], is_(emails[i]))
