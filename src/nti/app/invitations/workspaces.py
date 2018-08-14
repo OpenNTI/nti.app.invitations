@@ -24,7 +24,6 @@ from nti.app.invitations import REL_DELETE_SITE_INVITATIONS
 from nti.app.invitations import REL_SEND_SITE_ADMIN_INVITATION
 from nti.app.invitations import REL_SEND_SITE_INVITATION
 from nti.app.invitations import REL_PENDING_SITE_INVITATIONS
-from nti.app.invitations import REL_PENDING_SITE_ADMIN_INVITATIONS
 from nti.app.invitations import REL_ACCEPT_INVITATION
 from nti.app.invitations import REL_DECLINE_INVITATION
 from nti.app.invitations import REL_ACCEPT_INVITATIONS
@@ -201,8 +200,7 @@ class _DefaultSiteInvitationsLinksProvider(object):
             link = self._create_link(name, name, 'POST', InvitationsPathAdapter)
             result.append(link)
 
-        for name in (REL_PENDING_SITE_INVITATIONS,
-                     REL_PENDING_SITE_ADMIN_INVITATIONS):
+        for name in (REL_PENDING_SITE_INVITATIONS,):
             link = self._create_link(name, name, 'GET', InvitationsPathAdapter)
             result.append(link)
 

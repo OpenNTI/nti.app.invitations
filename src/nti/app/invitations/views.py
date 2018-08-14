@@ -49,6 +49,7 @@ from nti.app.base.abstract_views import get_source
 
 from nti.app.externalization.error import raise_json_error
 
+from nti.app.externalization.view_mixins import BatchingUtilsMixin
 from nti.app.externalization.view_mixins import ModeledContentUploadRequestUtilsMixin
 
 from nti.app.externalization.error import handle_validation_error
@@ -71,7 +72,6 @@ from nti.app.invitations import REL_PENDING_SITE_INVITATIONS
 from nti.app.invitations import REL_SEND_SITE_ADMIN_INVITATION
 from nti.app.invitations import SITE_ADMIN_INVITATION_MIMETYPE
 from nti.app.invitations import GENERIC_SITE_INVITATION_MIMETYPE
-from nti.app.invitations import REL_PENDING_SITE_ADMIN_INVITATIONS
 from nti.app.invitations import REL_TRIVIAL_DEFAULT_INVITATION_CODE
 from nti.app.invitations import REL_DELETE_SITE_INVITATIONS
 
@@ -740,21 +740,48 @@ class AcceptSiteInvitationByCodeView(AcceptSiteInvitationView):
 @view_config(route_name='objects.generic.traversal',
              renderer='rest',
              context=InvitationsPathAdapter,
-             permission=nauth.ACT_READ,
              request_method='GET',
              name=REL_PENDING_SITE_INVITATIONS)
-class GetPendingSiteInvitationsView(AbstractAuthenticatedView):
-    _invitation_mime_type = SITE_INVITATION_MIMETYPE
+class GetPendingSiteInvitationsView(AbstractAuthenticatedView,
+                                    BatchingUtilsMixin):
+
+    _default_mimetypes = (SITE_INVITATION_MIMETYPE,
+                          SITE_ADMIN_INVITATION_MIMETYPE)
+
+    def _do_sort_email(self, items, reverse):
+        return sorted(items, key=lambda item: item.receiver_email, reverse=reverse)
+
+    def _do_sort_created_time(self, items, reverse):
+        return sorted(items, key=lambda item: item.CreatedTime, reverse=reverse)
 
     def _do_call(self):
+        if not is_admin_or_site_admin(self.remoteUser):
+            return hexc.HTTPForbidden()
+
         result = LocatedExternalDict()
         site = self.request.params.get('site') or getSite().__name__
-        items = get_pending_invitations(mimeTypes=self._invitation_mime_type,
+        exclude = self.request.params.get('exclude', '')
+        exclude = exclude.strip().split(',')
+        mimetypes = [mimetype for mimetype in self._default_mimetypes if mimetype not in exclude]
+        items = get_pending_invitations(mimeTypes=mimetypes,
                                         sites=site)
+        sort_name = self.request.params.get('sortOn')
+        sort_reverse = self.request.params.get('sortOrder', 'ascending') == 'descending'
+        if sort_name:
+            try:
+                sort_method = getattr(self, '_do_sort_' + sort_name)
+                items = sort_method(items, sort_reverse)
+            except AttributeError:
+                raise hexc.HTTPBadRequest("Unsupported sort option.")
         result[ITEMS] = items
         result[TOTAL] = result[ITEM_COUNT] = len(items)
         result.__name__ = self.request.view_name
         result.__parent__ = self.request.context
+        batch_size, batch_start = self._get_batch_size_start()
+        if batch_size is not None and batch_start is not None:
+            self._batch_items_iterable(result, result[ITEMS],
+                                       batch_size=batch_size,
+                                       batch_start=batch_start)
         return result
 
     def __call__(self):
@@ -869,13 +896,3 @@ class DeleteGenericSiteInvitationCode(AbstractAuthenticatedView):
              name=REL_SEND_SITE_ADMIN_INVITATION)
 class SendSiteAdminInvitationView(SendSiteInvitationCodeView):
     _invitation_type = SiteAdminInvitation
-
-
-@view_config(route_name='objects.generic.traversal',
-             renderer='rest',
-             context=InvitationsPathAdapter,
-             permission=nauth.ACT_READ,
-             request_method='GET',
-             name=REL_PENDING_SITE_ADMIN_INVITATIONS)
-class GetPendingSiteAdminInvitationsView(GetPendingSiteInvitationsView):
-    _invitation_mime_type = SITE_ADMIN_INVITATION_MIMETYPE
