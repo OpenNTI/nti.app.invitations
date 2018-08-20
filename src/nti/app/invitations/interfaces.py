@@ -60,6 +60,9 @@ class ISiteInvitation(IUserInvitation):
     target_site = ValidTextLine(title=u'The target site name',
                                 required=True)
 
+    receiver_name = ValidTextLine(title=u'The realname of the receiver for this invitation',
+                                  required=True)
+
 
 class IGenericSiteInvitation(ISiteInvitation):
     """

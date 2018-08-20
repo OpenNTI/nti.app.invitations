@@ -76,10 +76,6 @@ class SiteInvitation(Invitation):
 
     Code = alias('code')
 
-    @readproperty
-    def receiver_name(self):
-        return getattr(self.receiver, 'realname', None)
-
 
 @interface.implementer(IGenericSiteInvitation)
 class GenericSiteInvitation(SiteInvitation):

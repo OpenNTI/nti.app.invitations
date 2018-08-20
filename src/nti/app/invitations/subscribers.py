@@ -17,8 +17,7 @@ from six.moves import urllib_parse
 from zc.intid.interfaces import IBeforeIdRemovedEvent
 
 from zope import component
-
-from zope.component.hooks import getSite
+from zope import interface
 
 from zope.i18n import translate
 
@@ -33,6 +32,8 @@ from nti.app.invitations.interfaces import ISiteInvitation
 
 from nti.app.invitations.utils import accept_site_invitation
 from nti.app.invitations.utils import pending_site_invitation_for_email
+
+from nti.app.pushnotifications.digest_email import _TemplateArgs
 
 from nti.appserver.interfaces import IUserCreatedWithRequestEvent
 
@@ -111,36 +112,6 @@ def get_ds2(request):
     return result or "dataserver2"
 
 
-def get_policy_package():
-    policy = component.getUtility(ISitePolicyUserEventListener)
-    return getattr(policy, 'PACKAGE', None)
-
-
-def get_template_and_package(site, base_template, default_package=None):
-    #package = get_policy_package()
-    #if not package:
-    return base_template, default_package
-
-    # package = dottedname.resolve(package)
-    # # Safe ascii path
-    # provider_unique_id = site.ProviderUniqueID.replace(' ', '').lower()
-    # provider_unique_id = make_specific_safe(provider_unique_id)
-    # full_provider_id = provider_unique_id.replace('-', '')
-    # template = full_provider_id + "_" + base_template
-    #
-    # path = os.path.join(os.path.dirname(package.__file__), 'templates')
-    # if not os.path.exists(os.path.join(path, template + ".pt")):
-    #     # Full path doesn't exist; Drop our specific id part and try that
-    #     provider_unique_prefix = provider_unique_id.split('-')[0]
-    #     provider_unique_prefix = provider_unique_prefix.split('/')[0]
-    #     template = provider_unique_prefix + "_" + base_template
-    #     if not os.path.exists(os.path.join(path, template + ".pt")):
-    #         template = base_template
-    # if template == base_template:
-    #     package = default_package
-    # return template, package
-
-
 def send_invitation_email(invitation,
                           sender,
                           receiver_name,
@@ -151,16 +122,27 @@ def send_invitation_email(invitation,
         logger.warn("Not sending an invitation email because of no email or request")
         return False
 
-    site = getSite()
+    template_args = _TemplateArgs(request=request,
+                                  remoteUser=sender,
+                                  objs=[invitation])
+
     template = 'site_invitation_email'
-    template, package = get_template_and_package(site, template)
 
     policy = component.getUtility(ISitePolicyUserEventListener)
+
+    # Some sites want a custom image in the invitation
+    # If there is a macro registered then we will render it to
+    # We have to do this here because we cannot do try/except within the template
+    custom_image = component.queryMultiAdapter((interface.Interface, interface.Interface, interface.Interface),
+                                               name='site_invitation_image')
+
     support_email = getattr(policy, 'SUPPORT_EMAIL', 'support@nextthought.com')
     brand = getattr(policy, 'BRAND', 'NextThought')
-    brand_tag = 'Presented by NextThought'
-    if brand.lower() != 'nextthought':
-        brand_tag = 'Presented by %s and NextThought' % brand
+    brand_message = getattr(policy, 'SITE_INVITATION_MESSAGE', u'Get started learning on an interactive '
+                                                               u'platform like no other by clicking the button '
+                                                               u'below or copying and pasting the URL into your '
+                                                               u'browser.')
+    package = getattr(policy, 'PACKAGE', None)
 
     names = IFriendlyNamed(sender)
     informal_username = names.alias or names.realname or sender.username
@@ -168,32 +150,39 @@ def send_invitation_email(invitation,
     params = {'code': invitation.code}
     query = urllib_parse.urlencode(params)
     url = '/%s/%s/%s?%s' % (get_ds2(request),
-                         INVITATIONS,
-                         '@@' + REL_ACCEPT_SITE_INVITATION,
-                         query)
+                            INVITATIONS,
+                            '@@' + REL_ACCEPT_SITE_INVITATION,
+                            query)
     redemption_link = urllib_parse.urljoin(request.application_url, url)
+
     receiver_name = receiver_name
-    args = {
-        'sender_name': informal_username,
+    msg_args = {
         'receiver_name': receiver_name,
         'support_email': support_email,
-        'site_name': site.__name__,
-        'invitation_code': invitation.code,
-        'invitation_message': message,
         'redemption_link': redemption_link,
         'brand': brand,
-        'brand_tag': brand_tag,
-        'today': isodate.date_isoformat(datetime.datetime.now())
+        'brand_message': brand_message,
+        'custom_image_macro': custom_image,
+        'sender_content': None
     }
+
+    if invitation.message:
+        msg_args['sender_content'] = {
+            'sender': informal_username,
+            'message': message,
+            'creator_avatar_url': template_args.creator_avatar_url,
+            'creator_avatar_initials': template_args.creator_avatar_initials,
+            'creator_avatar_bg_color': template_args.creator_avatar_bg_color
+        }
 
     try:
         mailer = component.getUtility(ITemplatedMailer)
         mailer.queue_simple_html_text_email(
             template,
             subject=translate(_(u"You're invited to ${title}",
-                                mapping={'title': site.__name__})),
+                                mapping={'title': brand})),
             recipients=[receiver_email],
-            template_args=args,
+            template_args=msg_args,
             request=request,
             package=package,
             text_template_extension='.mak')
