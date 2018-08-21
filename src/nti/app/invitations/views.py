@@ -728,7 +728,7 @@ class GetPendingSiteInvitationsView(AbstractAuthenticatedView,
     _default_mimetypes = (SITE_INVITATION_MIMETYPE,
                           SITE_ADMIN_INVITATION_MIMETYPE)
 
-    def _do_sort_email(self, items, reverse):
+    def _do_sort_receiver(self, items, reverse):
         return sorted(items, key=lambda item: item.receiver, reverse=reverse)
 
     def _do_sort_created_time(self, items, reverse):
@@ -742,9 +742,17 @@ class GetPendingSiteInvitationsView(AbstractAuthenticatedView,
         site = self.request.params.get('site') or getSite().__name__
         exclude = self.request.params.get('exclude', '')
         exclude = exclude.strip().split(',')
+        filterOn = self.request.params.get('filterOn', 'receiver')
+        filter_value = self.request.params.get('filter')
         mimetypes = [mimetype for mimetype in self._default_mimetypes if mimetype not in exclude]
         items = get_pending_invitations(mimeTypes=mimetypes,
                                         sites=site)
+        filtered = False
+        if filter_value:
+            filtered = True
+            total = len(items)
+            items = filter(lambda item: filter_value in getattr(item, filterOn, ''), items)
+
         sort_name = self.request.params.get('sortOn')
         sort_reverse = self.request.params.get('sortOrder', 'ascending') == 'descending'
         if sort_name:
@@ -754,7 +762,12 @@ class GetPendingSiteInvitationsView(AbstractAuthenticatedView,
             except AttributeError:
                 pass
         result[ITEMS] = items
-        result[TOTAL] = result[ITEM_COUNT] = len(items)
+
+        if not filtered:
+            result[TOTAL] = result[ITEM_COUNT] = len(items)
+        else:
+            result[TOTAL] = total
+            result[ITEM_COUNT] = len(items)
         result.__name__ = self.request.view_name
         result.__parent__ = self.request.context
         batch_size, batch_start = self._get_batch_size_start()
