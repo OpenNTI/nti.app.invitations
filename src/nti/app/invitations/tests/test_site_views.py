@@ -499,3 +499,24 @@ class TestSiteInvitationViews(ApplicationLayerTest):
                                        'filter': '11@test.com'})
         assert_that(res.json_body['Items'], has_length(1))
         assert_that(res.json_body['Total'], is_(15))
+
+
+    @WithSharedApplicationMockDS(testapp=True, users=True)
+    def test_existing_email(self):
+        from IPython.terminal.debugger import set_trace;set_trace()
+        with mock_dataserver.mock_db_trans(self.ds):
+            self._create_user(u'lahey', external_value={'email': u'lahey@tpb.net'})
+        site_invitation_url = '/dataserver2/Invitations/@@send-site-invitation'
+        data = {
+            'invitations':
+                [
+                    {'receiver': 'lahey@tpb.net',
+                     'receiver_name': 'Lahey'},
+                ],
+        }
+        res = self.testapp.post_json(site_invitation_url,
+                                     data,
+                                     status=409)
+        body = res.json_body
+        assert_that(body['Items'], has_length(1))
+
