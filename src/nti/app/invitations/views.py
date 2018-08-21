@@ -94,6 +94,8 @@ from nti.dataserver.users.interfaces import IUserProfile
 
 from nti.dataserver.users.users import User
 
+from nti.dataserver.users.utils import get_users_by_email
+
 from nti.externalization.externalization import to_external_object
 
 from nti.externalization.integer_strings import to_external_string
@@ -411,9 +413,9 @@ class SendDFLInvitationView(AbstractAuthenticatedView,
         for username in set(usernames):
             user = User.get_user(username)
             # pylint: disable=no-member,unsupported-membership-test
-            if      IUser.providedBy(user) \
-                and user not in self.context \
-                and username != self.remoteUser.username:
+            if IUser.providedBy(user) \
+                    and user not in self.context \
+                    and username != self.remoteUser.username:
                 result.append(user.username)
 
         if not result:
@@ -571,7 +573,7 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
         self._validate_json_invitations(json_invitations)
         try:
             csv_invitations = self.parse_csv()
-        except Exception: # pylint: disable=broad-except
+        except Exception:  # pylint: disable=broad-except
             logger.exception('Failed to parse CSV file')
             raise_json_error(
                 self.request,
@@ -602,17 +604,27 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
                 },
                 None
             )
+
+        challenge = []
+        for invitation in values['invitations']:
+            if get_users_by_email(invitation['receiver']):
+                challenge.append(invitation)
+        if challenge:
+            self._handle_challenge(challenge,
+                                   code=u'ExistingAccountEmail',
+                                   message=_(
+                                       u'%s invitations will be sent to an email address'
+                                       u' already associated with an account.' %
+                                       len(challenge)
+                                   ))
         return values
 
-    def _handle_challenge(self, challenge_invitations):
+    def _handle_challenge(self, challenge_invitations, code, message):
         challenge = dict()
         challenge[ITEMS] = to_external_object(challenge_invitations)
         challenge[ITEM_COUNT] = challenge[TOTAL] = len(challenge_invitations)
-        challenge['message'] = _(
-            u'%s pending invitations will be updated to a different role.' %
-            len(challenge_invitations)
-        )
-        challenge['code'] = u'UpdatePendingInvitations'
+        challenge['message'] = message
+        challenge['code'] = code
         links = (
             Link(self.request.path,
                  rel='confirm',
@@ -659,7 +671,12 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
             notify(InvitationSentEvent(invitation, email))
 
         if len(challenge_invitations) > 0:
-            self._handle_challenge(challenge_invitations)
+            self._handle_challenge(challenge_invitations,
+                                   code=u'UpdatePendingInvitations',
+                                   message=_(
+                                       u'%s pending invitations will be updated to a different role.' %
+                                       len(challenge_invitations)
+                                   ))
 
         result[ITEMS] = items
         result.__name__ = self.request.view_name
@@ -724,7 +741,6 @@ class AcceptSiteInvitationByCodeView(AcceptSiteInvitationView):
              name=REL_PENDING_SITE_INVITATIONS)
 class GetPendingSiteInvitationsView(AbstractAuthenticatedView,
                                     BatchingUtilsMixin):
-
     _default_mimetypes = (SITE_INVITATION_MIMETYPE,
                           SITE_ADMIN_INVITATION_MIMETYPE)
 
@@ -768,6 +784,7 @@ class GetPendingSiteInvitationsView(AbstractAuthenticatedView,
         else:
             result[TOTAL] = total
             result[ITEM_COUNT] = len(items)
+            result["FilteredTotalItemCount"] = len(items)
         result.__name__ = self.request.view_name
         result.__parent__ = self.request.context
         batch_size, batch_start = self._get_batch_size_start()
@@ -804,7 +821,7 @@ class SetGenericSiteInvitationCode(AbstractAuthenticatedView,
     def __call__(self):
         if not is_admin_or_site_admin(self.remoteUser):
             logger.info(
-                'User %s failed permissions check for creating a generic site invitation.', 
+                'User %s failed permissions check for creating a generic site invitation.',
                 self.remoteUser
             )
             raise hexc.HTTPForbidden()
