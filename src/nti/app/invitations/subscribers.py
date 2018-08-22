@@ -193,4 +193,4 @@ def require_invite_for_user_creation(unused_user, event):
     request = getattr(event, 'request', None) or get_current_request()
     invitation = request.session.get(SITE_INVITATION_SESSION_KEY)
     if invitation is None:
-        handle_validation_error(request, InvitationRequiredError)
+        handle_validation_error(request, InvitationRequiredError())

@@ -151,7 +151,7 @@ class TestSubscribers(ApplicationLayerTest):
             mock_request.is_callable().returns(self.request)
             event = UserLogonEvent(user)
             event.request = self.request
-            with self.assertRaises(InvitationRequiredError):
+            with self.assertRaises(hexc.HTTPUnprocessableEntity):
                 require_invite_for_user_creation(user, event)
 
             # Test the subscriber isn't hit without zcml registration
@@ -163,7 +163,7 @@ class TestSubscribers(ApplicationLayerTest):
             # Test the subscriber raises without invitation code
             gsm = getGlobalSiteManager()
             gsm.registerHandler(require_invite_for_user_creation)
-            with self.assertRaises(InvitationRequiredError):
+            with self.assertRaises(hexc.HTTPUnprocessableEntity):
                 notify(event)
 
             # Test the subscriber is silent when conditions are satisfied

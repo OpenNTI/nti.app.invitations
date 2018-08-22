@@ -418,9 +418,9 @@ class SendDFLInvitationView(AbstractAuthenticatedView,
         for username in set(usernames):
             user = User.get_user(username)
             # pylint: disable=no-member,unsupported-membership-test
-            if  IUser.providedBy(user) \
-                and user not in self.context \
-                and user is not self.remoteUser:
+            if IUser.providedBy(user) \
+                    and user not in self.context \
+                    and user is not self.remoteUser:
                 result.append(user.username)
 
         if not result:
@@ -619,9 +619,11 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
             self._handle_challenge(challenge,
                                    code=u'ExistingAccountEmail',
                                    message=_(
-                                       u'%s invitations will be sent to an email address'
+                                       u'%s %s will be sent to an email address'
                                        u' already associated with an account.' %
-                                       len(challenge)
+                                       (len(challenge), self.request.localizer.pluralize('invitation',
+                                                                                         'invitations',
+                                                                                         challenge))
                                    ))
         return values
 
@@ -680,8 +682,11 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
             self._handle_challenge(challenge_invitations,
                                    code=u'UpdatePendingInvitations',
                                    message=_(
-                                       u'%s pending invitations will be updated to a different role.' %
-                                       len(challenge_invitations)
+                                       u'%s pending %s will be updated to a different role.' %
+                                       (len(challenge_invitations),
+                                        self.request.localizer.pluralize('invitation',
+                                                                         'invitations',
+                                                                         challenge_invitations))
                                    ))
 
         result[ITEMS] = items
