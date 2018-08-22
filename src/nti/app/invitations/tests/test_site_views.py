@@ -15,6 +15,8 @@ import tempfile
 
 from zope import component
 
+from zope.cachedescriptors.property import Lazy
+
 from nti.app.invitations import SITE_INVITATION_MIMETYPE
 from nti.app.invitations import SITE_ADMIN_INVITATION_MIMETYPE
 
@@ -46,6 +48,10 @@ logger = __import__('logging').getLogger(__name__)
 class TestSiteInvitationViews(ApplicationLayerTest):
     # TODO it would be nice to assert that the request session state is what we
     # expect after the accept process
+
+    @Lazy
+    def invitations(self):
+        return component.getUtility(IInvitationsContainer)
 
     @WithSharedApplicationMockDS(testapp=True, users=True)
     def test_send_site_invitation(self):
@@ -179,17 +185,16 @@ class TestSiteInvitationViews(ApplicationLayerTest):
 
             assert_that(site_invitation.is_accepted(), is_(False))
 
-            container = component.getUtility(IInvitationsContainer)
+            assert_that(self.invitations, has_length(0))
 
-            assert_that(container, has_length(0))
-
-            container.add(site_invitation)
-            assert_that(container, has_length(1))
+            self.invitations.add(site_invitation)
+            assert_that(self.invitations, has_length(1))
 
             inv_ntiid = to_external_ntiid_oid(site_invitation)
 
         # Accept the invitation with an anonymous user
         inv_url = '/dataserver2/Objects/%s/@@accept-site-invitation' % inv_ntiid
+        self.testapp.set_authorization(None)
         self.testapp.get(inv_url,
                          status=302)
 
@@ -205,12 +210,12 @@ class TestSiteInvitationViews(ApplicationLayerTest):
                                              accepted=False)
 
             assert_that(site_invitation.is_accepted(), is_(False))
-            container = component.getUtility(IInvitationsContainer)
-            assert_that(container, has_length(0))
-            container.add(site_invitation)
-            assert_that(container, has_length(1))
+            assert_that(self.invitations, has_length(0))
+            self.invitations.add(site_invitation)
+            assert_that(self.invitations, has_length(1))
 
         # Accept the invitation with an anonymous user
+        self.testapp.set_authorization(None)
         self.testapp.get(inv_url,
                          params={'code': u'Sunnyvale1'},
                          status=302)
@@ -225,8 +230,7 @@ class TestSiteInvitationViews(ApplicationLayerTest):
                                              sender=u'sjohnson',
                                              accepted=False)
 
-            container = component.getUtility(IInvitationsContainer)
-            container.add(site_invitation)
+            self.invitations.add(site_invitation)
 
         # Generic test that there is one in there
         res = self.testapp.get(pending_url)
@@ -240,8 +244,7 @@ class TestSiteInvitationViews(ApplicationLayerTest):
                                              accepted=False,
                                              site=u'exclude_me')
 
-            container = component.getUtility(IInvitationsContainer)
-            container.add(site_invitation)
+            self.invitations.add(site_invitation)
 
         # Test that we only get them for the specified sites if passed
         res = self.testapp.get(pending_url,
@@ -255,8 +258,7 @@ class TestSiteInvitationViews(ApplicationLayerTest):
                                                    sender=u'sjohnson',
                                                    accepted=False)
 
-            container = component.getUtility(IInvitationsContainer)
-            container.add(site_invitation)
+            self.invitations.add(site_invitation)
 
         res = self.testapp.get(pending_url,
                                {'site': 'exclude_me'})
@@ -268,8 +270,7 @@ class TestSiteInvitationViews(ApplicationLayerTest):
         generic_url = '/dataserver2/Invitations/@@generic-site-invitation'
 
         with mock_dataserver.mock_db_trans(self.ds):
-            invitations = component.getUtility(IInvitationsContainer)
-            assert_that(invitations, has_length(0))
+            assert_that(self.invitations, has_length(0))
 
         # Create a generic code
         res = self.testapp.post_json(generic_url,
@@ -279,8 +280,7 @@ class TestSiteInvitationViews(ApplicationLayerTest):
         assert_that(body['code'], is_('generic_code1'))
 
         with mock_dataserver.mock_db_trans(self.ds):
-            invitations = component.getUtility(IInvitationsContainer)
-            assert_that(invitations, has_length(1))
+            assert_that(self.invitations, has_length(1))
 
         # Test that the generic code is a singleton
         res = self.testapp.post_json(generic_url,
@@ -290,8 +290,7 @@ class TestSiteInvitationViews(ApplicationLayerTest):
         assert_that(body['code'], is_('generic_code2'))
 
         with mock_dataserver.mock_db_trans(self.ds):
-            invitations = component.getUtility(IInvitationsContainer)
-            assert_that(invitations, has_length(1))
+            assert_that(self.invitations, has_length(1))
 
         # Test PUT
         res = self.testapp.put_json(generic_url,
@@ -301,16 +300,14 @@ class TestSiteInvitationViews(ApplicationLayerTest):
         assert_that(body['code'], is_('generic_code3'))
 
         with mock_dataserver.mock_db_trans(self.ds):
-            invitations = component.getUtility(IInvitationsContainer)
-            assert_that(invitations, has_length(1))
+            assert_that(self.invitations, has_length(1))
 
         # Test delete
         self.testapp.delete(generic_url,
                             status=204)
 
         with mock_dataserver.mock_db_trans(self.ds):
-            invitations = component.getUtility(IInvitationsContainer)
-            assert_that(invitations, has_length(0))
+            assert_that(self.invitations, has_length(0))
 
         # Test no code
         self.testapp.post_json(generic_url,
@@ -328,6 +325,8 @@ class TestSiteInvitationViews(ApplicationLayerTest):
         self.testapp.post_json(generic_url,
                                {'code': 'generic_code1'},
                                status=200)
+
+        self.testapp.set_authorization(None)
         self.testapp.get('/dataserver2/Invitations/@@accept-site-invitation',
                          params={'code': 'generic_code1'},
                          status=302)
@@ -355,9 +354,8 @@ class TestSiteInvitationViews(ApplicationLayerTest):
         assert_that(body['Items'], has_length(2))
 
         with mock_dataserver.mock_db_trans(self.ds):
-            invitations = component.getUtility(IInvitationsContainer)
-            assert_that(invitations, has_length(2))
-            for invitation in invitations.values():
+            assert_that(self.invitations, has_length(2))
+            for invitation in self.invitations.values():
                 assert_that(ISiteAdminInvitation.providedBy(invitation), is_(True))
 
     @WithSharedApplicationMockDS(testapp=True, users=True)
@@ -369,9 +367,8 @@ class TestSiteInvitationViews(ApplicationLayerTest):
                                       sender=u'lahey')
             admin_inv = SiteAdminInvitation(receiver=u'julian@tpb.net',
                                             sender=u'lahey')
-            invitations = component.getUtility(IInvitationsContainer)
-            invitations.add(site_inv)
-            invitations.add(admin_inv)
+            self.invitations.add(site_inv)
+            self.invitations.add(admin_inv)
         res = self.testapp.get(pending_url,
                                params={'exclude': SITE_INVITATION_MIMETYPE})
         body = res.json_body
@@ -429,15 +426,14 @@ class TestSiteInvitationViews(ApplicationLayerTest):
     def test_delete_invitations(self):
         emails = []
         with mock_dataserver.mock_db_trans(self.ds):
-            invitations = component.getUtility(IInvitationsContainer)
             for i in range(5):
                 email = "test%s@test.com" % i
                 emails.append(email)
                 inv = SiteInvitation(receiver=email,
                                      sender="sjohnson@nextthought.com")
-                invitations.add(inv)
+                self.invitations.add(inv)
 
-            assert_that(invitations, has_length(5))
+            assert_that(self.invitations, has_length(5))
 
         url = '/dataserver2/Invitations/@@delete-site-invitations'
 
@@ -447,19 +443,18 @@ class TestSiteInvitationViews(ApplicationLayerTest):
 
         assert_that(res.json_body, has_length(5))
         with mock_dataserver.mock_db_trans(self.ds):
-            assert_that(invitations, has_length(0))
+            assert_that(self.invitations, has_length(0))
 
     @WithSharedApplicationMockDS(testapp=True, users=True)
     def test_sort_pending_invitations(self):
         emails = []
         with mock_dataserver.mock_db_trans(self.ds):
-            invitations = component.getUtility(IInvitationsContainer)
             for i in range(5):
                 email = "%s@test.com" % i
                 emails.append(email)
                 inv = SiteInvitation(receiver=email,
                                      sender="sjohnson@nextthought.com")
-                invitations.add(inv)
+                self.invitations.add(inv)
 
         url = '/dataserver2/Invitations/@@pending-site-invitations'
         res = self.testapp.get(url,
@@ -477,13 +472,12 @@ class TestSiteInvitationViews(ApplicationLayerTest):
     def test_filter_pending_invitations(self):
         emails = []
         with mock_dataserver.mock_db_trans(self.ds):
-            invitations = component.getUtility(IInvitationsContainer)
             for i in range(15):
                 email = "%s@test.com" % i
                 emails.append(email)
                 inv = SiteInvitation(receiver=email,
                                      sender="sjohnson@nextthought.com")
-                invitations.add(inv)
+                self.invitations.add(inv)
 
         url = '/dataserver2/Invitations/@@pending-site-invitations'
         res = self.testapp.get(url,
@@ -501,7 +495,7 @@ class TestSiteInvitationViews(ApplicationLayerTest):
         assert_that(res.json_body['Total'], is_(15))
 
     @WithSharedApplicationMockDS(testapp=True, users=True)
-    def test_existing_email(self):
+    def test_send_to_existing_email(self):
         with mock_dataserver.mock_db_trans(self.ds):
             self._create_user(u'lahey', external_value={'email': u'lahey@tpb.net'})
         site_invitation_url = '/dataserver2/Invitations/@@send-site-invitation'
@@ -518,3 +512,33 @@ class TestSiteInvitationViews(ApplicationLayerTest):
         body = res.json_body
         assert_that(body['Items'], has_length(1))
 
+    @WithSharedApplicationMockDS(testapp=True, users=True)
+    def test_existing_user_accept(self):
+        with mock_dataserver.mock_db_trans(self.ds):
+            user = self._create_user(u'lahey', external_value={'email': u'lahey@tpb.net'})
+            inv = SiteInvitation(receiver=u'lahey@tpb.net',
+                                 sender=u'lahey',
+                                 code=u'Sunnyvale',
+                                 target_site='dataserver2')
+            self.invitations.add(inv)
+            extra_environ = self._make_extra_environ(user=user.username, update_request=True)
+
+        site_invitation_url = '/dataserver2/Invitations/@@accept-site-invitation'
+
+        self.testapp.get(site_invitation_url,
+                         params={'code': u'Sunnyvale'},
+                         extra_environ=extra_environ,
+                         status=302)
+
+        with mock_dataserver.mock_db_trans(self.ds):
+            inv = SiteInvitation(receiver=u'lahey@tpb.net',
+                                 sender=u'lahey',
+                                 code=u'Sunnyvale1',
+                                 accepted=True,
+                                 target_site='dataserver2')
+            self.invitations.add(inv)
+
+        self.testapp.get(site_invitation_url,
+                         params={'code': u'Sunnyvale1'},
+                         extra_environ=extra_environ,
+                         status=303)
