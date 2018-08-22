@@ -32,6 +32,7 @@ from nti.app.invitations.utils import accept_site_invitation_by_code
 
 from nti.app.pushnotifications.digest_email import _TemplateArgs
 
+from nti.appserver.interfaces import IUserCreatedWithRequestEvent
 from nti.appserver.interfaces import IUserLogonEvent
 
 from nti.appserver.policies.interfaces import ISitePolicyUserEventListener
@@ -188,7 +189,7 @@ def _on_site_invitation_sent(invitation, event):
                           request=request)
 
 
-@component.adapter(IUser, IUserLogonEvent)
+@component.adapter(IUser, IUserCreatedWithRequestEvent)
 def require_invite_for_user_creation(unused_user, event):
     request = getattr(event, 'request', None) or get_current_request()
     invitation = request.session.get(SITE_INVITATION_SESSION_KEY)
