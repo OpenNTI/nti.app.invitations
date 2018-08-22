@@ -594,7 +594,7 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
         values['invitations'] = invitations
         return values
 
-    def preflight_input(self):
+    def preflight_input(self, force=False):
         values = self.get_site_invitations()
         # At this point we should have a values dict containing invitation destinations and message
         if self.warnings or self.invalid_emails:
@@ -615,7 +615,7 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
         for invitation in values['invitations']:
             if get_users_by_email(invitation['receiver']):
                 challenge.append(invitation)
-        if challenge:
+        if challenge and not force:
             self._handle_challenge(challenge,
                                    code=u'ExistingAccountEmail',
                                    message=_(
@@ -645,8 +645,8 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
 
     def __call__(self):
         self.check_permissions()
-        values = self.preflight_input()
         force = self.request.params.get('force')
+        values = self.preflight_input(force=force)
         # Default to a regular site invitation
         mimetype = values.get('mime_type') or values.get('mimeType') or SITE_INVITATION_MIMETYPE
         message = values.get('message')
