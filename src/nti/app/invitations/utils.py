@@ -68,8 +68,8 @@ def accept_site_invitation_by_code(user, code):
         invitation = pending_site_invitation_for_email(email)
     if invitation is None:
         logger.info(u'Unable to find an invitation for user %s' % user)
-        raise InvitationCodeError
+        raise InvitationCodeError(invitation)
     result = accept_site_invitation(user, invitation)
     if not result:
         logger.exception(u'Failed to accept invitation for %s' % invitation.receiver)
-        raise InvitationValidationError
+        raise InvitationValidationError(invitation)
