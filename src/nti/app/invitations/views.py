@@ -42,6 +42,8 @@ from zope.intid.interfaces import IIntIds
 
 from zope.traversing.interfaces import IPathAdapter
 
+from nti.app.authentication import get_remote_user
+
 from nti.app.base.abstract_views import AbstractView
 from nti.app.base.abstract_views import AbstractAuthenticatedView
 
@@ -80,7 +82,10 @@ from nti.app.invitations.interfaces import IChallengeLogonProvider
 from nti.app.invitations.invitations import JoinEntityInvitation
 from nti.app.invitations.invitations import GenericSiteInvitation
 
+from nti.app.invitations.utils import accept_site_invitation_by_code
 from nti.app.invitations.utils import pending_site_invitation_for_email
+
+from nti.appserver.interfaces import IApplicationSettings
 
 from nti.dataserver import authorization as nauth
 
@@ -696,13 +701,34 @@ class AcceptSiteInvitationView(AcceptInvitationMixin):
     def _do_call(self, code=None):
         # pylint: disable=no-member
         code = self.context.code if not code else code
+
+        # If an authenticated user has tried to accept the invitation,
+        # we want to handle their invitation here and skip sending
+        # them through the account creation flow
+        # This allows for invitations to update the permissions
+        # of an existing user
+        if self.request.authenticated_userid:
+            remote_user = get_remote_user()
+            settings = component.getUtility(IApplicationSettings)
+            # Do't want the trailing slash
+            web_root = settings.get('web_app_root', '/NextThoughtWebApp/')[:-1]
+            app_url = self.request.application_url + web_root
+            logger.info(u'Attempting to accept invitation for authenticated user %s' % remote_user)
+            try:
+                accept_site_invitation_by_code(remote_user, code)
+                return hexc.HTTPFound(app_url)
+            except InvitationValidationError as e:
+                logger.exception(u'Failed to accept invitation for authenticated user %s' % remote_user)
+                app_url += '/invitations?error=%s' % e.doc()
+                return hexc.HTTPSeeOther(app_url)
+
         url_provider = component.queryUtility(IChallengeLogonProvider)
         if url_provider is None:
             logger.warning('No challenge logon provider for site %s',
                            getSite())
             return hexc.HTTPNotFound()
-        self.request.session[SITE_INVITATION_SESSION_KEY] = code
         logon_url = url_provider.logon_url(self.request)
+        self.request.session[SITE_INVITATION_SESSION_KEY] = code
         return hexc.HTTPFound(logon_url)
 
     def __call__(self):

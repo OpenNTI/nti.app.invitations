@@ -54,6 +54,8 @@
 
 	<subscriber handler=".subscribers._on_site_invitation_sent" />
 
+	<subscriber handler=".subscribers._validate_site_invitation" />
+
 	<!-- Decorators -->
 	<subscriber	factory=".decorators.DFLGetInvitationLinkProvider"
 				provides="nti.externalization.interfaces.IExternalMappingDecorator"/>
@@ -87,7 +89,5 @@
 	<adapter factory=".invitations.DefaultSiteAdminInvitationActor"
 		     provides=".interfaces.ISiteInvitationActor"
 		     for=".interfaces.ISiteAdminInvitation" />
-
-	<subscriber handler=".subscribers._validate_site_invitation" />
 
 </configure>
