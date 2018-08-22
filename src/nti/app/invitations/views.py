@@ -66,13 +66,13 @@ from nti.app.invitations import REL_PENDING_INVITATIONS
 from nti.app.invitations import REL_SEND_SITE_INVITATION
 from nti.app.invitations import SITE_INVITATION_MIMETYPE
 from nti.app.invitations import REL_ACCEPT_SITE_INVITATION
+from nti.app.invitations import REL_DELETE_SITE_INVITATIONS
 from nti.app.invitations import REL_GENERIC_SITE_INVITATION
 from nti.app.invitations import SITE_INVITATION_SESSION_KEY
 from nti.app.invitations import REL_PENDING_SITE_INVITATIONS
 from nti.app.invitations import SITE_ADMIN_INVITATION_MIMETYPE
 from nti.app.invitations import GENERIC_SITE_INVITATION_MIMETYPE
 from nti.app.invitations import REL_TRIVIAL_DEFAULT_INVITATION_CODE
-from nti.app.invitations import REL_DELETE_SITE_INVITATIONS
 
 from nti.app.invitations.interfaces import ISiteInvitation
 from nti.app.invitations.interfaces import IChallengeLogonProvider
@@ -413,9 +413,9 @@ class SendDFLInvitationView(AbstractAuthenticatedView,
         for username in set(usernames):
             user = User.get_user(username)
             # pylint: disable=no-member,unsupported-membership-test
-            if IUser.providedBy(user) \
-                    and user not in self.context \
-                    and username != self.remoteUser.username:
+            if  IUser.providedBy(user) \
+                and user not in self.context \
+                and user is not self.remoteUser:
                 result.append(user.username)
 
         if not result:
@@ -480,6 +480,7 @@ class DeleteSiteInvitationsView(AbstractAuthenticatedView,
                                               mimeTypes=(SITE_ADMIN_INVITATION_MIMETYPE,
                                                          SITE_INVITATION_MIMETYPE))
         for invitation in invitations:
+            # pylint: disable=no-member
             self.invitations.remove(invitation)
         return invitations
 
@@ -767,7 +768,7 @@ class GetPendingSiteInvitationsView(AbstractAuthenticatedView,
         if filter_value:
             filtered = True
             total = len(items)
-            items = filter(lambda item: filter_value in getattr(item, filterOn, ''), items)
+            items = [x for x in items if filter_value in getattr(x, filterOn, '')]
 
         sort_name = self.request.params.get('sortOn')
         sort_reverse = self.request.params.get('sortOrder', 'ascending') == 'descending'
