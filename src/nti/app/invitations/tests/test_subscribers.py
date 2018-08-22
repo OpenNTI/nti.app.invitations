@@ -24,13 +24,12 @@ from zope.event import notify
 
 from nti.app.invitations import SITE_INVITATION_SESSION_KEY
 
-from nti.app.invitations.interfaces import InvitationRequiredError
-
 from nti.app.invitations.invitations import SiteInvitation
 
 from nti.app.invitations.subscribers import _validate_site_invitation
 from nti.app.invitations.subscribers import require_invite_for_user_creation
 
+from nti.appserver.interfaces import UserCreatedWithRequestEvent
 from nti.appserver.interfaces import UserLogonEvent
 
 from nti.app.testing.application_webtest import ApplicationLayerTest
@@ -149,7 +148,7 @@ class TestSubscribers(ApplicationLayerTest):
 
             # Test the subscriber
             mock_request.is_callable().returns(self.request)
-            event = UserLogonEvent(user)
+            event = UserCreatedWithRequestEvent(user)
             event.request = self.request
             with self.assertRaises(hexc.HTTPUnprocessableEntity):
                 require_invite_for_user_creation(user, event)
