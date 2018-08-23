@@ -13,8 +13,6 @@ import six
 from zope import component
 from zope import interface
 
-from zope.cachedescriptors.property import readproperty
-
 from zope.event import notify
 
 from zope.securitypolicy.interfaces import IPrincipalRoleManager
@@ -44,6 +42,8 @@ from nti.dataserver.users.users import User
 
 from nti.invitations.interfaces import IInvitationsContainer
 from nti.invitations.interfaces import InvitationAcceptedEvent
+from nti.invitations.interfaces import InvitationEmailNotMatchingError
+from nti.invitations.interfaces import InvitationSiteNotMatchingError
 
 from nti.invitations.model import Invitation
 
@@ -133,7 +133,10 @@ class SiteInvitationActorMixin(object):
 
     def check_valid_invitation(self, profile, invitation):
         email = getattr(profile, 'email', None)
-        return email == invitation.receiver and invitation.target_site == getSite().__name__
+        if not email == invitation.receiver:
+            raise InvitationEmailNotMatchingError
+        if not invitation.target_site == getSite().__name__:
+            raise InvitationSiteNotMatchingError
 
 
 @interface.implementer(ISiteInvitationActor)
@@ -142,13 +145,11 @@ class DefaultSiteInvitationActor(SiteInvitationActorMixin):
 
     def accept(self, user, invitation=None):
         profile = self.user_profile(user)
-        result = False
-        if self.check_valid_invitation(profile, invitation):
-            invitation.accepted = True
-            invitation.receiver = getattr(user, 'username', user)  # update
-            notify(InvitationAcceptedEvent(invitation, user))
-            result = True
-        return result
+        self.check_valid_invitation(profile, invitation)
+        invitation.accepted = True
+        invitation.receiver = getattr(user, 'username', user)  # update
+        notify(InvitationAcceptedEvent(invitation, user))
+        return True
 
 
 @interface.implementer(ISiteInvitationActor)
@@ -183,10 +184,9 @@ class DefaultSiteAdminInvitationActor(SiteInvitationActorMixin):
 
     def accept(self, user, invitation=None):
         receiver_profile = self.user_profile(user)
-        if self.check_valid_invitation(receiver_profile, invitation):
-            invitation.accepted = True
-            invitation.receiver = getattr(user, 'username', user)
-            self._make_site_admin(user, getSite())
-            notify(InvitationAcceptedEvent(invitation, user))
-            return True
-        return False
+        self.check_valid_invitation(receiver_profile, invitation)
+        invitation.accepted = True
+        invitation.receiver = getattr(user, 'username', user)
+        self._make_site_admin(user, getSite())
+        notify(InvitationAcceptedEvent(invitation, user))
+        return True

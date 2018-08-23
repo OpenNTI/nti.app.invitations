@@ -38,7 +38,7 @@ from nti.dataserver.authorization import is_site_admin
 
 from nti.dataserver.tests import mock_dataserver
 
-from nti.invitations.interfaces import IDisabledInvitation
+from nti.invitations.interfaces import IDisabledInvitation, InvitationEmailNotMatchingError
 from nti.invitations.interfaces import IInvitationsContainer
 from nti.invitations.interfaces import InvitationAlreadyAcceptedError
 from nti.invitations.interfaces import InvitationDisabledError
@@ -109,8 +109,9 @@ class TesInvitations(ApplicationLayerTest):
                                         sender=u'lahey',
                                         target_site=u'dataserver2')
             component.getUtility(IInvitationsContainer).add(invitation)
-            result = actor.accept(ricky_user, invitation)
-            assert_that(result, is_(False))
+            with self.assertRaises(InvitationEmailNotMatchingError):
+                actor.accept(ricky_user, invitation)
+
             assert_that(invitation.is_accepted(), is_(False))
             assert_that(invitation.receiver, is_(u'julian@tpb.net'))
 

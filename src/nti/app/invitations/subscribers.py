@@ -84,7 +84,7 @@ def _validate_site_invitation(user, event):
             # We introduce the possibility for a normal account to get stuck in a
             # failure loop if we don't remove the code here
             del request.session[SITE_INVITATION_SESSION_KEY]
-            handle_validation_error(request, e)
+            raise e
 
 
 def get_ds2(request):
@@ -193,4 +193,4 @@ def require_invite_for_user_creation(unused_user, event):
     request = getattr(event, 'request', None) or get_current_request()
     invitation = request.session.get(SITE_INVITATION_SESSION_KEY)
     if invitation is None:
-        handle_validation_error(request, InvitationRequiredError())
+        raise InvitationRequiredError()

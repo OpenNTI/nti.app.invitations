@@ -59,6 +59,7 @@ def accept_site_invitation_by_code(user, code):
     invitations = component.getUtility(IInvitationsContainer)
     # We only have the code in the session, not the object
     invitation = invitations.get_invitation_by_code(code)
+    result = True
     if invitation is None:
         # There is a possibility that the invitation tied to this code
         # has been rescended and the user now has a new invitation
@@ -69,7 +70,8 @@ def accept_site_invitation_by_code(user, code):
     if invitation is None:
         logger.info(u'Unable to find an invitation for user %s' % user)
         raise InvitationCodeError(invitation)
-    result = accept_site_invitation(user, invitation)
+    if not invitation.is_accepted() or not invitation.receiver == user:
+        result = accept_site_invitation(user, invitation)
     if not result:
         logger.exception(u'Failed to accept invitation for %s' % invitation.receiver)
         raise InvitationValidationError(invitation)
