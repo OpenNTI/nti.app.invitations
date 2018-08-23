@@ -10,11 +10,10 @@ from hamcrest import is_not, is_
 from hamcrest import has_length
 from hamcrest import assert_that
 
+
 does_not = is_not
 
 import fudge
-
-from pyramid import httpexceptions as hexc
 
 from zope import component
 
@@ -41,6 +40,7 @@ from nti.dataserver.tests import mock_dataserver
 from nti.dataserver.users.users import User
 
 from nti.invitations.interfaces import IInvitationsContainer
+from nti.invitations.interfaces import InvitationValidationError
 
 from nti.invitations.model import Invitation
 
@@ -107,7 +107,7 @@ class TestSubscribers(ApplicationLayerTest):
             invitations.add(invitation)
 
             self.request.session[SITE_INVITATION_SESSION_KEY] = invitation.code
-            with self.assertRaises(hexc.HTTPUnprocessableEntity):
+            with self.assertRaises(InvitationValidationError):
                 _validate_site_invitation(lahey, event)
 
         # Test valid acceptance
@@ -150,7 +150,7 @@ class TestSubscribers(ApplicationLayerTest):
             mock_request.is_callable().returns(self.request)
             event = UserCreatedWithRequestEvent(user)
             event.request = self.request
-            with self.assertRaises(hexc.HTTPUnprocessableEntity):
+            with self.assertRaises(InvitationRequiredError):
                 require_invite_for_user_creation(user, event)
 
             # Test the subscriber isn't hit without zcml registration
@@ -162,7 +162,7 @@ class TestSubscribers(ApplicationLayerTest):
             # Test the subscriber raises without invitation code
             gsm = getGlobalSiteManager()
             gsm.registerHandler(require_invite_for_user_creation)
-            with self.assertRaises(hexc.HTTPUnprocessableEntity):
+            with self.assertRaises(InvitationRequiredError):
                 notify(event)
 
             # Test the subscriber is silent when conditions are satisfied
