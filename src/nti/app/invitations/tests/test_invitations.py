@@ -38,7 +38,8 @@ from nti.dataserver.authorization import is_site_admin
 
 from nti.dataserver.tests import mock_dataserver
 
-from nti.invitations.interfaces import IDisabledInvitation, InvitationEmailNotMatchingError
+from nti.invitations.interfaces import IDisabledInvitation
+from nti.invitations.interfaces import InvitationEmailNotMatchingError
 from nti.invitations.interfaces import IInvitationsContainer
 from nti.invitations.interfaces import InvitationAlreadyAcceptedError
 from nti.invitations.interfaces import InvitationDisabledError
