@@ -621,9 +621,9 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
                                    message=_(
                                        u'%s %s will be sent to an email address'
                                        u' already associated with an account.' %
-                                       (len(challenge), self.request.localizer.pluralize('invitation',
-                                                                                         'invitations',
-                                                                                         challenge))
+                                       (len(challenge), self.request.localizer.pluralize(u'invitation',
+                                                                                         u'invitations',
+                                                                                         len(challenge)))
                                    ))
         return values
 
@@ -684,9 +684,9 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
                                    message=_(
                                        u'%s pending %s will be updated to a different role.' %
                                        (len(challenge_invitations),
-                                        self.request.localizer.pluralize('invitation',
-                                                                         'invitations',
-                                                                         challenge_invitations))
+                                        self.request.localizer.pluralize(u'invitation',
+                                                                         u'invitations',
+                                                                         len(challenge_invitations)))
                                    ))
 
         result[ITEMS] = items
