@@ -70,8 +70,10 @@ def accept_site_invitation_by_code(user, code):
     if invitation is None:
         logger.info(u'Unable to find an invitation for user %s' % user)
         raise InvitationCodeError(invitation)
-    if not invitation.is_accepted() or not invitation.receiver == getattr(user, 'username', None):
-        result = accept_site_invitation(user, invitation)
+    if invitation.is_accepted() and invitation.receiver == getattr(user, 'username', None):
+        return result
+    result = accept_site_invitation(user, invitation)
     if not result:
         logger.exception(u'Failed to accept invitation for %s' % invitation.receiver)
         raise InvitationValidationError(invitation)
+    return result
