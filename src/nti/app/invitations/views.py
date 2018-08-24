@@ -616,6 +616,8 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
             if get_users_by_email(invitation['receiver']):
                 challenge.append(invitation)
         if challenge and not force:
+            from IPython.terminal.debugger import set_trace;set_trace()
+
             self._handle_challenge(challenge,
                                    code=u'ExistingAccountEmail',
                                    message=_(
@@ -712,7 +714,7 @@ class AcceptSiteInvitationView(AcceptInvitationMixin):
         # them through the account creation flow
         # This allows for invitations to update the permissions
         # of an existing user
-        if self.request.authenticated_userid:
+        if get_remote_user():
             remote_user = get_remote_user()
             settings = component.getUtility(IApplicationSettings)
             # Do't want the trailing slash
