@@ -186,7 +186,6 @@ def send_invitation_email(invitation,
         msg_args['sender_content'] = {
             'sender': informal_username,
             'message': message,
-            'creator_avatar_url': template_args.creator_avatar_url,
             'creator_avatar_initials': template_args.creator_avatar_initials,
             'creator_avatar_bg_color': template_args.creator_avatar_bg_color
         }
