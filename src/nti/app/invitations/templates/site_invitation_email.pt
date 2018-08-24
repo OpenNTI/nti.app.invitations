@@ -78,36 +78,20 @@
 
                 <div class="sender-header" style="margin-top: 45px; margin-bottom: 24px;">
                     <!--
-                    Use the user's avatar if we have one. Otherwise, generate an
-                    avatar showing user's initials.
+                    Generate an avatar showing user's initials.
                     -->
-                    <tal:block tal:condition="options/sender_content/creator_avatar_url" >
-                        <img src="https://secure.gravatar.com/avatar/bcb6a8c096111ae02010cb094d71fc49?s=128&d=identicon"
-                             alt="David Sabatini"
-                             title="David Sabatini"
-                             width="40" height="40"
-                             style="display: inline;vertical-align:top;float:left;margin-right:2px;border-radius: 50%"
-                             tal:attributes="alt options/sender_content/sender; title options/sender_content/sender; src options/sender_content/creator_avatar_url"
-                             />
-                    </tal:block>
-                    <tal:block 	tal:condition="not:options/sender_content/creator_avatar_url">
-                        <!-- We do not have a style for this. We need to work out macro
-                            style inheritance.
-                        -->
-                        <div class="avatar_initials"
-                            style="font-size: 16px; width: 40px; height: 40px;
-                                    font-weight: bold; color: white; text-align: center;
-                                    display: inline; vertical-align: top; float:left;
-                                    margin-right: 4px; background-size: cover;
-                                    background-position: center center; line-height: 45px;
-                                    border-radius: 50%">
-                            <div tal:attributes="style python: 'background-color:%s' % options['sender_content']['creator_avatar_bg_color'] "
-                                tal:content="options/sender_content/creator_avatar_initials">
-                                SJ
-                            </div>
+                    <div class="avatar_initials"
+                        style="font-size: 16px; width: 40px; height: 40px;
+                                font-weight: bold; color: white; text-align: center;
+                                display: inline; vertical-align: top; float:left;
+                                margin-right: 2px; background-size: cover;
+                                background-position: center center; line-height: 45px;
+                                border-radius: 50%">
+                        <div tal:attributes="style python: 'background-color:%s' % options['sender_content']['creator_avatar_bg_color'] "
+                            tal:content="options/sender_content/creator_avatar_initials">
+                            SJ
                         </div>
-                    </tal:block>
-
+                    </div>
                     <span class="avatar-descriptor" style="margin-left: 10px; color: #757474; font-size: 14px; line-height: 19px;">
                         A message from
                     </span>
