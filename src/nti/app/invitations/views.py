@@ -616,8 +616,6 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
             if get_users_by_email(invitation['receiver']):
                 challenge.append(invitation)
         if challenge and not force:
-            from IPython.terminal.debugger import set_trace;set_trace()
-
             self._handle_challenge(challenge,
                                    code=u'ExistingAccountEmail',
                                    message=_(
