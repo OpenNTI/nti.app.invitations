@@ -10,10 +10,11 @@ from hamcrest import is_not, is_
 from hamcrest import has_length
 from hamcrest import assert_that
 
-
 does_not = is_not
 
 import fudge
+
+from pyramid import httpexceptions as hexc
 
 from zope import component
 
@@ -35,12 +36,13 @@ from nti.app.testing.application_webtest import ApplicationLayerTest
 
 from nti.app.testing.decorators import WithSharedApplicationMockDS
 
+from nti.app.invitations.interfaces import InvitationRequiredError
+
 from nti.dataserver.tests import mock_dataserver
 
 from nti.dataserver.users.users import User
 
 from nti.invitations.interfaces import IInvitationsContainer
-from nti.invitations.interfaces import InvitationValidationError
 
 from nti.invitations.model import Invitation
 
@@ -107,7 +109,7 @@ class TestSubscribers(ApplicationLayerTest):
             invitations.add(invitation)
 
             self.request.session[SITE_INVITATION_SESSION_KEY] = invitation.code
-            with self.assertRaises(InvitationValidationError):
+            with self.assertRaises(hexc.HTTPUnprocessableEntity):
                 _validate_site_invitation(lahey, event)
 
         # Test valid acceptance

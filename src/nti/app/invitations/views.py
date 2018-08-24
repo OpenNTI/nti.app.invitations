@@ -712,7 +712,7 @@ class AcceptSiteInvitationView(AcceptInvitationMixin):
         # them through the account creation flow
         # This allows for invitations to update the permissions
         # of an existing user
-        if self.request.authenticated_userid:
+        if get_remote_user():
             remote_user = get_remote_user()
             settings = component.getUtility(IApplicationSettings)
             # Do't want the trailing slash

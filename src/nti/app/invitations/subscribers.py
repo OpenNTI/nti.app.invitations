@@ -8,6 +8,8 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import absolute_import
 
+from pyramid import httpexceptions as hexc
+
 from six.moves import urllib_parse
 
 from zc.intid.interfaces import IBeforeIdRemovedEvent
@@ -16,8 +18,6 @@ from zope import component
 from zope import interface
 
 from zope.i18n import translate
-
-from nti.app.externalization.error import handle_validation_error
 
 from nti.app.invitations import REL_ACCEPT_SITE_INVITATION
 from nti.app.invitations import SITE_INVITATION_SESSION_KEY
@@ -34,6 +34,8 @@ from nti.app.pushnotifications.digest_email import _TemplateArgs
 
 from nti.appserver.interfaces import IUserCreatedWithRequestEvent
 from nti.appserver.interfaces import IUserLogonEvent
+
+from nti.appserver.logon import create_failure_response
 
 from nti.appserver.policies.interfaces import ISitePolicyUserEventListener
 
@@ -73,6 +75,21 @@ def _user_removed(user, unused_event):
         container.remove(invitation)
 
 
+def _safe_add_query_params(url, params):
+    """
+    Adds query params properly to a url
+    :param url: The url to be updated
+    :param params: The query params
+    :return: The url with the query params safely added
+    """
+    url_parts = list(urllib_parse.urlparse(url))
+    # Query params are in index 4
+    query_params = dict(urllib_parse.parse_qsl(url_parts[4]))
+    query_params.update(params)
+    url_parts[4] = urllib_parse.urlencode(query_params)
+    return urllib_parse.urlunparse(url_parts)
+
+
 @component.adapter(IUser, IUserLogonEvent)
 def _validate_site_invitation(user, event):
     request = get_current_request()
@@ -85,7 +102,22 @@ def _validate_site_invitation(user, event):
             # We introduce the possibility for a normal account to get stuck in a
             # failure loop if we don't remove the code here
             del request.session[SITE_INVITATION_SESSION_KEY]
-            raise e
+            # Try to get the failure url from the request params
+            url = request.params.get('failure', None)
+            # If it wasn't there try to search for it in the request session
+            if not url:
+                for key in request.session:
+                    if 'failure' in key:
+                        url = request.session.get(key)
+                        break
+            # If we have a failure url add the message to the query params
+            if url:
+                url = _safe_add_query_params(url, {'message': str(e)})
+            response = create_failure_response(request,
+                                               url,
+                                               error=str(e),
+                                               error_factory=hexc.HTTPUnprocessableEntity)
+            raise response
 
 
 def get_ds2(request):
