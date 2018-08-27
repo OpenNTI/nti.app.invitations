@@ -714,17 +714,17 @@ class AcceptSiteInvitationView(AcceptInvitationMixin):
         # of an existing user
         if get_remote_user():
             remote_user = get_remote_user()
-            settings = component.getUtility(IApplicationSettings)
-            # Do't want the trailing slash
-            web_root = settings.get('web_app_root', '/NextThoughtWebApp/')[:-1]
-            app_url = self.request.application_url + web_root
             logger.info(u'Attempting to accept invitation for authenticated user %s' % remote_user)
             try:
                 accept_site_invitation_by_code(remote_user, code)
+                settings = component.getUtility(IApplicationSettings)
+                # Don't want the trailing slash
+                web_root = settings.get('web_app_root', '/NextThoughtWebApp/')[:-1]
+                app_url = self.request.application_url + web_root
                 return hexc.HTTPFound(app_url)
             except InvitationValidationError as e:
                 logger.exception(u'Failed to accept invitation for authenticated user %s' % remote_user)
-                app_url += '/invitations?error=%s' % e.doc()
+                app_url = self.request.application_url + '/login?failed=true&message=%s&error=%s' % (str(e), str(e))
                 return hexc.HTTPSeeOther(app_url)
 
         url_provider = component.queryUtility(IChallengeLogonProvider)
