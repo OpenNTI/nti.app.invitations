@@ -94,8 +94,8 @@ def _safe_add_query_params(url, params):
 def _validate_site_invitation(user, event):
     request = get_current_request()
     invitation_code = request.session.get(SITE_INVITATION_SESSION_KEY)
-    del request.session[SITE_INVITATION_SESSION_KEY]
     if invitation_code is not None:
+        del request.session[SITE_INVITATION_SESSION_KEY]
         try:
             accept_site_invitation_by_code(user, invitation_code)
         except InvitationValidationError as e:
