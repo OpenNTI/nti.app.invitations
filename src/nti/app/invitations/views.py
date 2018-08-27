@@ -87,6 +87,8 @@ from nti.app.invitations.utils import pending_site_invitation_for_email
 
 from nti.appserver.interfaces import IApplicationSettings
 
+from nti.common.url import safe_add_query_params
+
 from nti.dataserver import authorization as nauth
 
 from nti.dataserver.authorization import is_admin_or_site_admin
@@ -724,7 +726,10 @@ class AcceptSiteInvitationView(AcceptInvitationMixin):
                 return hexc.HTTPFound(app_url)
             except InvitationValidationError as e:
                 logger.exception(u'Failed to accept invitation for authenticated user %s' % remote_user)
-                app_url = self.request.application_url + '/login?failed=true&message=%s&error=%s' % (str(e), str(e))
+                app_url = safe_add_query_params(self.request.application_url + '/login/',
+                                                params={'failed': 'true',
+                                                        'error': str(e),
+                                                        'message': str(e)})
                 return hexc.HTTPSeeOther(app_url)
 
         url_provider = component.queryUtility(IChallengeLogonProvider)
