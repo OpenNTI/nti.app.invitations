@@ -39,6 +39,8 @@ from nti.appserver.logon import create_failure_response
 
 from nti.appserver.policies.interfaces import ISitePolicyUserEventListener
 
+from nti.common.url import safe_add_query_params
+
 from nti.dataserver.authentication import get_current_request
 
 from nti.dataserver.interfaces import IUser
@@ -75,21 +77,6 @@ def _user_removed(user, unused_event):
         container.remove(invitation)
 
 
-def _safe_add_query_params(url, params):
-    """
-    Adds query params properly to a url
-    :param url: The url to be updated
-    :param params: The query params
-    :return: The url with the query params safely added
-    """
-    url_parts = list(urllib_parse.urlparse(url))
-    # Query params are in index 4
-    query_params = dict(urllib_parse.parse_qsl(url_parts[4]))
-    query_params.update(params)
-    url_parts[4] = urllib_parse.urlencode(query_params)
-    return urllib_parse.urlunparse(url_parts)
-
-
 @component.adapter(IUser, IUserLogonEvent)
 def _validate_site_invitation(user, event):
     request = get_current_request()
@@ -109,7 +96,7 @@ def _validate_site_invitation(user, event):
                         break
             # If we have a failure url add the message to the query params
             if url:
-                url = _safe_add_query_params(url, {'message': str(e)})
+                url = safe_add_query_params(url, {'message': str(e)})
             response = create_failure_response(request,
                                                url,
                                                error=str(e),
