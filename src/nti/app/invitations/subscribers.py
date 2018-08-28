@@ -97,7 +97,7 @@ def _validate_site_invitation(user, event):
             # If we still don't have a url just redirect them to the login app
             if not url:
                 url = request.application_url
-                url += '/login'
+                url += '/login/'
             # Add the error message to the query params
             url = safe_add_query_params(url, {'message': str(e)})
             response = create_failure_response(request,
