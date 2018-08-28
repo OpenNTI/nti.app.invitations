@@ -94,9 +94,12 @@ def _validate_site_invitation(user, event):
                     if 'failure' in key:
                         url = request.session.get(key)
                         break
-            # If we have a failure url add the message to the query params
-            if url:
-                url = safe_add_query_params(url, {'message': str(e)})
+            # If we still don't have a url just redirect them to the login app
+            if not url:
+                url = request.application_url
+                url += '/login'
+            # Add the error message to the query params
+            url = safe_add_query_params(url, {'message': str(e)})
             response = create_failure_response(request,
                                                url,
                                                error=str(e),
