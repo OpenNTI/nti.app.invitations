@@ -86,6 +86,7 @@ def _validate_site_invitation(user, event):
         try:
             accept_site_invitation_by_code(user, invitation_code)
         except InvitationValidationError as e:
+            logger.info(u'Failed to accept invitation for user %s with error %s' % (user, str(e)))
             # Try to get the failure url from the request params
             url = request.params.get('failure', None)
             # If it wasn't there try to search for it in the request session
@@ -100,6 +101,8 @@ def _validate_site_invitation(user, event):
                 url += '/login/'
             # Add the error message to the query params
             url = safe_add_query_params(url, {'message': str(e)})
+            # abort the transaction so the user isn't created
+            request.environ['nti.commit_veto'] = 'abort'
             response = create_failure_response(request,
                                                url,
                                                error=str(e),
