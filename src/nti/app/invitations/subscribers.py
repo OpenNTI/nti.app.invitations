@@ -173,11 +173,13 @@ def send_invitation_email(invitation,
     }
 
     if invitation.message:
+        # Tal is not very cooperative for dynamic building up this style
+        # so we create and stash it here
+        avatar_styles = "float:left;height:40px;width:40px;border-radius:50%%;background-image: url('%s'), url('https://s3.amazonaws.com/content.nextthought.com/images/generic/imageassets/unresolved-user-avatar.png'); background-position: center center;background-size:cover;background-repeat:no-repeat;" % template_args.creator_avatar_url
         msg_args['sender_content'] = {
             'sender': informal_username,
             'message': message,
-            'creator_avatar_initials': template_args.creator_avatar_initials,
-            'creator_avatar_bg_color': template_args.creator_avatar_bg_color
+            'avatar_styles': avatar_styles
         }
 
     try:

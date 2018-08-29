@@ -18,6 +18,12 @@
                 font-weight: inherit !important;
                 line-height: inherit !important;
                 }
+            .site-link a{
+                color: #b8b8b8 !important;
+                text-decoration: none !important;
+                font-size: 14px;
+                line-height: 20px;
+            }
         </style>
     </head>
     <!-- For speed when sending large amounts of emails interactively, all styles are inlined below -->
@@ -27,7 +33,7 @@
         <div metal:use-macro="macro:header">
         <div id="green-bar"></div>
         <div id="logo-bar">
-            <img src="http://d2ixlfeu83tci.cloudfront.net/images/email_logo.png" width="100%" height="25"
+            <img src="http://d2ixlfeu83tci.cloudfront.net/images/email_logo.png" width="100%" height="50"
             alt="NextThought Logo" />
         </div>
         </div>
@@ -35,20 +41,20 @@
         <div class="content-cont" style="max-width: 500px; margin: 0 auto 40px;width: 70%">
 
             <!-- You're invited -->
-            <p class="tagline" style="
-                                        color: #494949; font-size: 36px; font-weight: 300; line-height: 49px;
-                                        text-align: left; margin-top: 40px;">
-                You're invited
-            </p>
+            <div class="tagline" style="
+                                        color: #494949; font-size: 36px; font-weight: 300;
+                                        text-align: left; margin-top: 40px; padding: 0;">
+                <span>You're invited</span>
+            </div>
 
             <!-- Brand invitation message -->
-            <p class="brand-message" style="
-                                       color: #494949; font-size: 14px; line-height: 20px;
-                                       text-align: left; margin-top: 15px;"
-                                       tal:content="options/brand_message">
-                Get started learning on an interactive online platform like no other by clicking the button below
-                or copying and pasting the URL into your browser.
-            </p>
+            <div class="brand-message" style="
+                                       color: #494949; font-size: 14px;
+                                       text-align: left; margin-top: 15px;">
+                <span tal:content="options/brand_message">Get started learning on an interactive online platform
+                    like no other by clicking the button below
+                    or copying and pasting the URL into your browser.</span>
+            </div>
 
             <!-- redeem button -->
             <div class="site-but-cont" style="margin-top:40px; margin-left: 0; margin-right: 0" tal:condition="options/redemption_link">
@@ -63,12 +69,12 @@
             </div>
 
             <!-- redeem link -->
-            <div class="site-link-cont" style="margin-top: 15px; margin-left: 0; margin-right: 0;" tal:condition="options/redemption_link">
-                <a class="site-link" tal:content="options/redemption_link" style="color: #b8b8b8 !important;
-                text-decoration: none !important; font-size: 14px; line-height: 20px;">
-                    https://www.nextthought.com
-                </a>
-
+            <div class="site-link-cont" style="display: inline-block; margin-top: 27px; margin-left: 0; margin-right: 0;" tal:condition="options/redemption_link">
+                <span class="site-link">
+                    <a tal:content="options/redemption_link">
+                        https://www.nextthought.com
+                    </a>
+                </span>
             </div>
 
             <!-- Sender message -->
@@ -77,21 +83,7 @@
                 <hr style="color: #b8b8b8">
 
                 <div class="sender-header" style="margin-top: 45px; margin-bottom: 24px;">
-                    <!--
-                    Generate an avatar showing user's initials.
-                    -->
-                    <div class="avatar_initials"
-                        style="font-size: 16px; width: 40px; height: 40px;
-                                font-weight: bold; color: white; text-align: center;
-                                display: inline; vertical-align: top; float:left;
-                                margin-right: 2px; background-size: cover;
-                                background-position: center center; line-height: 45px;
-                                border-radius: 50%">
-                        <div tal:attributes="style python: 'background-color:%s' % options['sender_content']['creator_avatar_bg_color'] "
-                            tal:content="options/sender_content/creator_avatar_initials">
-                            SJ
-                        </div>
-                    </div>
+                    <div id="avatar" tal:attributes='style options/sender_content/avatar_styles'></div>
                     <span class="avatar-descriptor" style="margin-left: 10px; color: #757474; font-size: 14px; line-height: 19px;">
                         A message from
                     </span>
