@@ -132,8 +132,8 @@ class SiteInvitationActorMixin(object):
         return profile
 
     def check_valid_invitation(self, profile, invitation):
-        email = getattr(profile, 'email', None)
-        if not email == invitation.receiver:
+        email = getattr(profile, 'email', '')
+        if not email.lower() == invitation.receiver.lower():
             raise InvitationEmailNotMatchingError
         if not invitation.target_site == getSite().__name__:
             raise InvitationSiteNotMatchingError
