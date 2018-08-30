@@ -109,7 +109,7 @@ class TestSubscribers(ApplicationLayerTest):
             invitations.add(invitation)
 
             self.request.session[SITE_INVITATION_SESSION_KEY] = invitation.code
-            with self.assertRaises(hexc.HTTPUnprocessableEntity):
+            with self.assertRaises(hexc.HTTPSeeOther):
                 _validate_site_invitation(lahey, event)
 
         # Test valid acceptance
