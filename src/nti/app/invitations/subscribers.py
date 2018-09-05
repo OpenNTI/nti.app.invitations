@@ -136,18 +136,18 @@ def send_invitation_email(invitation,
 
     policy = component.getUtility(ISitePolicyUserEventListener)
 
-    # Some sites want a custom image in the invitation
+    # Some sites want a custom macros in the invitation
     # If there is a macro registered then we will render it to
     # We have to do this here because we cannot do try/except within the template
     custom_image = component.queryMultiAdapter((interface.Interface, interface.Interface, interface.Interface),
                                                name='site_invitation_image')
+    tagline = component.queryMultiAdapter((interface.Interface, interface.Interface, interface.Interface),
+                                          name='site_invitation_tagline')
+    brand_message = component.queryMultiAdapter((interface.Interface, interface.Interface, interface.Interface),
+                                                name='site_invitation_brand_message')
 
     support_email = getattr(policy, 'SUPPORT_EMAIL', 'support@nextthought.com')
     brand = getattr(policy, 'BRAND', 'NextThought')
-    brand_message = getattr(policy, 'SITE_INVITATION_MESSAGE', u'Get started learning on an interactive '
-                                                               u'platform like no other by clicking the button '
-                                                               u'below or copying and pasting the URL into your '
-                                                               u'browser.')
     package = getattr(policy, 'PACKAGE', None)
 
     names = IFriendlyNamed(sender)
@@ -167,8 +167,9 @@ def send_invitation_email(invitation,
         'support_email': support_email,
         'redemption_link': redemption_link,
         'brand': brand,
-        'brand_message': brand_message,
         'custom_image_macro': custom_image,
+        'tagline': tagline,
+        'brand_message': brand_message,
         'sender_content': None
     }
 

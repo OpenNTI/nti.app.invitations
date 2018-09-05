@@ -41,19 +41,27 @@
         <div class="content-cont" style="max-width: 500px; margin: 0 auto 40px;width: 70%">
 
             <!-- You're invited -->
-            <div class="tagline" style="
-                                        color: #494949; font-size: 36px; font-weight: 300;
-                                        text-align: left; margin-top: 40px; padding: 0;">
-                <span>You're invited</span>
+            <div tal:condition="options/tagline" metal:use-macro="macro:site_invitation_tagline"></div>
+
+            <div tal:condition="not:options/tagline">
+                <div class="tagline" style="
+                                            color: #494949; font-size: 36px; font-weight: 300;
+                                            text-align: left; margin-top: 40px; padding: 0;">
+                    <span>You're invited</span>
+                </div>
             </div>
 
             <!-- Brand invitation message -->
-            <div class="brand-message" style="
-                                       color: #494949; font-size: 14px;
-                                       text-align: left; margin-top: 15px;">
-                <span tal:content="options/brand_message">Get started learning on an interactive online platform
+            <div tal:condition="options/brand_message" metal:use-macro="macro:site_invitation_brand_message"></div>
+
+            <div tal:condition="not:options/brand_message">
+                <div class="brand-message" style="
+                           color: #494949; font-size: 14px;
+                           text-align: left; margin-top: 15px;">
+                <span>Get started learning on an interactive online platform
                     like no other by clicking the button below
                     or copying and pasting the URL into your browser.</span>
+                </div>
             </div>
 
             <!-- redeem button -->
