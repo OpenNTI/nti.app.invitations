@@ -528,8 +528,11 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
                 if not row or row[0].startswith("#"):
                     continue
                 email = row[0]
+                # XXX: This may fix excel and break another case
+                # Excel encodes with a UTF-8 BOM that we must parse
+                email = email.decode('utf-8-sig')
                 email = email.strip() if email else email
-                realname = row[1] if len(row) > 1 else ''
+                realname = row[1].decode('utf-8-sig') if len(row) > 1 else u''
                 if not email:
                     msg = u"Missing email in line %s." % (idx + 1)
                     self.warnings.append(msg)
