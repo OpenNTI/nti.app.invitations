@@ -10,7 +10,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import absolute_import
 
-import chardet
 import csv
 import time
 
@@ -87,6 +86,8 @@ from nti.app.invitations.utils import accept_site_invitation_by_code
 from nti.app.invitations.utils import pending_site_invitation_for_email
 
 from nti.appserver.interfaces import IApplicationSettings
+
+from nti.common._compat import text_
 
 from nti.common.url import safe_add_query_params
 
@@ -516,11 +517,8 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
                         self.remoteUser)
             raise hexc.HTTPForbidden()
 
-    def _decode_cell(self, string):
-        detection = chardet.detect(string)
-        # This can be None so we can't use the builtin get fallback
-        encoding = detection.get('encoding') or 'utf-8-sig'
-        return string.decode(encoding)
+    def _decode_cell(self, string, encoding='utf-8-sig'):
+        return text_(string, encoding)
 
     # TODO: This closely resembles
     # TODO: nti.app.products.courseware.views.course_invitation_views.CheckCourseInvitationsCSVView.parse_csv_users
