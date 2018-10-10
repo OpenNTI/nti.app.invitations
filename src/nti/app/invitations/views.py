@@ -87,6 +87,8 @@ from nti.app.invitations.utils import pending_site_invitation_for_email
 
 from nti.appserver.interfaces import IApplicationSettings
 
+from nti.common._compat import text_
+
 from nti.common.url import safe_add_query_params
 
 from nti.dataserver import authorization as nauth
@@ -515,6 +517,9 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
                         self.remoteUser)
             raise hexc.HTTPForbidden()
 
+    def _decode_cell(self, string, encoding='utf-8-sig'):
+        return text_(string, encoding)
+
     # TODO: This closely resembles
     # TODO: nti.app.products.courseware.views.course_invitation_views.CheckCourseInvitationsCSVView.parse_csv_users
     def parse_csv(self):
@@ -523,13 +528,16 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
         if source is not None:
             # Read in and split (to handle universal newlines).
             # XXX: Generalize this?
+            dialect = csv.Sniffer().sniff(source.read(1024))
+            source.seek(0)
             source = source.read()
-            for idx, row in enumerate(csv.reader(source.splitlines())):
+            for idx, row in enumerate(csv.reader(source.splitlines(), dialect)):
                 if not row or row[0].startswith("#"):
                     continue
                 email = row[0]
+                email = self._decode_cell(email)
                 email = email.strip() if email else email
-                realname = row[1] if len(row) > 1 else ''
+                realname = self._decode_cell(row[1]) if len(row) > 1 else u''
                 if not email:
                     msg = u"Missing email in line %s." % (idx + 1)
                     self.warnings.append(msg)
