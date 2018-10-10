@@ -10,6 +10,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import absolute_import
 
+import chardet
 import csv
 import time
 
@@ -515,6 +516,12 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
                         self.remoteUser)
             raise hexc.HTTPForbidden()
 
+    def _decode_cell(self, string):
+        detection = chardet.detect(string)
+        # This can be None so we can't use the builtin get fallback
+        encoding = detection.get('encoding') or 'utf-8-sig'
+        return string.decode(encoding)
+
     # TODO: This closely resembles
     # TODO: nti.app.products.courseware.views.course_invitation_views.CheckCourseInvitationsCSVView.parse_csv_users
     def parse_csv(self):
@@ -523,16 +530,16 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
         if source is not None:
             # Read in and split (to handle universal newlines).
             # XXX: Generalize this?
+            dialect = csv.Sniffer().sniff(source.read(1024))
+            source.seek(0)
             source = source.read()
-            for idx, row in enumerate(csv.reader(source.splitlines())):
+            for idx, row in enumerate(csv.reader(source.splitlines(), dialect)):
                 if not row or row[0].startswith("#"):
                     continue
                 email = row[0]
-                # XXX: This may fix excel and break another case
-                # Excel encodes with a UTF-8 BOM that we must parse
-                email = email.decode('utf-8-sig')
+                email = self._decode_cell(email)
                 email = email.strip() if email else email
-                realname = row[1].decode('utf-8-sig') if len(row) > 1 else u''
+                realname = self._decode_cell(row[1]) if len(row) > 1 else u''
                 if not email:
                     msg = u"Missing email in line %s." % (idx + 1)
                     self.warnings.append(msg)
