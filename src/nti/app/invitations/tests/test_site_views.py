@@ -186,6 +186,20 @@ class TestSiteInvitationViews(ApplicationLayerTest):
             body = res.json_body
             assert_that(body['Items'], has_length(1))
 
+            # Test comma separated cells
+            data = [
+                ['test@email.com', 'Test, Email'],
+                ['test2@email.com', 'Test No Comma'],
+                ['test3@email.com', ',,,,,,,,,']
+            ]
+            self._make_fake_csv(data)
+            res = self.testapp.post(site_csv_invitation_url,
+                                    {'message': 'Test good csv'},
+                                    upload_files=[('csv', 'test.csv'), ],
+                                    status=200)
+            body = res.json_body
+            assert_that(body['Items'], has_length(3))
+
     @WithSharedApplicationMockDS(testapp=True, users=True)
     def test_accept_site_invitation(self):
         # Create an invitation
