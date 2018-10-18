@@ -528,9 +528,7 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
         if source is not None:
             # Read in and split (to handle universal newlines).
             # XXX: Generalize this?
-            dialect = csv.Sniffer().sniff(source.read(1024))
-            source.seek(0)
-            for idx, row in enumerate(csv.reader(source, dialect)):
+            for idx, row in enumerate(csv.reader(source)):
                 if not row or row[0].startswith("#"):
                     continue
                 email = row[0]
