@@ -103,7 +103,7 @@ from nti.dataserver.users.interfaces import IUserProfile
 
 from nti.dataserver.users.users import User
 
-from nti.dataserver.users.utils import get_users_by_email
+from nti.dataserver.users.utils import get_users_by_email_in_sites
 
 from nti.externalization.externalization import to_external_object
 
@@ -620,7 +620,7 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
 
         challenge = []
         for invitation in values['invitations']:
-            if get_users_by_email(invitation['receiver']):
+            if get_users_by_email_in_sites(invitation['receiver']):
                 challenge.append(invitation)
         if challenge and not force:
             self._handle_challenge(challenge,
