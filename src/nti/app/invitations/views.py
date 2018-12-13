@@ -539,9 +539,6 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
                     msg = u"Missing email in line %s." % (idx + 1)
                     self.warnings.append(msg)
                     continue
-                if not realname:
-                    msg = u"Missing name in line %s." % (idx + 1)
-                    self.warnings.append(msg)
                 if not isValidMailAddress(email):
                     self.invalid_emails.append(email)
                     continue
