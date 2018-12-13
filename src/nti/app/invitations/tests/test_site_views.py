@@ -158,8 +158,7 @@ class TestSiteInvitationViews(ApplicationLayerTest):
             assert_that(body[u'message'],
                         is_(u'The provided input is missing values or contains invalid email addresses.'))
             assert_that(body[u'code'], is_(u'InvalidSiteInvitationData'))
-            assert_that(body[u'Warnings'], is_([u'Missing email in line 1.',
-                                                u'Missing name in line 2.']))
+            assert_that(body[u'Warnings'], is_([u'Missing email in line 1.']))
             assert_that(body[u'InvalidEmails'], is_([]))
 
             # Test good data
@@ -186,11 +185,12 @@ class TestSiteInvitationViews(ApplicationLayerTest):
             body = res.json_body
             assert_that(body['Items'], has_length(1))
 
-            # Test comma separated cells
+            # Test comma separated cells (no realname is ok)
             data = [
                 ['test@email.com', 'Test, Email'],
                 ['test2@email.com', 'Test No Comma'],
-                ['test3@email.com', ',,,,,,,,,']
+                ['test3@email.com', ',,,,,,,,,'],
+                ['test4@email.com']
             ]
             self._make_fake_csv(data)
             res = self.testapp.post(site_csv_invitation_url,
@@ -198,7 +198,7 @@ class TestSiteInvitationViews(ApplicationLayerTest):
                                     upload_files=[('csv', 'test.csv'), ],
                                     status=200)
             body = res.json_body
-            assert_that(body['Items'], has_length(3))
+            assert_that(body['Items'], has_length(4))
 
     @WithSharedApplicationMockDS(testapp=True, users=True)
     def test_accept_site_invitation(self):
