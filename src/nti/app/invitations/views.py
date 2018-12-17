@@ -721,8 +721,7 @@ class AcceptSiteInvitationView(AcceptInvitationMixin):
             try:
                 accept_site_invitation_by_code(remote_user, code)
                 settings = component.getUtility(IApplicationSettings)
-                # Don't want the trailing slash
-                web_root = settings.get('web_app_root', '/NextThoughtWebApp/')[:-1]
+                web_root = settings.get('web_app_root', '/NextThoughtWebApp/')
                 app_url = self.request.application_url + web_root
                 return hexc.HTTPFound(app_url)
             except InvitationValidationError as e:
