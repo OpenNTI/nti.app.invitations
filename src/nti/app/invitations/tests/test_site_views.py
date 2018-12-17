@@ -146,7 +146,7 @@ class TestSiteInvitationViews(ApplicationLayerTest):
 
             # Test missing fields
             data = [
-                [u'', u'No Email'],
+                [u'bademail', u'No Email'],
                 [u'missingname@test.com', u'']
             ]
             self._make_fake_csv(data)
@@ -158,8 +158,8 @@ class TestSiteInvitationViews(ApplicationLayerTest):
             assert_that(body[u'message'],
                         is_(u'The provided input is missing values or contains invalid email addresses.'))
             assert_that(body[u'code'], is_(u'InvalidSiteInvitationData'))
-            assert_that(body[u'Warnings'], is_([u'Missing email in line 1.']))
-            assert_that(body[u'InvalidEmails'], is_([]))
+            assert_that(body[u'Warnings'], has_length(0))
+            assert_that(body[u'InvalidEmails'], is_([u'bademail']))
 
             # Test good data
             data = [
@@ -190,7 +190,8 @@ class TestSiteInvitationViews(ApplicationLayerTest):
                 ['test@email.com', 'Test, Email'],
                 ['test2@email.com', 'Test No Comma'],
                 ['test3@email.com', ',,,,,,,,,'],
-                ['test4@email.com']
+                ['test4@email.com'],
+                ['       ']
             ]
             self._make_fake_csv(data)
             res = self.testapp.post(site_csv_invitation_url,

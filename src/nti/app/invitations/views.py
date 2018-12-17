@@ -528,7 +528,7 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
         if source is not None:
             # Read in and split (to handle universal newlines).
             # XXX: Generalize this?
-            for idx, row in enumerate(csv.reader(source)):
+            for unused_idx, row in enumerate(csv.reader(source)):
                 if not row or row[0].startswith("#"):
                     continue
                 email = row[0]
@@ -536,8 +536,7 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
                 email = email.strip() if email else email
                 realname = self._decode_cell(row[1]) if len(row) > 1 else u''
                 if not email:
-                    msg = u"Missing email in line %s." % (idx + 1)
-                    self.warnings.append(msg)
+                    # Ignore empty email lines
                     continue
                 if not isValidMailAddress(email):
                     self.invalid_emails.append(email)
