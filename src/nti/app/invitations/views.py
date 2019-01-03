@@ -751,6 +751,10 @@ class AcceptSiteInvitationView(AcceptInvitationMixin):
              request_method='GET',
              name=REL_ACCEPT_SITE_INVITATION)
 class AcceptSiteInvitationByCodeView(AcceptSiteInvitationView):
+    """
+    An invitation view in which we must be supplied a code for
+    the invitation in play.
+    """
 
     @Lazy
     def invitations(self):
@@ -758,7 +762,7 @@ class AcceptSiteInvitationByCodeView(AcceptSiteInvitationView):
 
     def get_invite_code(self):
         values = CaseInsensitiveDict(self.request.params)
-        result = values.get('code') \
+        result =    values.get('code') \
                  or values.get('invitation') \
                  or values.get('invitation_code') \
                  or values.get('invitation_codes')  # legacy (should only be one)
@@ -768,6 +772,14 @@ class AcceptSiteInvitationByCodeView(AcceptSiteInvitationView):
 
     def __call__(self):
         code = self.get_invite_code()
+        if not code:
+            raise_json_error(self.request,
+                             hexc.HTTPUnprocessableEntity,
+                             {
+                                 'message': _(u"Must have an invitation code."),
+                                 'code': 'MissingInvitationCodeError',
+                             },
+                             None)
         return self._do_call(code=code)
 
 
