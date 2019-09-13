@@ -32,17 +32,15 @@ class TestACL(ApplicationLayerTest):
 
     @mock_dataserver.WithMockDSTrans
     def test_acl(self):
-        with mock_dataserver.mock_db_trans(self.ds):
-            self._create_user(username=u'ichigo',
-                              external_value={'email': u"ichigo@bleach.org",
-                                              'realname': u'ichigo kurosaki',
-                                              'alias': u'ichigo'})
-        with mock_dataserver.mock_db_trans(self.ds):
-            invitations = component.getUtility(IInvitationsContainer)
-            invitation = Invitation(receiver=u"ichigo@bleach.org",
-                                    sender=u'aizen')
-            invitations.add(invitation)
-            provider = IACLProvider(invitation, None)
-            assert_that(provider, is_not(none()))
-            assert_that(provider,
-                        has_property('__acl__', has_length(greater_than(1))))
+        self._create_user(username=u'ichigo',
+                          external_value={'email': u"ichigo@bleach.org",
+                                          'realname': u'ichigo kurosaki',
+                                          'alias': u'ichigo'})
+        invitations = component.getUtility(IInvitationsContainer)
+        invitation = Invitation(receiver=u"ichigo@bleach.org",
+                                sender=u'aizen')
+        invitations.add(invitation)
+        provider = IACLProvider(invitation, None)
+        assert_that(provider, is_not(none()))
+        assert_that(provider,
+                    has_property('__acl__', has_length(greater_than(1))))

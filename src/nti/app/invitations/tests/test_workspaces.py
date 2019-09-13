@@ -36,30 +36,29 @@ from nti.invitations.model import Invitation
 class TestUserService(ApplicationLayerTest):
 
     def _create_invitations(self):
-        with mock_dataserver.mock_db_trans(self.ds):
-            invitations = component.getUtility(IInvitationsContainer)
-            invitation = Invitation(receiver='ossmkitty',
-                                    sender=self.default_username,
-                                    accepted=True,
-                                    code="accepted")
-            invitations.add(invitation)
+        invitations = component.getUtility(IInvitationsContainer)
+        invitation = Invitation(receiver='ossmkitty',
+                                sender=self.default_username,
+                                accepted=True,
+                                code="accepted")
+        invitations.add(invitation)
 
-            invitation = Invitation(receiver='ichigo',
-                                    sender=self.default_username,
-                                    code="123456")
-            invitations.add(invitation)
+        invitation = Invitation(receiver='ichigo',
+                                sender=self.default_username,
+                                code="123456")
+        invitations.add(invitation)
 
-            invitation = Invitation(receiver=self.default_username,
-                                    sender='aizen',
-                                    code="7890")
-            invitations.add(invitation)
-            
+        invitation = Invitation(receiver=self.default_username,
+                                sender='aizen',
+                                code="7890")
+        invitations.add(invitation)
+
     @mock_dataserver.WithMockDSTrans
     def test_external(self):
         user = self._create_user(external_value={'email': u"steve@nti.com"})
         self._create_invitations()
         # find the workspace
-        invitations_wss = None        
+        invitations_wss = None
         service = UserService(user)
         for ws in service.workspaces or ():
             if IInvitationsWorkspace.providedBy(ws):

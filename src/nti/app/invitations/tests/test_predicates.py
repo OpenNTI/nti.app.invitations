@@ -33,26 +33,24 @@ class TestPredicates(ApplicationLayerTest):
 
     @mock_dataserver.WithMockDSTrans
     def test_system(self):
-        with mock_dataserver.mock_db_trans(self.ds):
-            invitations = component.getUtility(IInvitationsContainer)
-            invitation = Invitation(receiver=u"ichigo@bleach.org",
-                                    sender=SYSTEM_USER_ID)
-            invitations.add(invitation)
+        invitations = component.getUtility(IInvitationsContainer)
+        invitation = Invitation(receiver=u"ichigo@bleach.org",
+                                sender=SYSTEM_USER_ID)
+        invitations.add(invitation)
 
-            predicate = SystemInvitationsObjects()
-            assert_that(list(predicate.iter_objects()),
-                        has_length(greater_than(0)))
+        predicate = SystemInvitationsObjects()
+        assert_that(list(predicate.iter_objects()),
+                    has_length(greater_than(0)))
 
     @mock_dataserver.WithMockDSTrans
     def test_user(self):
-        with mock_dataserver.mock_db_trans(self.ds):
-            self._create_user(self.default_username)
+        self._create_user(self.default_username)
 
-            invitations = component.getUtility(IInvitationsContainer)
-            invitation = Invitation(receiver=u"ichigo@bleach.org",
-                                    sender=self.default_username)
-            invitations.add(invitation)
+        invitations = component.getUtility(IInvitationsContainer)
+        invitation = Invitation(receiver=u"ichigo@bleach.org",
+                                sender=self.default_username)
+        invitations.add(invitation)
 
-            predicate = UserInvitationsObjects(self.default_username)
-            assert_that(list(predicate.iter_objects()),
-                        has_length(greater_than(0)))
+        predicate = UserInvitationsObjects(self.default_username)
+        assert_that(list(predicate.iter_objects()),
+                    has_length(greater_than(0)))
