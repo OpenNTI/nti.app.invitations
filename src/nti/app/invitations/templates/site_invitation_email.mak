@@ -16,4 +16,6 @@ TO: ${receiver_name}
 	Congratulations! Enjoy full access to an interactive online platform like no other.
 % endif
 
+NOTE: This invitation is unique to you and will NOT work if shared with others.
+
 If you feel this email was sent in error, you may email ${support_email}.
