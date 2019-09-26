@@ -64,6 +64,12 @@
                 </div>
             </div>
 
+            <div class="brand-message" style="
+                           color: #494949; font-size: 14px;
+                           text-align: left; margin-top: 15px;">
+                <span>NOTE: This invitation is unique to you and will NOT work if shared with others.</span>
+            </div>
+
             <!-- redeem button -->
             <div class="site-but-cont" style="margin-top:40px; margin-left: 0; margin-right: 0" tal:condition="options/redemption_link">
                 <a 	href="https://www.nextthought.com" class="but"
