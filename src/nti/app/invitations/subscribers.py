@@ -37,6 +37,8 @@ from nti.appserver.interfaces import IUserLogonEvent
 
 from nti.appserver.logon import create_failure_response
 
+from nti.appserver.brand.utils import get_site_brand_name
+
 from nti.appserver.policies.interfaces import ISitePolicyUserEventListener
 
 from nti.common.url import safe_add_query_params
@@ -147,7 +149,7 @@ def send_invitation_email(invitation,
                                                 name='site_invitation_brand_message')
 
     support_email = getattr(policy, 'SUPPORT_EMAIL', 'support@nextthought.com')
-    brand = getattr(policy, 'BRAND', 'NextThought')
+    brand = get_site_brand_name()
     package = getattr(policy, 'PACKAGE', None)
 
     names = IFriendlyNamed(sender)
