@@ -30,7 +30,7 @@ class IRegisterInvitationSigner(interface.Interface):
     """
     The arguments needed for registering the invitation signer.
     """
-    secret = TextLine(title=u"Shared secret", required=False)
+    secret = TextLine(title=u"Shared secret", required=True)
     salt = TextLine(title=u"Namespace used when creating the hash", required=False)
 
 
