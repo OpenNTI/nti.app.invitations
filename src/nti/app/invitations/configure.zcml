@@ -92,6 +92,5 @@
 
 	<!-- Signer -->
 	<include package="nti.app.invitations" file="meta.zcml" />
-	<include package="nti.app.invitations" />
 
 </configure>
