@@ -17,7 +17,7 @@ from nti.app.invitations import MessageFactory as _
 from nti.appserver.workspaces.interfaces import IWorkspace
 
 from nti.invitations.interfaces import IInvitation
-from nti.invitations.interfaces import IUserInvitation
+from nti.invitations.interfaces import IActionableInvitation
 from nti.invitations.interfaces import IInvitationActor
 from nti.invitations.interfaces import InvitationValidationError
 
@@ -53,7 +53,7 @@ class IJoinEntityInvitationActor(IInvitationActor):
     """
 
 
-class ISiteInvitation(IUserInvitation):
+class ISiteInvitation(IActionableInvitation):
     """
     Interface for an invitation to join a site
     """
