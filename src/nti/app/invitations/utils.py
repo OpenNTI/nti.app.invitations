@@ -8,12 +8,23 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import absolute_import
 
+from itsdangerous import URLSafeSerializer
+from nti.common.cypher import get_plaintext
+
+from six.moves import urllib_parse
+
 from zope import component
+from zope import interface
 
 from zope.component.hooks import getSite
 
+
 from nti.app.invitations import SITE_INVITATION_MIMETYPE
 from nti.app.invitations import SITE_ADMIN_INVITATION_MIMETYPE
+from nti.app.invitations import INVITATIONS
+from nti.app.invitations import REL_ACCEPT_SITE_INVITATION
+
+from nti.app.invitations.interfaces import IInvitationSigner
 
 from nti.dataserver.users.interfaces import IUserProfile
 
@@ -42,7 +53,7 @@ def pending_site_invitation_for_email(email):
             return pending_invite
 
 
-def accept_site_invitation(user, invitation):
+def accept_site_invitation(user, invitation, link_email):
     if invitation.is_expired():
         raise InvitationExpiredError(invitation)
     if invitation.is_accepted():
@@ -52,10 +63,10 @@ def accept_site_invitation(user, invitation):
     actor = get_invitation_actor(invitation, user)
     if actor is None:
         raise InvitationActorError(invitation)
-    return actor.accept(user, invitation)
+    return actor.accept(user, invitation, link_email)
 
 
-def accept_site_invitation_by_code(user, code):
+def accept_site_invitation_by_code(user, code, link_email):
     invitations = component.getUtility(IInvitationsContainer)
     # We only have the code in the session, not the object
     invitation = invitations.get_invitation_by_code(code)
@@ -72,8 +83,37 @@ def accept_site_invitation_by_code(user, code):
         raise InvitationCodeError(invitation)
     if invitation.is_accepted() and invitation.receiver == getattr(user, 'username', None):
         return result
-    result = accept_site_invitation(user, invitation)
+    result = accept_site_invitation(user, invitation, link_email)
     if not result:
         logger.exception(u'Failed to accept invitation for %s' % invitation.receiver)
         raise InvitationValidationError(invitation)
     return result
+
+
+def get_invitation_url(application_url, invitation):
+    signed_params = {'code': invitation.code, 'email': invitation.receiver}
+    signer = component.getUtility(IInvitationSigner)
+    params = {'scode': signer.encode(signed_params)}
+    query = urllib_parse.urlencode(params)
+
+    url = '/%s/%s/%s?%s' % ("dataserver2",
+                            INVITATIONS,
+                            '@@' + REL_ACCEPT_SITE_INVITATION,
+                            query)
+
+    redemption_link = urllib_parse.urljoin(application_url, url)
+
+    return redemption_link
+
+
+@interface.implementer(IInvitationSigner)
+class InvitationSigner(object):
+
+    def __init__(self, secret, salt):
+        self.serializer = URLSafeSerializer(get_plaintext(secret), salt=salt)
+
+    def encode(self, content):
+        return self.serializer.dumps(content)
+
+    def decode(self, encoded_content):
+        return self.serializer.loads(encoded_content)

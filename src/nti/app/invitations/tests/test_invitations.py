@@ -44,6 +44,7 @@ from nti.invitations.interfaces import IInvitationsContainer
 from nti.invitations.interfaces import InvitationAlreadyAcceptedError
 from nti.invitations.interfaces import InvitationDisabledError
 from nti.invitations.interfaces import InvitationExpiredError
+from nti.invitations.interfaces import InvitationSiteNotMatchingError
 
 from nti.invitations.utils import get_pending_invitations
 from nti.invitations.utils import get_sent_invitations
@@ -88,8 +89,8 @@ class TesInvitations(ApplicationLayerTest):
             assert_that(invitations, has_length(1))
 
             # The user has been created
-            ricky_user = self._create_user(u"ricky", external_value={'email': u"ricky@tpb.net"})
-            result = actor.accept(ricky_user, invitation)
+            ricky_user = self._create_user(u"ricky", external_value={'email': u"ricky_too@tpb.net"})
+            result = actor.accept(ricky_user, invitation, link_email=u"ricky@tpb.net")
             assert_that(result, is_(True))
             assert_that(invitation.is_accepted(), is_(True))
             assert_that(invitation.receiver, is_(ricky_user.username))
@@ -108,13 +109,15 @@ class TesInvitations(ApplicationLayerTest):
             invitation = SiteInvitation(code=u'Sunnyvale2',
                                         receiver=u'julian@tpb.net',
                                         sender=u'lahey',
-                                        target_site=u'dataserver2')
+                                        target_site=u'dataserver2',
+                                        require_matching_email=True)
             component.getUtility(IInvitationsContainer).add(invitation)
             with self.assertRaises(InvitationEmailNotMatchingError):
                 actor.accept(ricky_user, invitation)
 
             assert_that(invitation.is_accepted(), is_(False))
             assert_that(invitation.receiver, is_(u'julian@tpb.net'))
+            assert_that(invitation.require_matching_email, is_(True))
 
             invitations = get_sent_invitations(u'lahey')
             assert_that(invitations, has_length(1))
@@ -128,6 +131,31 @@ class TesInvitations(ApplicationLayerTest):
             assert_that(result, is_(True))
             assert_that(invitation.is_accepted(), is_(True))
             assert_that(invitation.receiver, is_(julian_user.username))
+
+        # Test different user email for invite that doesn't require match
+        with mock_dataserver.mock_db_trans(self.ds):
+            invitation = SiteInvitation(code=u'Sunnyvale3',
+                                        receiver=u'mmouse@tpb.net',
+                                        sender=u'lahey',
+                                        target_site=u'dataserver2')
+            component.getUtility(IInvitationsContainer).add(invitation)
+
+            mmouse_user = self._create_user(u"mmouse", external_value={'email': u"mmouse@tpb.net"})
+
+            result = actor.accept(mmouse_user, invitation)
+
+            assert_that(result, is_(True))
+            assert_that(invitation.is_accepted(), is_(True))
+            assert_that(invitation.receiver, is_(mmouse_user.username))
+            assert_that(invitation.require_matching_email, is_(False))
+
+            invitations = get_sent_invitations(u'lahey')
+            assert_that(invitations, has_length(0))
+            invitations = get_pending_invitations()
+            assert_that(invitations, has_length(0))
+            container = component.getUtility(IInvitationsContainer)
+            assert_that(container, has_length(3))
+
 
     @WithSharedApplicationMockDS
     def test_generic_site_invitation_actor(self):
@@ -178,11 +206,12 @@ class TesInvitations(ApplicationLayerTest):
             invitation = SiteAdminInvitation(code=u'Sunnyvale1',
                                              receiver=u'ricky@tpb.net',
                                              sender=u'sjohnson@nextthought.com',
-                                             target_site=u'dataserver2')
+                                             require_matching_email=True,
+                                             target_site=u'dataserver3')
             component.getUtility(IInvitationsContainer).add(invitation)
             actor = DefaultSiteAdminInvitationActor()
 
-        # Test a successful acceptance
+        # Test a successful acceptance, non-matching e-mail
         with mock_dataserver.mock_db_trans(self.ds):
             invitations = get_sent_invitations(u'sjohnson@nextthought.com')
             assert_that(invitations, has_length(1))
@@ -191,8 +220,31 @@ class TesInvitations(ApplicationLayerTest):
             assert_that(invitations, has_length(1))
 
             # The user has been created
-            ricky_user = self._create_user(u"ricky", external_value={'email': u"ricky@tpb.net"})
-            result = actor.accept(ricky_user, invitation)
+            ricky_user = self._create_user(u"ricky", external_value={'email': u"ricky_too@tpb.net"})
+
+            # Fails b/c require_matching_email is True and created user
+            # email doesn't match
+            with self.assertRaises(InvitationEmailNotMatchingError):
+                actor.accept(ricky_user, invitation)
+
+            # Even with ISiteInvitation.require_matching_email unset, if
+            # there's no e-mail associated with the link, the account e-mail
+            # must match
+            invitation.require_matching_email = False
+            with self.assertRaises(InvitationEmailNotMatchingError):
+                actor.accept(ricky_user, invitation)
+
+            # Link email must match what was on the invitation, this is sent
+            # as part of the link.
+            with self.assertRaises(InvitationEmailNotMatchingError):
+                actor.accept(ricky_user, invitation, link_email=u"ricky_too@tpb.net")
+
+            # Site doesn't match
+            with self.assertRaises(InvitationSiteNotMatchingError):
+                actor.accept(ricky_user, invitation, link_email=u"ricky@tpb.net")
+
+            invitation.target_site = u"dataserver2"
+            result = actor.accept(ricky_user, invitation, link_email=u"ricky@tpb.net")
             assert_that(result, is_(True))
             assert_that(invitation.is_accepted(), is_(True))
             assert_that(invitation.receiver, is_(ricky_user.username))
@@ -207,6 +259,44 @@ class TesInvitations(ApplicationLayerTest):
             container = component.getUtility(IInvitationsContainer)
             assert_that(container, has_length(1))
 
+        # Test non-matching-email
+        with mock_dataserver.mock_db_trans(self.ds):
+            invitation = SiteAdminInvitation(code=u'Sunnyvale2',
+                                             receiver=u'bobby@tpb.net',
+                                             sender=u'sjohnson@nextthought.com',
+                                             target_site=u'dataserver2',
+                                             require_matching_email=True)
+
+            component.getUtility(IInvitationsContainer).add(invitation)
+            with self.assertRaises(InvitationEmailNotMatchingError):
+                actor.accept(ricky_user, invitation)
+
+            assert_that(invitation.is_accepted(), is_(False))
+            assert_that(invitation.receiver, is_(u'bobby@tpb.net'))
+
+            invitations = get_sent_invitations(u'sjohnson@nextthought.com')
+            assert_that(invitations, has_length(1))
+
+            invitations = get_pending_invitations()
+            assert_that(invitations, has_length(1))
+
+            # The user has been created
+            bobby_user = self._create_user(u"bobby", external_value={'email': u"bobby@tpb.net"})
+            actor.accept(bobby_user, invitation)
+
+            assert_that(result, is_(True))
+            assert_that(invitation.is_accepted(), is_(True))
+            assert_that(invitation.receiver, is_(bobby_user.username))
+
+            invitations = get_sent_invitations(u'sjohnson@nextthought.com')
+            assert_that(invitations, has_length(0))
+
+            invitations = get_pending_invitations()
+            assert_that(invitations, has_length(0))
+
+            container = component.getUtility(IInvitationsContainer)
+            assert_that(container, has_length(2))
+
     @WithSharedApplicationMockDS
     def test_accept_site_invitation(self):
         # Test expired site invitation
@@ -218,7 +308,7 @@ class TesInvitations(ApplicationLayerTest):
                                         expiryTime=(time.time() - 1000))
             ricky_user = self._create_user(u"ricky", external_value={'email': u"ricky@tpb.net"})
             with self.assertRaises(InvitationExpiredError):
-                accept_site_invitation(ricky_user, invitation)
+                accept_site_invitation(ricky_user, invitation, None)
 
         # Test accepted site invitation
         with mock_dataserver.mock_db_trans(self.ds):
@@ -227,7 +317,7 @@ class TesInvitations(ApplicationLayerTest):
                                         sender=u'lahey',
                                         accepted=True)
             with self.assertRaises(InvitationAlreadyAcceptedError):
-                accept_site_invitation(ricky_user, invitation)
+                accept_site_invitation(ricky_user, invitation, None)
 
         # Test expired site invitation
         with mock_dataserver.mock_db_trans(self.ds):
@@ -236,4 +326,4 @@ class TesInvitations(ApplicationLayerTest):
                                         sender=u'lahey')
             interface.alsoProvides(invitation, IDisabledInvitation)
             with self.assertRaises(InvitationDisabledError):
-                accept_site_invitation(ricky_user, invitation)
+                accept_site_invitation(ricky_user, invitation, None)

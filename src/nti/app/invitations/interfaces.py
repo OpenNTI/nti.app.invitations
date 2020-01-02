@@ -22,6 +22,7 @@ from nti.invitations.interfaces import IInvitationActor
 from nti.invitations.interfaces import InvitationValidationError
 
 from nti.schema.field import DecodingValidTextLine as ValidTextLine
+from nti.schema.field import Bool
 
 
 class IInvitationsWorkspace(IWorkspace):
@@ -63,6 +64,14 @@ class ISiteInvitation(IUserInvitation):
     receiver_name = ValidTextLine(title=u'The realname of the receiver for this invitation',
                                   required=True)
 
+    target_receiver = ValidTextLine(title=u'The original intended recipient. Not updated '
+                                          u'when invitation is accepted.',
+                                    required=False)
+
+    require_matching_email = Bool(title=u'Require the email provided during account '
+                                        u'creation to match the invitation email.',
+                                  required=True,
+                                  default=False)
 
 class IGenericSiteInvitation(ISiteInvitation):
     """
@@ -98,3 +107,22 @@ class IChallengeLogonProvider(interface.Interface):
 class InvitationRequiredError(InvitationValidationError):
     __doc__ = _(u'An invitation is required for account creation on this site.')
     i18n_message = __doc__
+
+
+class IInvitationSigner(interface.Interface):
+    """
+    Allow secure delivery of information that can be decoded and verified
+    later, e.g. when providing an invitation url with a
+    """
+
+    def encode(content):
+        """
+        Encode and sign content for later verification and decoding.
+        :return: 
+        """
+
+    def decode(encoded_content):
+        """
+        Decode the signed content.  Throws exception if signature doesn't match.
+        :return:
+        """

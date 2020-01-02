@@ -7,6 +7,7 @@ entry_points = {
         'target = nti.app',
     ],
     'console_scripts': [
+        "nti_invite_user = nti.app.invitations.scripts.nti_invite_user:main",
     ],
 }
 

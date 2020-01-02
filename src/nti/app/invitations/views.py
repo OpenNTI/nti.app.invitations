@@ -63,6 +63,7 @@ from nti.app.invitations import INVITATIONS
 from nti.app.invitations import REL_SEND_INVITATION
 from nti.app.invitations import REL_ACCEPT_INVITATION
 from nti.app.invitations import REL_ACCEPT_INVITATIONS
+from nti.app.invitations import REL_CREATE_SITE_INVITATION
 from nti.app.invitations import REL_DECLINE_INVITATION
 from nti.app.invitations import REL_PENDING_INVITATIONS
 from nti.app.invitations import REL_SEND_SITE_INVITATION
@@ -75,9 +76,11 @@ from nti.app.invitations import REL_PENDING_SITE_INVITATIONS
 from nti.app.invitations import SITE_ADMIN_INVITATION_MIMETYPE
 from nti.app.invitations import GENERIC_SITE_INVITATION_MIMETYPE
 from nti.app.invitations import REL_TRIVIAL_DEFAULT_INVITATION_CODE
+from nti.app.invitations import SITE_INVITATION_EMAIL_SESSION_KEY
 
 from nti.app.invitations.interfaces import ISiteInvitation
 from nti.app.invitations.interfaces import IChallengeLogonProvider
+from nti.app.invitations.interfaces import IInvitationSigner
 
 from nti.app.invitations.invitations import JoinEntityInvitation
 from nti.app.invitations.invitations import GenericSiteInvitation
@@ -648,6 +651,9 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
                          challenge,
                          None)
 
+    def _notify(self, invitation, email):
+        notify(InvitationSentEvent(invitation, email))
+
     def __call__(self):
         self.check_permissions()
         force = self.request.params.get('force')
@@ -679,7 +685,7 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
                     continue
             items.append(invitation)
             self.invitations.add(invitation)
-            notify(InvitationSentEvent(invitation, email))
+            self._notify(invitation, email)
 
         if len(challenge_invitations) > 0:
             self._handle_challenge(challenge_invitations,
@@ -701,12 +707,25 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
 
 @view_config(route_name='objects.generic.traversal',
              renderer='rest',
+             context=InvitationsPathAdapter,
+             request_method='POST',
+             permission=nauth.ACT_READ,  # Do the permission check in the view
+             name=REL_CREATE_SITE_INVITATION)
+class CreateSiteInvitationCodeView(SendSiteInvitationCodeView):
+
+    def _notify(self, invitation, email):
+        # Don't send e-mail
+        pass
+
+
+@view_config(route_name='objects.generic.traversal',
+             renderer='rest',
              context=ISiteInvitation,
              request_method='GET',
              name=REL_ACCEPT_SITE_INVITATION)
 class AcceptSiteInvitationView(AcceptInvitationMixin):
 
-    def _do_call(self, code=None):
+    def _do_call(self, code=None, link_email=None):
         # pylint: disable=no-member
         code = self.context.code if not code else code
 
@@ -719,7 +738,7 @@ class AcceptSiteInvitationView(AcceptInvitationMixin):
             remote_user = get_remote_user()
             logger.info(u'Attempting to accept invitation for authenticated user %s' % remote_user)
             try:
-                accept_site_invitation_by_code(remote_user, code)
+                accept_site_invitation_by_code(remote_user, code, link_email)
                 settings = component.getUtility(IApplicationSettings)
                 web_root = settings.get('web_app_root', '/NextThoughtWebApp/')
                 app_url = self.request.application_url + web_root
@@ -739,6 +758,7 @@ class AcceptSiteInvitationView(AcceptInvitationMixin):
             return hexc.HTTPNotFound()
         logon_url = url_provider.logon_url(self.request)
         self.request.session[SITE_INVITATION_SESSION_KEY] = code
+        self.request.session[SITE_INVITATION_EMAIL_SESSION_KEY] = link_email
         return hexc.HTTPFound(logon_url)
 
     def __call__(self):
@@ -760,6 +780,19 @@ class AcceptSiteInvitationByCodeView(AcceptSiteInvitationView):
     def invitations(self):
         return component.getUtility(IInvitationsContainer)
 
+    def _get_signed_content(self):
+        values = CaseInsensitiveDict(self.request.params)
+        encoded_content = values.get('scode')
+
+        if encoded_content:
+            signer = component.getUtility(IInvitationSigner)
+            result = signer.decode(encoded_content)
+
+            if result:
+                return result.get('code'), result.get('email')
+
+        return None, None
+
     def get_invite_code(self):
         values = CaseInsensitiveDict(self.request.params)
         result =    values.get('code') \
@@ -771,7 +804,12 @@ class AcceptSiteInvitationByCodeView(AcceptSiteInvitationView):
         return result
 
     def __call__(self):
-        code = self.get_invite_code()
+        code, email = self._get_signed_content()
+
+        if not code:
+            email = None
+            code = self.get_invite_code()
+
         if not code:
             raise_json_error(self.request,
                              hexc.HTTPUnprocessableEntity,
@@ -780,7 +818,7 @@ class AcceptSiteInvitationByCodeView(AcceptSiteInvitationView):
                                  'code': 'MissingInvitationCodeError',
                              },
                              None)
-        return self._do_call(code=code)
+        return self._do_call(code=code, link_email=email)
 
 
 @view_config(route_name='objects.generic.traversal',
