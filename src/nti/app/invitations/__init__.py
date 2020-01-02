@@ -38,6 +38,11 @@ REL_SEND_INVITATION = u'send-invitation'
 REL_SEND_SITE_INVITATION = u'send-site-invitation'
 
 #: The link relationship type to which an authenticated
+#: user can ``POST`` data to create an invitation to a site.
+#: This does not send an e-mail
+REL_CREATE_SITE_INVITATION = u'create-site-invitation'
+
+#: The link relationship type to which an authenticated
 #: user can ``POST`` emails to delete invitations to a site
 REL_DELETE_SITE_INVITATIONS = u'delete-site-invitations'
 
@@ -89,3 +94,6 @@ SITE_ADMIN_INVITATION_MIMETYPE = u'application/vnd.nextthought.siteadmininvitati
 
 #: The key for a request session that has a user's invitation code
 SITE_INVITATION_SESSION_KEY = u'site_invitation_code'
+
+#: The key for a request session that has a user's invitation email
+SITE_INVITATION_EMAIL_SESSION_KEY = u'site_invitation_email'

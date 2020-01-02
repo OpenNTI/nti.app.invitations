@@ -1,0 +1,10 @@
+<configure	xmlns="http://namespaces.zope.org/zope"
+			xmlns:meta="http://namespaces.zope.org/meta">
+
+	<meta:directives namespace="http://nextthought.com/ntp/invitations">
+		<meta:directive	name="registerInvitationSigner"
+						schema=".zcml.IRegisterInvitationSigner"
+						handler=".zcml.registerInvitationSigner" />
+	</meta:directives>
+
+</configure>

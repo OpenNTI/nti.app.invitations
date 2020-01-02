@@ -8,6 +8,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import absolute_import
 
+from nti.app.invitations.utils import get_invitation_url
 from pyramid.interfaces import IRequest
 
 from zope import component
@@ -73,6 +74,10 @@ class SiteInvitationLinkProvider(AbstractAuthenticatedRequestAwareDecorator):
         _links = result.setdefault(LINKS, [])
 
         if is_admin_or_site_admin(self.remoteUser):
+            redemption_link = get_invitation_url(self.request.application_url, context)
+            _links.append(
+                Link(redemption_link, rel='redeem')
+            )
             _links.append(
                 Link(context, rel='delete', elements=('@@decline',))
             )

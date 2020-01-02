@@ -13,6 +13,7 @@ import csv
 
 import tempfile
 
+from nti.app.testing.testing import ITestMailDelivery
 from zope import component
 
 from zope.cachedescriptors.property import Lazy
@@ -114,6 +115,10 @@ class TestSiteInvitationViews(ApplicationLayerTest):
                                      status=200)
         body = res.json_body
         assert_that(body['Items'], has_length(2))
+
+        mailer = component.getUtility(ITestMailDelivery)
+        assert_that(mailer.queue, has_length(2))
+
 
     def _make_fake_csv(self, data):
         fake_csv = tempfile.NamedTemporaryFile(delete=False)
@@ -383,6 +388,30 @@ class TestSiteInvitationViews(ApplicationLayerTest):
             assert_that(self.invitations, has_length(2))
             for invitation in self.invitations.values():
                 assert_that(ISiteAdminInvitation.providedBy(invitation), is_(True))
+
+    @WithSharedApplicationMockDS(testapp=True, users=True)
+    def test_create_site_invitation(self):
+        # The core functionality of these views are covered above
+        # We are verifying that the email isn't sent here
+        site_invitation_url = '/dataserver2/Invitations/@@create-site-invitation'
+        data = {
+            'invitations':
+                [
+                    {'receiver': 'good@email.com',
+                     'receiver_name': 'Good Email'},
+                ],
+            'message': 'Passing Test Case',
+            'mimeType': SITE_INVITATION_MIMETYPE
+        }
+        res = self.testapp.post_json(site_invitation_url,
+                                     data,
+                                     status=200)
+        body = res.json_body
+        assert_that(body['Items'], has_length(1))
+        self.require_link_href_with_rel(body['Items'][0], 'redeem')
+
+        mailer = component.getUtility(ITestMailDelivery)
+        assert_that(mailer.queue, has_length(0))
 
     @WithSharedApplicationMockDS(testapp=True, users=True)
     def test_pending_site_admin_invitations(self):

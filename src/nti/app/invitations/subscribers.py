@@ -8,6 +8,8 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import absolute_import
 
+from nti.app.invitations import SITE_INVITATION_EMAIL_SESSION_KEY
+from nti.app.invitations.utils import get_invitation_url
 from pyramid import httpexceptions as hexc
 
 from six.moves import urllib_parse
@@ -83,10 +85,13 @@ def _user_removed(user, unused_event):
 def _validate_site_invitation(user, event):
     request = get_current_request()
     invitation_code = request.session.get(SITE_INVITATION_SESSION_KEY)
+    link_email = request.session.get(SITE_INVITATION_EMAIL_SESSION_KEY)
     if invitation_code is not None:
         del request.session[SITE_INVITATION_SESSION_KEY]
+        if SITE_INVITATION_EMAIL_SESSION_KEY in request.session:
+            del request.session[SITE_INVITATION_EMAIL_SESSION_KEY]
         try:
-            accept_site_invitation_by_code(user, invitation_code)
+            accept_site_invitation_by_code(user, invitation_code, link_email)
         except InvitationValidationError as e:
             logger.info(u'Failed to accept invitation for user %s with error %s' % (user, str(e)))
             # Try to get the failure url from the request params
@@ -155,13 +160,7 @@ def send_invitation_email(invitation,
     names = IFriendlyNamed(sender)
     informal_username = names.alias or names.realname or sender.username
 
-    params = {'code': invitation.code}
-    query = urllib_parse.urlencode(params)
-    url = '/%s/%s/%s?%s' % (get_ds2(request),
-                            INVITATIONS,
-                            '@@' + REL_ACCEPT_SITE_INVITATION,
-                            query)
-    redemption_link = urllib_parse.urljoin(request.application_url, url)
+    redemption_link = get_invitation_url(request.application_url, invitation)
 
     receiver_name = receiver_name
     msg_args = {

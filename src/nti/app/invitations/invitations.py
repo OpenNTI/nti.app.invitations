@@ -76,6 +76,12 @@ class SiteInvitation(Invitation):
 
     Code = alias('code')
 
+    def __setattr__(self, key, value):
+        if key == "receiver" and not self.target_receiver:
+            self.target_receiver = value
+        super(SiteInvitation, self).__setattr__(key, value)
+
+
 
 @interface.implementer(IGenericSiteInvitation)
 class GenericSiteInvitation(SiteInvitation):
@@ -131,10 +137,17 @@ class SiteInvitationActorMixin(object):
         profile = IUserProfile(user)
         return profile
 
-    def check_valid_invitation(self, profile, invitation):
+    def check_valid_invitation(self, profile, invitation, link_email):
         email = getattr(profile, 'email', '')
-        if not email.lower() == invitation.receiver.lower():
+        # Require the email on the account to match if flag set or there's
+        # no email provided with the link (and set in the session)
+        if invitation.require_matching_email or not link_email:
+            if not email.lower() == invitation.receiver.lower():
+                raise InvitationEmailNotMatchingError
+        elif link_email.lower() != invitation.receiver.lower():
+            # We still require at least the link email to match
             raise InvitationEmailNotMatchingError
+
         if not invitation.target_site == getSite().__name__:
             raise InvitationSiteNotMatchingError
 
@@ -143,9 +156,9 @@ class SiteInvitationActorMixin(object):
 @component.adapter(ISiteInvitation)
 class DefaultSiteInvitationActor(SiteInvitationActorMixin):
 
-    def accept(self, user, invitation=None):
+    def accept(self, user, invitation=None, link_email=None):
         profile = self.user_profile(user)
-        self.check_valid_invitation(profile, invitation)
+        self.check_valid_invitation(profile, invitation, link_email)
         invitation.accepted = True
         invitation.receiver = getattr(user, 'username', user)  # update
         notify(InvitationAcceptedEvent(invitation, user))
@@ -182,9 +195,9 @@ class DefaultSiteAdminInvitationActor(SiteInvitationActorMixin):
         principal_role_manager.assignRoleToPrincipal(ROLE_SITE_ADMIN.id,
                                                      username)
 
-    def accept(self, user, invitation=None):
+    def accept(self, user, invitation=None, link_email=None):
         receiver_profile = self.user_profile(user)
-        self.check_valid_invitation(receiver_profile, invitation)
+        self.check_valid_invitation(receiver_profile, invitation, link_email)
         invitation.accepted = True
         invitation.receiver = getattr(user, 'username', user)
         self._make_site_admin(user, getSite())
