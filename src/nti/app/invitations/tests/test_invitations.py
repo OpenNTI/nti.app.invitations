@@ -128,6 +128,7 @@ class TesInvitations(ApplicationLayerTest):
             assert_that(container, has_length(2))
 
             julian_user = self._create_user(u"julian", external_value={'email': u"julian@tpb.net"})
+            assert_that(invitation.original_receiver, is_(u'julian@tpb.net'))
             result = actor.accept(julian_user, invitation)
             assert_that(result, is_(True))
             assert_that(invitation.is_accepted(), is_(True))
@@ -245,6 +246,7 @@ class TesInvitations(ApplicationLayerTest):
                 actor.accept(ricky_user, invitation, link_email=u"ricky@tpb.net")
 
             invitation.target_site = u"dataserver2"
+            assert_that(invitation.original_receiver, is_(u'ricky@tpb.net'))
             result = actor.accept(ricky_user, invitation, link_email=u"ricky@tpb.net")
             assert_that(result, is_(True))
             assert_that(invitation.is_accepted(), is_(True))
