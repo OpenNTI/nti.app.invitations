@@ -54,6 +54,15 @@ def pending_site_invitation_for_email(email):
             return pending_invite
 
 
+def get_site_invitation_actor(invitation, user, link_email):
+    actor = get_invitation_actor(invitation, user)
+
+    if actor:
+        actor.link_email = link_email
+
+    return actor
+
+
 def accept_site_invitation(user, invitation, link_email):
     if invitation.is_expired():
         raise InvitationExpiredError(invitation)
@@ -61,10 +70,10 @@ def accept_site_invitation(user, invitation, link_email):
         raise InvitationAlreadyAcceptedError(invitation)
     if IDisabledInvitation.providedBy(invitation):
         raise InvitationDisabledError(invitation)
-    actor = get_invitation_actor(invitation, user)
+    actor = get_site_invitation_actor(invitation, user, link_email)
     if actor is None:
         raise InvitationActorError(invitation)
-    return actor.accept(user, invitation, link_email)
+    return actor.accept(user, invitation)
 
 
 def accept_site_invitation_by_code(user, code, link_email):

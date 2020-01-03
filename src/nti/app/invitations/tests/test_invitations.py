@@ -78,10 +78,10 @@ class TesInvitations(ApplicationLayerTest):
                                         sender=u'lahey',
                                         target_site=u'dataserver2')
             component.getUtility(IInvitationsContainer).add(invitation)
-            actor = DefaultSiteInvitationActor()
 
         # Test a successful acceptance
         with mock_dataserver.mock_db_trans(self.ds):
+            actor = DefaultSiteInvitationActor()
             invitations = get_sent_invitations(u'lahey')
             assert_that(invitations, has_length(1))
 
@@ -90,7 +90,8 @@ class TesInvitations(ApplicationLayerTest):
 
             # The user has been created
             ricky_user = self._create_user(u"ricky", external_value={'email': u"ricky_too@tpb.net"})
-            result = actor.accept(ricky_user, invitation, link_email=u"ricky@tpb.net")
+            actor.link_email = u"ricky@tpb.net"
+            result = actor.accept(ricky_user, invitation)
             assert_that(result, is_(True))
             assert_that(invitation.is_accepted(), is_(True))
             assert_that(invitation.receiver, is_(ricky_user.username))
@@ -107,6 +108,7 @@ class TesInvitations(ApplicationLayerTest):
 
         # Test wrong user email for invite
         with mock_dataserver.mock_db_trans(self.ds):
+            actor = DefaultSiteInvitationActor()
             invitation = SiteInvitation(code=u'Sunnyvale2',
                                         receiver=u'julian@tpb.net',
                                         sender=u'lahey',
@@ -136,6 +138,7 @@ class TesInvitations(ApplicationLayerTest):
 
         # Test different user email for invite that doesn't require match
         with mock_dataserver.mock_db_trans(self.ds):
+            actor = DefaultSiteInvitationActor()
             invitation = SiteInvitation(code=u'Sunnyvale3',
                                         receiver=u'mmouse@tpb.net',
                                         sender=u'lahey',
@@ -211,10 +214,10 @@ class TesInvitations(ApplicationLayerTest):
                                              require_matching_email=True,
                                              target_site=u'dataserver3')
             component.getUtility(IInvitationsContainer).add(invitation)
-            actor = DefaultSiteAdminInvitationActor()
 
         # Test a successful acceptance, non-matching e-mail
         with mock_dataserver.mock_db_trans(self.ds):
+            actor = DefaultSiteAdminInvitationActor()
             invitations = get_sent_invitations(u'sjohnson@nextthought.com')
             assert_that(invitations, has_length(1))
 
@@ -239,15 +242,17 @@ class TesInvitations(ApplicationLayerTest):
             # Link email must match what was on the invitation, this is sent
             # as part of the link.
             with self.assertRaises(InvitationEmailNotMatchingError):
-                actor.accept(ricky_user, invitation, link_email=u"ricky_too@tpb.net")
+                actor.link_email = u"ricky_too@tpb.net"
+                actor.accept(ricky_user, invitation)
 
             # Site doesn't match
             with self.assertRaises(InvitationSiteNotMatchingError):
-                actor.accept(ricky_user, invitation, link_email=u"ricky@tpb.net")
+                actor.link_email = u"ricky@tpb.net"
+                actor.accept(ricky_user, invitation)
 
             invitation.target_site = u"dataserver2"
             assert_that(invitation.original_receiver, is_(u'ricky@tpb.net'))
-            result = actor.accept(ricky_user, invitation, link_email=u"ricky@tpb.net")
+            result = actor.accept(ricky_user, invitation)
             assert_that(result, is_(True))
             assert_that(invitation.is_accepted(), is_(True))
             assert_that(invitation.receiver, is_(ricky_user.username))
@@ -265,6 +270,7 @@ class TesInvitations(ApplicationLayerTest):
 
         # Test non-matching-email
         with mock_dataserver.mock_db_trans(self.ds):
+            actor = DefaultSiteAdminInvitationActor()
             invitation = SiteAdminInvitation(code=u'Sunnyvale2',
                                              receiver=u'bobby@tpb.net',
                                              sender=u'sjohnson@nextthought.com',
