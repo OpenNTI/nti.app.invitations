@@ -12,6 +12,7 @@ import six
 
 from zope import component
 from zope import interface
+from zope.cachedescriptors.property import readproperty
 
 from zope.event import notify
 
@@ -76,6 +77,9 @@ class SiteInvitation(Invitation):
 
     Code = alias('code')
 
+    @readproperty
+    def original_receiver(self):
+        return self.receiver
 
 @interface.implementer(IGenericSiteInvitation)
 class GenericSiteInvitation(SiteInvitation):
