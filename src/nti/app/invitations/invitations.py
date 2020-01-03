@@ -154,9 +154,11 @@ class SiteInvitationActorMixin(object):
 @component.adapter(ISiteInvitation)
 class DefaultSiteInvitationActor(SiteInvitationActorMixin):
 
-    def accept(self, user, invitation=None, link_email=None):
+    link_email = None
+
+    def accept(self, user, invitation=None):
         profile = self.user_profile(user)
-        self.check_valid_invitation(profile, invitation, link_email)
+        self.check_valid_invitation(profile, invitation, self.link_email)
         invitation.accepted = True
         invitation.original_receiver = invitation.receiver
         invitation.receiver = getattr(user, 'username', user)  # update
@@ -184,6 +186,8 @@ class DefaultGenericSiteInvitationActor(SiteInvitationActorMixin):
 @component.adapter(ISiteAdminInvitation)
 class DefaultSiteAdminInvitationActor(SiteInvitationActorMixin):
 
+    link_email = None
+
     def _make_site_admin(self, user, site):
         username = getattr(user, 'username', user)
         principal_role_manager = IPrincipalRoleManager(site)
@@ -194,9 +198,9 @@ class DefaultSiteAdminInvitationActor(SiteInvitationActorMixin):
         principal_role_manager.assignRoleToPrincipal(ROLE_SITE_ADMIN.id,
                                                      username)
 
-    def accept(self, user, invitation=None, link_email=None):
+    def accept(self, user, invitation=None):
         receiver_profile = self.user_profile(user)
-        self.check_valid_invitation(receiver_profile, invitation, link_email)
+        self.check_valid_invitation(receiver_profile, invitation, self.link_email)
         invitation.accepted = True
         invitation.original_receiver = invitation.receiver
         invitation.receiver = getattr(user, 'username', user)
