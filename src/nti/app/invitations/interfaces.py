@@ -64,9 +64,9 @@ class ISiteInvitation(IActionableInvitation):
     receiver_name = ValidTextLine(title=u'The realname of the receiver for this invitation',
                                   required=True)
 
-    target_receiver = ValidTextLine(title=u'The original intended recipient. Not updated '
-                                          u'when invitation is accepted.',
-                                    required=False)
+    original_receiver = ValidTextLine(title=u'The original intended recipient. Not updated '
+                                            u'when invitation is accepted.',
+                                      required=False)
 
     require_matching_email = Bool(title=u'Require the email provided during account '
                                         u'creation to match the invitation email.',

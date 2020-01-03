@@ -76,12 +76,6 @@ class SiteInvitation(Invitation):
 
     Code = alias('code')
 
-    def __setattr__(self, key, value):
-        if key == "receiver" and not self.target_receiver:
-            self.target_receiver = value
-        super(SiteInvitation, self).__setattr__(key, value)
-
-
 
 @interface.implementer(IGenericSiteInvitation)
 class GenericSiteInvitation(SiteInvitation):
@@ -160,6 +154,7 @@ class DefaultSiteInvitationActor(SiteInvitationActorMixin):
         profile = self.user_profile(user)
         self.check_valid_invitation(profile, invitation, link_email)
         invitation.accepted = True
+        invitation.original_receiver = invitation.receiver
         invitation.receiver = getattr(user, 'username', user)  # update
         notify(InvitationAcceptedEvent(invitation, user))
         return True
@@ -199,6 +194,7 @@ class DefaultSiteAdminInvitationActor(SiteInvitationActorMixin):
         receiver_profile = self.user_profile(user)
         self.check_valid_invitation(receiver_profile, invitation, link_email)
         invitation.accepted = True
+        invitation.original_receiver = invitation.receiver
         invitation.receiver = getattr(user, 'username', user)
         self._make_site_admin(user, getSite())
         notify(InvitationAcceptedEvent(invitation, user))

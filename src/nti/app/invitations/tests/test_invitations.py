@@ -94,6 +94,7 @@ class TesInvitations(ApplicationLayerTest):
             assert_that(result, is_(True))
             assert_that(invitation.is_accepted(), is_(True))
             assert_that(invitation.receiver, is_(ricky_user.username))
+            assert_that(invitation.original_receiver, is_(u'ricky@tpb.net'))
 
             invitations = get_sent_invitations(u'lahey')
             assert_that(invitations, has_length(0))
@@ -248,6 +249,7 @@ class TesInvitations(ApplicationLayerTest):
             assert_that(result, is_(True))
             assert_that(invitation.is_accepted(), is_(True))
             assert_that(invitation.receiver, is_(ricky_user.username))
+            assert_that(invitation.original_receiver, is_(u'ricky@tpb.net'))
 
             assert_that(is_site_admin(ricky_user), is_(True))
             invitations = get_sent_invitations(u'sjohnson@nextthought.com')
