@@ -23,6 +23,7 @@ from nti.app.invitations import SITE_INVITATION_MIMETYPE
 from nti.app.invitations import SITE_ADMIN_INVITATION_MIMETYPE
 from nti.app.invitations import INVITATIONS
 from nti.app.invitations import REL_ACCEPT_SITE_INVITATION
+from nti.app.invitations import SIGNED_CONTENT_VERSION_1_0
 
 from nti.app.invitations.interfaces import IInvitationSigner
 
@@ -91,7 +92,11 @@ def accept_site_invitation_by_code(user, code, link_email):
 
 
 def get_invitation_url(application_url, invitation):
-    signed_params = {'code': invitation.code, 'email': invitation.receiver}
+    signed_params = {
+        'version': SIGNED_CONTENT_VERSION_1_0,
+        'code': invitation.code,
+        'email': invitation.receiver
+    }
     signer = component.getUtility(IInvitationSigner)
     params = {'scode': signer.encode(signed_params)}
     query = urllib_parse.urlencode(params)
