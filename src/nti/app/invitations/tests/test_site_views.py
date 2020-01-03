@@ -13,7 +13,6 @@ import csv
 
 import tempfile
 
-from nti.app.testing.testing import ITestMailDelivery
 from zope import component
 
 from zope.cachedescriptors.property import Lazy
@@ -21,15 +20,20 @@ from zope.cachedescriptors.property import Lazy
 from nti.app.invitations import SITE_INVITATION_MIMETYPE
 from nti.app.invitations import SITE_ADMIN_INVITATION_MIMETYPE
 
+from nti.app.invitations.interfaces import IInvitationSigner
 from nti.app.invitations.interfaces import ISiteAdminInvitation
 
 from nti.app.invitations.invitations import JoinEntityInvitation
 from nti.app.invitations.invitations import SiteAdminInvitation
 from nti.app.invitations.invitations import SiteInvitation
 
+from nti.app.invitations.utils import get_invitation_url
+
 from nti.app.testing.application_webtest import ApplicationLayerTest
 
 from nti.app.testing.decorators import WithSharedApplicationMockDS
+
+from nti.app.testing.testing import ITestMailDelivery
 
 from nti.dataserver.tests import mock_dataserver
 
@@ -250,6 +254,34 @@ class TestSiteInvitationViews(ApplicationLayerTest):
         self.testapp.get(inv_url,
                          params={'code': u'Sunnyvale1'},
                          status=302)
+
+    @WithSharedApplicationMockDS(testapp=True, users=True)
+    def test_accept_site_invitation_with_scode(self):
+        # Create an invitation
+        with mock_dataserver.mock_db_trans(self.ds):
+            site_invitation = SiteInvitation(code=u'Sunnyvale1',
+                                             receiver=u'ricky@tpb.net',
+                                             sender=u'sjohnson',
+                                             accepted=False)
+
+            assert_that(site_invitation.is_accepted(), is_(False))
+            assert_that(self.invitations, has_length(0))
+            self.invitations.add(site_invitation)
+            assert_that(self.invitations, has_length(1))
+
+            inv_url = get_invitation_url('', site_invitation)
+
+        # Accept the invitation with an anonymous user
+        self.testapp.set_authorization(None)
+        self.testapp.get(inv_url, status=302)
+
+        signed_params = dict(version='invalid')
+        signer = component.getUtility(IInvitationSigner)
+        params = {'scode': signer.encode(signed_params)}
+
+        res = self.testapp.get("/dataserver2/Invitations/@@accept-site-invitation", params=params, status=422)
+
+        assert_that(res.json_body['code'], is_(u'InvalidInvitationContentVersion'))
 
     @WithSharedApplicationMockDS(testapp=True, users=True)
     def test_pending_site_invitations(self):

@@ -97,3 +97,7 @@ SITE_INVITATION_SESSION_KEY = u'site_invitation_code'
 
 #: The key for a request session that has a user's invitation email
 SITE_INVITATION_EMAIL_SESSION_KEY = u'site_invitation_email'
+
+#: Version of the signed content for the invitation URL
+SIGNED_CONTENT_VERSION_1_0 = '1.0'
+
