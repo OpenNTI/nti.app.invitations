@@ -6,9 +6,12 @@ from __future__ import print_function
 from __future__ import absolute_import
 
 # pylint: disable=protected-access,too-many-public-methods,arguments-differ
+import unittest
+
 from hamcrest import is_not, is_
 from hamcrest import has_length
 from hamcrest import assert_that
+from nti.app.invitations.subscribers import _get_invitations_bcc
 
 does_not = is_not
 
@@ -181,3 +184,31 @@ class TestSubscribers(ApplicationLayerTest):
                 self.fail(u'Unexpected exception in subscriber. %s' % e.message)
 
             gsm.unregisterHandler(require_invite_for_user_creation)
+
+
+class TestInvitationsBcc(unittest.TestCase):
+
+    @fudge.patch('nti.app.invitations.subscribers._get_app_setting')
+    def test_invitations_bcc_none(self, get_app_setting):
+        get_app_setting.is_callable().returns(None)
+        assert_that(_get_invitations_bcc(), is_(()))
+
+    @fudge.patch('nti.app.invitations.subscribers._get_app_setting')
+    def test_invitations_bcc_empty(self, get_app_setting):
+        get_app_setting.is_callable().returns("")
+        assert_that(_get_invitations_bcc(), is_(()))
+
+    @fudge.patch('nti.app.invitations.subscribers._get_app_setting')
+    def test_invitations_bcc_unstripped(self, get_app_setting):
+        get_app_setting.is_callable().returns(" follow@whiterabbit.org ")
+        assert_that(_get_invitations_bcc(), is_(("follow@whiterabbit.org",)))
+
+    @fudge.patch('nti.app.invitations.subscribers._get_app_setting')
+    def test_invitations_bcc_invalid(self, get_app_setting):
+        get_app_setting.is_callable().returns(" cheshire@wl.org , @xyz123")
+        assert_that(_get_invitations_bcc(), is_(("cheshire@wl.org",)))
+
+    @fudge.patch('nti.app.invitations.subscribers._get_app_setting')
+    def test_invitations_bcc_multi(self, get_app_setting):
+        get_app_setting.is_callable().returns("hatter@wl.org, cheshire@wl.org , @xyz123,")
+        assert_that(_get_invitations_bcc(), is_(("hatter@wl.org", "cheshire@wl.org",)))

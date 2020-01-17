@@ -8,11 +8,9 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import absolute_import
 
-from nti.app.invitations import SITE_INVITATION_EMAIL_SESSION_KEY
-from nti.app.invitations.utils import get_invitation_url
 from pyramid import httpexceptions as hexc
 
-from six.moves import urllib_parse
+from z3c.schema.email import isValidMailAddress
 
 from zc.intid.interfaces import IBeforeIdRemovedEvent
 
@@ -21,19 +19,20 @@ from zope import interface
 
 from zope.i18n import translate
 
-from nti.app.invitations import REL_ACCEPT_SITE_INVITATION
 from nti.app.invitations import SITE_INVITATION_SESSION_KEY
-from nti.app.invitations import INVITATIONS
 
 from nti.app.invitations import MessageFactory as _
+from nti.app.invitations import SITE_INVITATION_EMAIL_SESSION_KEY
 
 from nti.app.invitations.interfaces import InvitationRequiredError
 from nti.app.invitations.interfaces import ISiteInvitation
 
 from nti.app.invitations.utils import accept_site_invitation_by_code
+from nti.app.invitations.utils import get_invitation_url
 
 from nti.app.pushnotifications.digest_email import _TemplateArgs
 
+from nti.appserver.interfaces import IApplicationSettings
 from nti.appserver.interfaces import IUserCreatedWithRequestEvent
 from nti.appserver.interfaces import IUserLogonEvent
 
@@ -125,6 +124,25 @@ def get_ds2(request):
     return result or "dataserver2"
 
 
+def _get_app_setting(setting_name, default):
+    settings = component.getUtility(IApplicationSettings)
+    return settings.get(setting_name, default)
+
+
+def _get_invitations_bcc():
+    invitations_bcc = _get_app_setting("invitations_bcc", None) or ()
+
+    if invitations_bcc:
+        invitations_bcc = [email.strip() for email in invitations_bcc.split(",")]
+        invitations_bcc = [email for email in invitations_bcc
+                           if isValidMailAddress(email.strip())]
+        invitations_bcc = tuple(invitations_bcc)
+
+    logger.info("Using bcc of %s for sending invitation" % (invitations_bcc,))
+
+    return tuple(invitations_bcc)
+
+
 def send_invitation_email(invitation,
                           sender,
                           receiver_name,
@@ -191,6 +209,7 @@ def send_invitation_email(invitation,
             subject=translate(_(u"You're invited to ${title}",
                                 mapping={'title': brand})),
             recipients=[receiver_email],
+            bcc=_get_invitations_bcc(),
             template_args=msg_args,
             request=request,
             package=package,
