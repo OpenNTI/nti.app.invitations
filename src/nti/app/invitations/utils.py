@@ -104,7 +104,7 @@ def get_invitation_url(application_url, invitation):
     signed_params = {
         'version': SIGNED_CONTENT_VERSION_1_0,
         'code': invitation.code,
-        'email': invitation.receiver
+        'email': invitation.original_receiver
     }
     signer = component.getUtility(IInvitationSigner)
     params = {'scode': signer.encode(signed_params)}
