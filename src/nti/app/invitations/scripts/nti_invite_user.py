@@ -10,6 +10,10 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import absolute_import
 
+import json
+
+from nti.app.invitations.decorators import SiteInvitationLinkProvider
+from nti.externalization import to_external_object
 from nti.monkey import patch_relstorage_all_except_gevent_on_import
 
 patch_relstorage_all_except_gevent_on_import.patch()
@@ -76,7 +80,7 @@ def _preflight_email(email):
     return email
 
 
-def _create_site_invitation(email, realname, site_name, is_admin, expiry):
+def _create_site_invitation(email, realname, site_name, is_admin, expiry, as_json=False):
     """
     Used to create an invitation and return a URL that can be given to a
     user to redeem the invitation.  Takes an email, realname and site, and
@@ -93,7 +97,15 @@ def _create_site_invitation(email, realname, site_name, is_admin, expiry):
     invitations = component.getUtility(IInvitationsContainer)
     invitations.add(invitation)
 
-    print(get_invitation_url("https://%s/" % site.__name__, invitation))
+    if as_json:
+        decorator = SiteInvitationLinkProvider(None, None)
+        ext = to_external_object(invitation)
+        decorator.add_admin_links(invitation, ext)
+
+        # Once more, with feeling
+        print(json.dumps(to_external_object(ext)))
+    else:
+        print(get_invitation_url(None, invitation))
 
 
 def create_invitation(email, realname, is_admin, expiry):
@@ -142,6 +154,12 @@ def create_site_invitation(args=None):
                             default=False,
                             help="Dev mode")
 
+    arg_parser.add_argument('--json',
+                            dest='as_json',
+                            action='store_true',
+                            default=False,
+                            help="Output full invitation as json.")
+
     arg_parser.add_argument('-v', '--verbose', help="Be verbose",
                             action='store_true', dest='verbose')
 
@@ -166,7 +184,8 @@ def create_site_invitation(args=None):
                                                                  args.realname,
                                                                  args.site,
                                                                  args.admin,
-                                                                 args.expiry))
+                                                                 args.expiry,
+                                                                 as_json=args.as_json))
 
 
 def main(args=None):

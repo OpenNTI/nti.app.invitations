@@ -70,14 +70,17 @@ class LegacyAcceptInvitationsLinkProvider(AbstractAuthenticatedRequestAwareDecor
 @interface.implementer(IExternalMappingDecorator)
 class SiteInvitationLinkProvider(AbstractAuthenticatedRequestAwareDecorator):
 
-    def _do_decorate_external(self, context, result):
+    def add_admin_links(self, context, result, app_url=None):
         _links = result.setdefault(LINKS, [])
 
+        redemption_link = get_invitation_url(app_url, context)
+        _links.append(
+            Link(redemption_link, rel='redeem')
+        )
+        _links.append(
+            Link(context, rel='delete', elements=('@@decline',))
+        )
+
+    def _do_decorate_external(self, context, result):
         if is_admin_or_site_admin(self.remoteUser):
-            redemption_link = get_invitation_url(self.request.application_url, context)
-            _links.append(
-                Link(redemption_link, rel='redeem')
-            )
-            _links.append(
-                Link(context, rel='delete', elements=('@@decline',))
-            )
+            self.add_admin_links(context, result, app_url=self.request.application_url)
