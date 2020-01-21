@@ -88,7 +88,7 @@ def _create_site_invitation(email, realname, site_name, is_admin, expiry, as_jso
     to false).  Should only be accessible to admin users.
     """
 
-    site = set_site(site_name)
+    set_site(site_name)
 
     validated_email = _preflight_email(email.strip() if email else email)
 
@@ -102,7 +102,7 @@ def _create_site_invitation(email, realname, site_name, is_admin, expiry, as_jso
         ext = to_external_object(invitation)
         decorator.add_admin_links(invitation, ext)
 
-        # Once more, with feeling
+        # Once more, with feeling (links need externalized)
         print(json.dumps(to_external_object(ext)))
     else:
         print(get_invitation_url(None, invitation))
