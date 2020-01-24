@@ -12,6 +12,8 @@ from __future__ import absolute_import
 
 from zope import interface
 
+from zope.location.interfaces import IContained
+
 from nti.app.invitations import MessageFactory as _
 
 from nti.appserver.workspaces.interfaces import IWorkspace
@@ -126,3 +128,21 @@ class IInvitationSigner(interface.Interface):
         Decode the signed content.  Throws exception if signature doesn't match.
         :return:
         """
+
+
+class IInvitationInfo(interface.Interface, IContained):
+    """
+    Subset of invitation information that is available to the redeemer.
+    """
+
+    receiver_name = ValidTextLine(title=u'The realname of the receiver for this invitation',
+                                  required=True)
+
+    receiver = ValidTextLine(title=u'The original intended recipient. Not updated '
+                                   u'when invitation is accepted.',
+                             required=False)
+
+    require_matching_email = Bool(title=u'Require the email provided during account '
+                                        u'creation to match the invitation email.',
+                                  required=True,
+                                  default=False)

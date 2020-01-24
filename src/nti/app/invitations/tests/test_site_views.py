@@ -5,7 +5,10 @@ from __future__ import print_function
 from __future__ import absolute_import
 from __future__ import division
 
+import fudge
 from hamcrest import assert_that
+from hamcrest import contains_inanyorder
+from hamcrest import has_entries
 from hamcrest import is_
 from hamcrest import has_length
 
@@ -13,6 +16,7 @@ import csv
 
 import tempfile
 
+from hamcrest import not_
 from zope import component
 
 from zope.cachedescriptors.property import Lazy
@@ -210,7 +214,7 @@ class TestSiteInvitationViews(ApplicationLayerTest):
         assert_that(body['Items'], has_length(4))
 
     @WithSharedApplicationMockDS(testapp=True, users=True)
-    def test_accept_site_invitation(self):
+    def test_invitation_info(self):
         # Create an invitation
         with mock_dataserver.mock_db_trans(self.ds):
             site_invitation = SiteInvitation(code=u'Sunnyvale1',
@@ -232,6 +236,83 @@ class TestSiteInvitationViews(ApplicationLayerTest):
         self.testapp.set_authorization(None)
         self.testapp.get(inv_url,
                          status=302)
+
+    def _test_fetch_invitation_info(self,
+                                    init_code=True,
+                                    create_invitation=True,
+                                    accepted=False,
+                                    require_matching_email=False,
+                                    expected_status=None):
+        if create_invitation:
+            # Create an invitation
+            with mock_dataserver.mock_db_trans(self.ds):
+                site_invitation = SiteInvitation(code=u'Sunnyvale1',
+                                                 receiver_name=u'Ricky Bobby',
+                                                 receiver=u'ricky@tpb.net',
+                                                 sender=u'sjohnson',
+                                                 accepted=accepted,
+                                                 require_matching_email=require_matching_email)
+
+                assert_that(site_invitation.is_accepted(), is_(accepted))
+
+                assert_that(self.invitations, has_length(0))
+
+                self.invitations.add(site_invitation)
+                assert_that(self.invitations, has_length(1))
+
+                inv_ntiid = to_external_ntiid_oid(site_invitation)
+
+            if init_code:
+                # Accept the invitation with an anonymous user
+                inv_url = '/dataserver2/Objects/%s/@@accept-site-invitation' % inv_ntiid
+                self.testapp.set_authorization(None)
+                self.testapp.get(inv_url,
+                                 status=302)
+
+        info_url = '/dataserver2/invitation-info'
+        res = self.testapp.get(info_url, status=expected_status or 200)
+
+        if expected_status == 200:
+            assert_that(res.json_body, has_entries({
+                "receiver_name": "Ricky Bobby",
+                "receiver": "ricky@tpb.net",
+                "require_matching_email": is_(require_matching_email)
+            }))
+
+            assert_that(res.json_body.keys(), not_(contains_inanyorder(
+                'code',
+                'original_receiver',
+                'sender',
+                'accepted'
+            )))
+
+    @WithSharedApplicationMockDS(testapp=True, users=True)
+    def test_fetch_invitation_info_valid(self):
+        self._test_fetch_invitation_info()
+
+    @WithSharedApplicationMockDS(testapp=True, users=True)
+    def test_fetch_invitation_info_valid_require_email_match(self):
+        self._test_fetch_invitation_info(require_matching_email=True)
+
+    @WithSharedApplicationMockDS(testapp=True, users=True)
+    def test_fetch_invitation_info_no_code(self):
+        self._test_fetch_invitation_info(init_code=False, expected_status=404)
+
+    @WithSharedApplicationMockDS(testapp=True, users=True)
+    def test_fetch_invitation_info_no_invitation(self):
+        self._test_fetch_invitation_info(create_invitation=False,
+                                         expected_status=404)
+
+    @WithSharedApplicationMockDS(testapp=True, users=True)
+    def test_fetch_invitation_info_accepted(self):
+        self._test_fetch_invitation_info(accepted=True,
+                                         expected_status=404)
+
+    @WithSharedApplicationMockDS(testapp=True, users=True)
+    @fudge.patch('nti.app.invitations.views.IInvitationInfo')
+    def test_fetch_invitation_info_no_adapt(self, i_info_adapter):
+        i_info_adapter.is_callable().calls(lambda invitation: None)
+        self._test_fetch_invitation_info(expected_status=404)
 
     @WithSharedApplicationMockDS(testapp=True, users=True)
     def test_accept_site_invitation_with_code(self):

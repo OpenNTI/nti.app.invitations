@@ -13,6 +13,7 @@ import six
 from zope import component
 from zope import interface
 from zope.cachedescriptors.property import readproperty
+from zope.container.contained import Contained
 
 from zope.event import notify
 
@@ -29,6 +30,7 @@ from nti.app.invitations.interfaces import ISiteAdminInvitation
 from nti.app.invitations.interfaces import IJoinEntityInvitation
 from nti.app.invitations.interfaces import IGenericSiteInvitation
 from nti.app.invitations.interfaces import IJoinEntityInvitationActor
+from nti.app.invitations.interfaces import IInvitationInfo
 
 from nti.dataserver.authorization import ROLE_SITE_ADMIN
 
@@ -51,6 +53,8 @@ from nti.invitations.model import Invitation
 from nti.property.property import alias
 
 from nti.schema.fieldproperty import createDirectFieldProperties
+
+from nti.schema.schema import SchemaConfigured
 
 from nti.site.site import getSite
 
@@ -95,6 +99,18 @@ class SiteAdminInvitation(SiteInvitation):
     mimeType = mime_type = SITE_ADMIN_INVITATION_MIMETYPE
 
     __external_class_name__ = "SiteAdminInvitation"
+
+
+@interface.implementer(IInvitationInfo)
+class InvitationInfo(SchemaConfigured, Contained):
+
+    mimeType = mime_type = "application/vnd.nextthought.invitationinfo"
+
+    def __init__(self, invitation):
+        SchemaConfigured.__init__(self,
+                                  receiver_name=invitation.receiver_name,
+                                  receiver=invitation.original_receiver,
+                                  require_matching_email=invitation.require_matching_email)
 
 
 @interface.implementer(IJoinEntityInvitationActor)

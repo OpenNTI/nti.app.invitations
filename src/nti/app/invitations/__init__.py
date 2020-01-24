@@ -67,6 +67,11 @@ REL_PENDING_SITE_INVITATIONS = u'pending-site-invitations'
 #: See also :func:`nti.appserver.account_creation_views.account_create_view`
 REL_ACCEPT_INVITATIONS = u'accept-invitations'
 
+#: The link relationship type to which a user accepting an invitation
+#: can GET to retrieve information regarding the invitation they are
+#: accepting.
+REL_INVITATION_INFO = u'invitation-info'
+
 #: The link relationship type that will be exposed to the creator of a
 #: :class:`nti.dataserver.users.friends_lists.DynamicFriendsList`. A ``GET``
 #: to this link will return the invitation code corresponding to the default invitation

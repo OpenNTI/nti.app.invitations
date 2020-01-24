@@ -12,6 +12,8 @@ from __future__ import absolute_import
 
 import csv
 import time
+from nti.app.invitations.interfaces import IInvitationInfo
+from nti.app.invitations.traversal import InvitationInfoPathAdapter
 
 from pyramid import httpexceptions as hexc
 
@@ -717,6 +719,48 @@ class CreateSiteInvitationCodeView(SendSiteInvitationCodeView):
     def _notify(self, invitation, email):
         # Don't send e-mail
         pass
+
+
+@view_config(route_name='objects.generic.traversal',
+             renderer='rest',
+             context=InvitationInfoPathAdapter,
+             request_method='GET')
+class FetchInvitationInfo(AbstractView):
+
+    @Lazy
+    def invitations(self):
+        return component.getUtility(IInvitationsContainer)
+
+    def __call__(self, *args, **kwargs):
+        # Invitation code is stored in session during the call to
+        # accept the invitation, prior to the redirect to the app base.
+        code = self.request.session.get(SITE_INVITATION_SESSION_KEY)
+
+        if not code:
+            logger.error(u'No code provided for fetching invitation info')
+            return hexc.HTTPNotFound()
+
+        # Retrieve the invitation, as only the code is in session
+        invitation = self.invitations.get_invitation_by_code(code)
+
+        if invitation is None:
+            logger.error(u'Unable to find an invitation for code %s', code)
+            return hexc.HTTPNotFound()
+
+        if invitation.is_accepted():
+            logger.error(u'Invitation for code %s has already been accepted', code)
+            return hexc.HTTPNotFound()
+
+        inv_info = IInvitationInfo(invitation)
+
+        if inv_info is None:
+            logger.error(u'Failed adapting invitation with code %s', code)
+            return hexc.HTTPNotFound()
+
+        inv_info.__name__ = 'InvitationInfo'
+        inv_info.__parent__ = invitation
+
+        return inv_info
 
 
 @view_config(route_name='objects.generic.traversal',

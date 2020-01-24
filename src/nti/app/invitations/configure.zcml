@@ -13,7 +13,8 @@
     <ext:registerAutoPackageIO
         root_interfaces=".interfaces.ISiteInvitation
                          .interfaces.ISiteAdminInvitation
-                         .interfaces.IGenericSiteInvitation"
+                         .interfaces.IGenericSiteInvitation
+                         .interfaces.IInvitationInfo"
         modules=".invitations" />
 
 	<!-- Generations -->
@@ -31,6 +32,11 @@
 	<!-- Traversal -->
 	<adapter name="Invitations"
 			 factory=".views.InvitationsPathAdapter"
+			 provides="zope.traversing.interfaces.IPathAdapter" />
+
+	<adapter name="invitation-info"
+			 for="nti.dataserver.interfaces.IDataserverFolder pyramid.interfaces.IRequest"
+			 factory="nti.app.invitations.traversal.InvitationInfoPathAdapter"
 			 provides="zope.traversing.interfaces.IPathAdapter" />
 
 	<!-- ACL -->
@@ -92,5 +98,10 @@
 
 	<!-- Signer -->
 	<include package="nti.app.invitations" file="meta.zcml" />
+
+	<!-- Adapters -->
+	<adapter factory=".adapters.invitation_info"
+		     provides=".interfaces.IInvitationInfo"
+		     for=".interfaces.ISiteInvitation" />
 
 </configure>
