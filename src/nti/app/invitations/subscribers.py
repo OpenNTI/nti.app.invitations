@@ -116,14 +116,6 @@ def _validate_site_invitation(user, event):
             raise response
 
 
-def get_ds2(request):
-    try:
-        result = request.path_info_peek() if request else None
-    except AttributeError:  # in unit test we may see this
-        result = None
-    return result or "dataserver2"
-
-
 def _get_app_setting(setting_name, default):
     settings = component.getUtility(IApplicationSettings)
     return settings.get(setting_name, default)

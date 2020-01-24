@@ -27,11 +27,14 @@ from nti.app.invitations import REL_ACCEPT_INVITATION
 from nti.app.invitations import REL_DECLINE_INVITATION
 from nti.app.invitations import REL_ACCEPT_INVITATIONS
 from nti.app.invitations import REL_PENDING_INVITATIONS
+from nti.app.invitations import REL_INVITATION_INFO
 
 from nti.app.invitations.interfaces import IInvitationsWorkspace
 from nti.app.invitations.interfaces import IUserInvitationsLinkProvider
 
 from nti.app.invitations.views import InvitationsPathAdapter
+
+from nti.appserver.workspaces import IGlobalWorkspaceLinkProvider
 
 from nti.appserver.workspaces.interfaces import IUserService
 from nti.appserver.workspaces.interfaces import IUserWorkspace
@@ -39,7 +42,9 @@ from nti.appserver.workspaces.interfaces import IContainerCollection
 
 from nti.dataserver.authorization import is_admin_or_site_admin
 
-from nti.dataserver.interfaces import IUser, IDataserverFolder
+from nti.dataserver.interfaces import IDataserver
+from nti.dataserver.interfaces import IDataserverFolder
+from nti.dataserver.interfaces import IUser
 
 from nti.dataserver.users.interfaces import IUserProfile
 
@@ -213,3 +218,16 @@ class _DefaultSiteInvitationsLinksProvider(object):
             result.append(generic_link)
 
         return result
+
+
+@interface.implementer(IGlobalWorkspaceLinkProvider)
+class _GlobalWorkspaceLinkProvider(object):
+
+    def __init__(self, unused_user):
+        pass
+
+    def links(self, unused_workspace):
+        ds2 = component.getUtility(IDataserver).dataserver_folder
+        link = Link(ds2, rel=REL_INVITATION_INFO, method='GET',
+                    elements=(REL_INVITATION_INFO,))
+        return [link]

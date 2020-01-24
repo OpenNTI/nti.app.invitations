@@ -55,6 +55,10 @@
 	<subscriber factory=".workspaces._DefaultSiteInvitationsLinksProvider"
 				provides=".interfaces.IUserInvitationsLinkProvider" />
 
+    <subscriber factory=".workspaces._GlobalWorkspaceLinkProvider"
+				for="*"
+                provides="nti.appserver.workspaces.interfaces.IGlobalWorkspaceLinkProvider"/>
+
 	<!-- Subscriber -->
 	<subscriber handler=".subscribers._user_removed" />
 
