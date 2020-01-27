@@ -770,6 +770,18 @@ class FetchInvitationInfo(AbstractView):
              name=REL_ACCEPT_SITE_INVITATION)
 class AcceptSiteInvitationView(AcceptInvitationMixin):
 
+    def _login_url(self):
+        return self.request.application_url + '/login/'
+
+    def _failure_response(self, url, message):
+        return hexc.HTTPSeeOther(self._add_failure_params(url, message))
+
+    def _add_failure_params(self, url, message):
+        return safe_add_query_params(url,
+                                     params={'failed': 'true',
+                                             'error': message,
+                                             'message': message})
+
     def _do_call(self, code=None, link_email=None):
         # pylint: disable=no-member
         code = self.context.code if not code else code
@@ -790,11 +802,21 @@ class AcceptSiteInvitationView(AcceptInvitationMixin):
                 return hexc.HTTPFound(app_url)
             except InvitationValidationError as e:
                 logger.exception(u'Failed to accept invitation for authenticated user %s' % remote_user)
-                app_url = safe_add_query_params(self.request.application_url + '/login/',
-                                                params={'failed': 'true',
-                                                        'error': str(e),
-                                                        'message': str(e)})
-                return hexc.HTTPSeeOther(app_url)
+                return self._failure_response(self._login_url(), str(e))
+
+        not_valid_msg = u"Invitation code '%s' is no longer valid." % code
+        invitation = self.invitations.get(code)
+        if invitation is None:
+            logger.error(u'No invitation for code %s' % code)
+            return self._failure_response(self._login_url(), not_valid_msg)
+
+        if invitation.is_accepted():
+            logger.error(u"Invitation for code %s already accepted." % code)
+            return self._failure_response(self._login_url(), not_valid_msg)
+
+        if invitation.is_expired():
+            logger.error(u"Invitation for code %s expired (expiry=%s)." % (code, invitation.expiryTime))
+            return self._failure_response(self._login_url(), not_valid_msg)
 
         url_provider = component.queryUtility(IChallengeLogonProvider)
         if url_provider is None:

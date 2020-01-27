@@ -5,12 +5,17 @@ from __future__ import print_function
 from __future__ import absolute_import
 from __future__ import division
 
+from collections import OrderedDict
+
 import fudge
 from hamcrest import assert_that
 from hamcrest import contains_inanyorder
+from hamcrest import contains_string
 from hamcrest import has_entries
 from hamcrest import is_
 from hamcrest import has_length
+
+from six.moves import urllib_parse
 
 import csv
 
@@ -213,29 +218,79 @@ class TestSiteInvitationViews(ApplicationLayerTest):
         body = res.json_body
         assert_that(body['Items'], has_length(4))
 
-    @WithSharedApplicationMockDS(testapp=True, users=True)
-    def test_invitation_info(self):
-        # Create an invitation
-        with mock_dataserver.mock_db_trans(self.ds):
-            site_invitation = SiteInvitation(code=u'Sunnyvale1',
-                                             receiver=u'ricky@tpb.net',
-                                             sender=u'sjohnson',
-                                             accepted=False)
+    def _test_accept_site_invitation(self,
+                                     create_invitation=True,
+                                     code=None,
+                                     accepted=False,
+                                     expired=False,
+                                     expected_status=302):
+        effective_code = code
+        if create_invitation:
+            # Create an invitation
+            with mock_dataserver.mock_db_trans(self.ds):
+                site_invitation = SiteInvitation(code=u'Sunnyvale1',
+                                                 receiver=u'ricky@tpb.net',
+                                                 sender=u'sjohnson',
+                                                 accepted=accepted,
+                                                 expiryTime=0 if not expired else 1)
 
-            assert_that(site_invitation.is_accepted(), is_(False))
+                assert_that(site_invitation.is_accepted(), is_(accepted))
 
-            assert_that(self.invitations, has_length(0))
+                assert_that(self.invitations, has_length(0))
 
-            self.invitations.add(site_invitation)
-            assert_that(self.invitations, has_length(1))
+                self.invitations.add(site_invitation)
+                assert_that(self.invitations, has_length(1))
 
-            inv_ntiid = to_external_ntiid_oid(site_invitation)
+                effective_code = site_invitation.code
 
         # Accept the invitation with an anonymous user
-        inv_url = '/dataserver2/Objects/%s/@@accept-site-invitation' % inv_ntiid
+        inv_url = '/dataserver2/Invitations/@@accept-site-invitation%s' \
+                  % ('?code=%s' % effective_code if effective_code else '',)
         self.testapp.set_authorization(None)
-        self.testapp.get(inv_url,
-                         status=302)
+        return self.testapp.get(inv_url, status=expected_status)
+
+    def _query_params(self, url):
+        url_parts = list(urllib_parse.urlparse(url))
+        # Query params are in index 4
+        return OrderedDict(urllib_parse.parse_qsl(url_parts[4]))
+
+    @WithSharedApplicationMockDS(testapp=True, users=True)
+    def test_accept_site_invitation(self):
+        res = self._test_accept_site_invitation()
+        assert_that(res.headers['Location'], contains_string('/NextThoughtWebApp'))
+        assert_that(self._query_params(res.headers['Location']), has_length(0))
+
+    def _assert_has_fail_params(self, url, message_matcher):
+        assert_that(self._query_params(url), has_entries({
+            "failed": is_("true"),
+            "error": message_matcher,
+            "message": message_matcher,
+        }))
+
+    @WithSharedApplicationMockDS(testapp=True, users=True)
+    def test_accept_site_invitation_no_invitation(self):
+        res = self._test_accept_site_invitation(create_invitation=False,
+                                                code='should-not-exist',
+                                                expected_status=303)
+        assert_that(res.headers['Location'], contains_string('/login'))
+        self._assert_has_fail_params(res.headers['Location'],
+                                     contains_string("no longer valid"))
+
+    @WithSharedApplicationMockDS(testapp=True, users=True)
+    def test_accept_site_invitation_accepted(self):
+        res = self._test_accept_site_invitation(accepted=True,
+                                                expected_status=303)
+        assert_that(res.headers['Location'], contains_string('/login'))
+        self._assert_has_fail_params(res.headers['Location'],
+                                     contains_string("no longer valid"))
+
+    @WithSharedApplicationMockDS(testapp=True, users=True)
+    def test_accept_site_invitation_expired(self):
+        res = self._test_accept_site_invitation(expired=True,
+                                                expected_status=303)
+        assert_that(res.headers['Location'], contains_string('/login'))
+        self._assert_has_fail_params(res.headers['Location'],
+                                     contains_string("no longer valid"))
 
     def _test_fetch_invitation_info(self,
                                     init_code=True,
@@ -301,11 +356,6 @@ class TestSiteInvitationViews(ApplicationLayerTest):
     @WithSharedApplicationMockDS(testapp=True, users=True)
     def test_fetch_invitation_info_no_invitation(self):
         self._test_fetch_invitation_info(create_invitation=False,
-                                         expected_status=404)
-
-    @WithSharedApplicationMockDS(testapp=True, users=True)
-    def test_fetch_invitation_info_accepted(self):
-        self._test_fetch_invitation_info(accepted=True,
                                          expected_status=404)
 
     @WithSharedApplicationMockDS(testapp=True, users=True)
