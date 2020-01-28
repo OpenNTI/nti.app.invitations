@@ -14,6 +14,7 @@ from hamcrest import contains_string
 from hamcrest import has_entries
 from hamcrest import is_
 from hamcrest import has_length
+from hamcrest import starts_with
 
 from six.moves import urllib_parse
 
@@ -43,6 +44,8 @@ from nti.app.testing.application_webtest import ApplicationLayerTest
 from nti.app.testing.decorators import WithSharedApplicationMockDS
 
 from nti.app.testing.testing import ITestMailDelivery
+
+from nti.common.url import safe_add_query_params
 
 from nti.dataserver.tests import mock_dataserver
 
@@ -223,6 +226,8 @@ class TestSiteInvitationViews(ApplicationLayerTest):
                                      code=None,
                                      accepted=False,
                                      expired=False,
+                                     failure=None,
+                                     success=None,
                                      expected_status=302):
         effective_code = code
         if create_invitation:
@@ -244,8 +249,19 @@ class TestSiteInvitationViews(ApplicationLayerTest):
                 effective_code = site_invitation.code
 
         # Accept the invitation with an anonymous user
-        inv_url = '/dataserver2/Invitations/@@accept-site-invitation%s' \
-                  % ('?code=%s' % effective_code if effective_code else '',)
+        params = dict()
+        if effective_code:
+            params['code'] = effective_code
+
+        if success:
+            params['success'] = success
+
+        if failure:
+            params['failure'] = failure
+
+        inv_url = '/dataserver2/Invitations/@@accept-site-invitation'
+        inv_url = safe_add_query_params(inv_url, params)
+
         self.testapp.set_authorization(None)
         return self.testapp.get(inv_url, status=expected_status)
 
@@ -259,6 +275,28 @@ class TestSiteInvitationViews(ApplicationLayerTest):
         res = self._test_accept_site_invitation()
         assert_that(res.headers['Location'], contains_string('/NextThoughtWebApp'))
         assert_that(self._query_params(res.headers['Location']), has_length(0))
+
+    @WithSharedApplicationMockDS(testapp=True, users=True)
+    @fudge.patch('nti.app.invitations.views.component.queryUtility')
+    def test_accept_site_invitation_no_logon_provider(self, query_utility):
+        # No logon provider returned
+        query_utility.is_callable().returns(None)
+        self._test_accept_site_invitation(expected_status=404)
+
+    @WithSharedApplicationMockDS(testapp=True, users=True)
+    def test_accept_site_invitation_redirect_success(self):
+        res = self._test_accept_site_invitation(success="/succeeded")
+        assert_that(res.headers['Location'], starts_with("http://localhost/succeeded"))
+        assert_that(self._query_params(res.headers['Location']), has_length(0))
+
+    @WithSharedApplicationMockDS(testapp=True, users=True)
+    def test_accept_site_invitation_redirect_failure(self):
+        res = self._test_accept_site_invitation(accepted=True,
+                                                expected_status=303,
+                                                failure="/failed")
+        assert_that(res.headers['Location'], starts_with("http://localhost/failed"))
+        self._assert_has_fail_params(res.headers['Location'],
+                                     contains_string("no longer valid"))
 
     def _assert_has_fail_params(self, url, message_matcher):
         assert_that(self._query_params(url), has_entries({

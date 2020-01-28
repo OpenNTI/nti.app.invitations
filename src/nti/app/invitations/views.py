@@ -773,6 +773,29 @@ class AcceptSiteInvitationView(AcceptInvitationMixin):
     def _login_url(self):
         return self.request.application_url + '/login/'
 
+    def _failure_url(self):
+        values = CaseInsensitiveDict(self.request.params)
+        url = values.get('failure')
+        return self.request.application_url + url if url else None
+
+    def _logon_provider_url(self):
+        url_provider = component.queryUtility(IChallengeLogonProvider)
+        if url_provider is None:
+            logger.warning('No challenge logon provider for site %s',
+                           getSite())
+            raise hexc.HTTPNotFound()
+        return url_provider.logon_url(self.request)
+
+    def _app_url(self):
+        settings = component.getUtility(IApplicationSettings)
+        web_root = settings.get('web_app_root', '/NextThoughtWebApp/')
+        return self.request.application_url + web_root
+
+    def _success_url(self):
+        values = CaseInsensitiveDict(self.request.params)
+        url = values.get('success')
+        return (self.request.application_url + url) if url else None
+
     def _failure_response(self, url, message):
         return hexc.HTTPSeeOther(self._add_failure_params(url, message))
 
@@ -796,37 +819,28 @@ class AcceptSiteInvitationView(AcceptInvitationMixin):
             logger.info(u'Attempting to accept invitation for authenticated user %s' % remote_user)
             try:
                 accept_site_invitation_by_code(remote_user, code, link_email)
-                settings = component.getUtility(IApplicationSettings)
-                web_root = settings.get('web_app_root', '/NextThoughtWebApp/')
-                app_url = self.request.application_url + web_root
-                return hexc.HTTPFound(app_url)
+                return hexc.HTTPFound(self._success_url() or self._app_url())
             except InvitationValidationError as e:
                 logger.exception(u'Failed to accept invitation for authenticated user %s' % remote_user)
-                return self._failure_response(self._login_url(), str(e))
+                return self._failure_response(self._failure_url() or self._login_url(), str(e))
 
         not_valid_msg = u"Invitation code '%s' is no longer valid." % code
         invitation = self.invitations.get(code)
         if invitation is None:
             logger.error(u'No invitation for code %s' % code)
-            return self._failure_response(self._login_url(), not_valid_msg)
+            return self._failure_response(self._failure_url() or self._login_url(), not_valid_msg)
 
         if invitation.is_accepted():
             logger.error(u"Invitation for code %s already accepted." % code)
-            return self._failure_response(self._login_url(), not_valid_msg)
+            return self._failure_response(self._failure_url() or self._login_url(), not_valid_msg)
 
         if invitation.is_expired():
             logger.error(u"Invitation for code %s expired (expiry=%s)." % (code, invitation.expiryTime))
-            return self._failure_response(self._login_url(), not_valid_msg)
+            return self._failure_response(self._failure_url() or self._login_url(), not_valid_msg)
 
-        url_provider = component.queryUtility(IChallengeLogonProvider)
-        if url_provider is None:
-            logger.warning('No challenge logon provider for site %s',
-                           getSite())
-            return hexc.HTTPNotFound()
-        logon_url = url_provider.logon_url(self.request)
         self.request.session[SITE_INVITATION_SESSION_KEY] = code
         self.request.session[SITE_INVITATION_EMAIL_SESSION_KEY] = link_email
-        return hexc.HTTPFound(logon_url)
+        return hexc.HTTPFound(self._success_url() or self._logon_provider_url())
 
     def __call__(self):
         return self._do_call()
