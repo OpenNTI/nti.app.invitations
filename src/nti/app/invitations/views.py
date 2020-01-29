@@ -11,9 +11,8 @@ from __future__ import print_function
 from __future__ import absolute_import
 
 import csv
+from itsdangerous import BadSignature
 import time
-from nti.app.invitations.interfaces import IInvitationInfo
-from nti.app.invitations.traversal import InvitationInfoPathAdapter
 
 from pyramid import httpexceptions as hexc
 
@@ -84,9 +83,12 @@ from nti.app.invitations import SIGNED_CONTENT_VERSION_1_0
 from nti.app.invitations.interfaces import ISiteInvitation
 from nti.app.invitations.interfaces import IChallengeLogonProvider
 from nti.app.invitations.interfaces import IInvitationSigner
+from nti.app.invitations.interfaces import IInvitationInfo
 
 from nti.app.invitations.invitations import JoinEntityInvitation
 from nti.app.invitations.invitations import GenericSiteInvitation
+
+from nti.app.invitations.traversal import InvitationInfoPathAdapter
 
 from nti.app.invitations.utils import accept_site_invitation_by_code
 from nti.app.invitations.utils import pending_site_invitation_for_email
@@ -863,7 +865,17 @@ class AcceptSiteInvitationByCodeView(AcceptSiteInvitationView):
 
         if encoded_content:
             signer = component.getUtility(IInvitationSigner)
-            result = signer.decode(encoded_content)
+
+            try:
+                result = signer.decode(encoded_content)
+            except BadSignature:
+                raise_json_error(self.request,
+                                 hexc.HTTPUnprocessableEntity,
+                                 {
+                                     'message': _(u"Invalid invitation code."),
+                                     'code': 'InvalidInvitationCode'
+                                 },
+                                 None)
 
             if result:
                 if result['version'] != SIGNED_CONTENT_VERSION_1_0:

@@ -271,6 +271,7 @@ class TestSiteInvitationViews(ApplicationLayerTest):
     def _test_accept_site_invitation(self,
                                      create_invitation=True,
                                      code=None,
+                                     scode=None,
                                      accepted=False,
                                      expired=False,
                                      failure=None,
@@ -297,7 +298,9 @@ class TestSiteInvitationViews(ApplicationLayerTest):
 
         # Accept the invitation with an anonymous user
         params = dict()
-        if effective_code:
+        if scode:
+            params['scode'] = scode
+        elif effective_code:
             params['code'] = effective_code
 
         if success:
@@ -322,6 +325,16 @@ class TestSiteInvitationViews(ApplicationLayerTest):
         res = self._test_accept_site_invitation()
         assert_that(res.headers['Location'], contains_string('/NextThoughtWebApp'))
         assert_that(self._query_params(res.headers['Location']), has_length(0))
+
+    @WithSharedApplicationMockDS(testapp=True, users=True)
+    def test_accept_site_invitation_bad_signature(self):
+        res = self._test_accept_site_invitation(scode='abc.123',
+                                                expected_status=422)
+
+        assert_that(res.json_body, has_entries({
+            "message": "Invalid invitation code.",
+            "code": "InvalidInvitationCode"
+        }))
 
     @WithSharedApplicationMockDS(testapp=True, users=True)
     @fudge.patch('nti.app.invitations.views.component.queryUtility')
