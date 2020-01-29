@@ -93,8 +93,7 @@ class TestSiteInvitationViews(ApplicationLayerTest):
         assert_that(body[u'message'],
                     is_(u'The provided input is missing values or contains invalid email addresses.'))
         assert_that(body[u'code'], is_(u'InvalidSiteInvitationData'))
-        assert_that(body[u'Warnings'], is_([u'Missing email for No Email.',
-                                            u'Missing name for missingname@test.com.']))
+        assert_that(body[u'Warnings'], is_([u'Missing email for No Email.']))
         assert_that(body[u'InvalidEmails'], is_([]))
 
         # Send request with invalid email
@@ -135,6 +134,54 @@ class TestSiteInvitationViews(ApplicationLayerTest):
         mailer = component.getUtility(ITestMailDelivery)
         assert_that(mailer.queue, has_length(2))
 
+    def _send_invitations(self, invitations):
+        data = {
+            'invitations': invitations,
+            'message': 'Passing Test Case'
+        }
+        site_invitation_url = '/dataserver2/Invitations/@@send-site-invitation'
+        res = self.testapp.post_json(site_invitation_url,
+                                     data,
+                                     status=200)
+
+        return res
+
+    @WithSharedApplicationMockDS(testapp=True, users=True)
+    def test_send_site_invitation_email(self):
+        self._send_invitations([{
+            'receiver': 'good@email.com',
+            'receiver_name': 'Q @!%&! Bert'
+        }])
+
+        mailer = component.getUtility(ITestMailDelivery)
+        assert_that(mailer.queue, has_length(1))
+
+        # Text and html parts
+        assert_that(mailer.queue[0].get_payload(), has_length(2))
+
+        text_parts = [part for part in mailer.queue[0].get_payload()
+                      if part['Content-Type'].startswith("text/plain")]
+        assert_that(text_parts, has_length(1))
+
+        text_body = text_parts[0].get_payload(decode=True)
+        assert_that(text_body, contains_string("TO: Q @!%&! Bert\n"))
+
+    @WithSharedApplicationMockDS(testapp=True, users=True)
+    def test_send_site_invitation_email_no_name(self):
+        self._send_invitations([{'receiver': 'good@email.com'}])
+
+        mailer = component.getUtility(ITestMailDelivery)
+        assert_that(mailer.queue, has_length(1))
+
+        # Text and html parts
+        assert_that(mailer.queue[0].get_payload(), has_length(2))
+
+        text_parts = [part for part in mailer.queue[0].get_payload()
+                      if part['Content-Type'].startswith("text/plain")]
+        assert_that(text_parts, has_length(1))
+
+        text_body = text_parts[0].get_payload(decode=True)
+        assert_that(text_body, contains_string("TO: good@email.com\n"))
 
     def _make_fake_csv(self, data):
         fake_csv = tempfile.NamedTemporaryFile(delete=False)

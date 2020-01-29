@@ -133,8 +133,12 @@ def create_site_invitation(args=None):
     arg_parser = argparse.ArgumentParser(description="Create an invitation to a site for a given user.")
 
     arg_parser.add_argument('email', help="The email associated with the receiver for this invitation.")
-    arg_parser.add_argument('realname', help="The realname of the receiver for this invitation.")
     arg_parser.add_argument('site', help="The site to which the user will be invited")
+
+    arg_parser.add_argument('--realname',
+                            dest='realname',
+                            action='store',
+                            help="The realname of the receiver for this invitation.")
 
     arg_parser.add_argument('--admin',
                             dest='admin',

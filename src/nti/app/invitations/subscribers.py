@@ -219,7 +219,7 @@ def _on_site_invitation_sent(invitation, event):
     sender = User.get_user(invitation.sender)
     send_invitation_email(invitation,
                           sender=sender,
-                          receiver_name=invitation.receiver_name,
+                          receiver_name=invitation.receiver_name or invitation.receiver,
                           receiver_email=invitation.receiver,
                           message=invitation.message,
                           request=request)

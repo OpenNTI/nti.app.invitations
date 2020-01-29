@@ -64,7 +64,7 @@ class ISiteInvitation(IActionableInvitation):
                                 required=True)
 
     receiver_name = ValidTextLine(title=u'The realname of the receiver for this invitation',
-                                  required=True)
+                                  required=False)
 
     original_receiver = ValidTextLine(title=u'The original intended recipient. Not updated '
                                             u'when invitation is accepted.',
@@ -136,7 +136,7 @@ class IInvitationInfo(interface.Interface, IContained):
     """
 
     receiver_name = ValidTextLine(title=u'The realname of the receiver for this invitation',
-                                  required=True)
+                                  required=False)
 
     receiver = ValidTextLine(title=u'The original intended recipient. Not updated '
                                    u'when invitation is accepted.',
