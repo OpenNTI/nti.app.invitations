@@ -83,4 +83,4 @@ class SiteInvitationLinkProvider(AbstractAuthenticatedRequestAwareDecorator):
 
     def _do_decorate_external(self, context, result):
         if is_admin_or_site_admin(self.remoteUser):
-            self.add_admin_links(context, result, app_url=self.request.application_url)
+            self.add_admin_links(context, result)
