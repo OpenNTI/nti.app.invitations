@@ -10,6 +10,8 @@ from __future__ import absolute_import
 
 from itsdangerous import URLSafeSerializer
 from nti.common.cypher import get_plaintext
+from nti.dataserver.users.utils import force_email_verification
+from nti.dataserver.users.utils import reindex_email_verification
 
 from six.moves import urllib_parse
 
@@ -81,18 +83,28 @@ def accept_site_invitation_by_code(user, code, link_email):
     # We only have the code in the session, not the object
     invitation = invitations.get_invitation_by_code(code)
     result = True
+    profile = IUserProfile(user, None)
+    email = getattr(profile, 'email', None)
     if invitation is None:
         # There is a possibility that the invitation tied to this code
         # has been rescended and the user now has a new invitation
         # so we will check if there is one for this email
-        profile = IUserProfile(user, None)
-        email = getattr(profile, 'email', None)
         invitation = pending_site_invitation_for_email(email)
     if invitation is None:
         logger.info(u'Unable to find an invitation for user %s' % user)
         raise InvitationCodeError(invitation)
     if invitation.is_accepted() and invitation.receiver == getattr(user, 'username', None):
         return result
+
+    # Typical flows send invites via email or verify prior to creating the
+    # invite (e.g. the ASCI flow).  See the second comment in NTI-8974 for
+    # detail. Also, this needs to happen prior to accepting, since the
+    # receiver field is updated on the invitation once accepted.
+    from IPython.terminal.debugger import set_trace; set_trace()
+    if email is not None and email.lower() == invitation.receiver.lower():
+        profile.email_verified = True
+        reindex_email_verification(user)
+
     result = accept_site_invitation(user, invitation, link_email)
     if not result:
         logger.exception(u'Failed to accept invitation for %s' % invitation.receiver)

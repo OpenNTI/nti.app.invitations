@@ -12,6 +12,9 @@ from hamcrest import has_length
 from hamcrest import is_
 
 import time
+from hamcrest import is_not
+from nti.app.invitations.utils import accept_site_invitation_by_code
+from nti.dataserver.users.interfaces import IUserProfile
 
 from zope import component
 from zope import interface
@@ -337,3 +340,47 @@ class TesInvitations(ApplicationLayerTest):
             interface.alsoProvides(invitation, IDisabledInvitation)
             with self.assertRaises(InvitationDisabledError):
                 accept_site_invitation(ricky_user, invitation, None)
+
+    def _test_site_invitation_by_code(self,
+                                      sending_user,
+                                      receiving_user,
+                                      code,
+                                      invite_email,
+                                      link_email=None):
+        invitation = SiteInvitation(code=code,
+                                    receiver=invite_email,
+                                    sender=sending_user.username,
+                                    target_site=u'dataserver2')
+        component.getUtility(IInvitationsContainer).add(invitation)
+
+        accept_site_invitation_by_code(receiving_user, code, link_email or invite_email)
+
+        return invitation
+
+    @WithSharedApplicationMockDS
+    def test_accept_site_invitation_by_code(self):
+        with mock_dataserver.mock_db_trans(self.ds):
+            sender = self._create_user(u"lahey", external_value={'email': u"lahey@tpb.net"})
+            receiver = self._create_user(u"ricky", external_value={'email': u"ricky@home.net"})
+
+        # If account email differs from invitation email, it's not verified
+        with mock_dataserver.mock_db_trans(self.ds):
+            invitation = self._test_site_invitation_by_code(sender,
+                                                            receiver,
+                                                            code=u"code.1",
+                                                            invite_email=u"ricky@tpb.net")
+
+            assert_that(invitation.is_accepted(), is_(True))
+            assert_that(IUserProfile(receiver).email_verified, is_not(True))
+
+
+        # If account email matches invitation email, assert it's verified
+        with mock_dataserver.mock_db_trans(self.ds):
+            invitation = self._test_site_invitation_by_code(sender,
+                                                            receiver,
+                                                            code=u"code.2",
+                                                            invite_email=u"ricky@home.net")
+
+            assert_that(invitation.is_accepted(), is_(True))
+            assert_that(IUserProfile(receiver).email_verified, is_(True))
+
