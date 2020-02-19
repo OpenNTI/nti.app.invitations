@@ -100,7 +100,6 @@ def accept_site_invitation_by_code(user, code, link_email):
     # invite (e.g. the ASCI flow).  See the second comment in NTI-8974 for
     # detail. Also, this needs to happen prior to accepting, since the
     # receiver field is updated on the invitation once accepted.
-    from IPython.terminal.debugger import set_trace; set_trace()
     if email is not None and email.lower() == invitation.receiver.lower():
         profile.email_verified = True
         reindex_email_verification(user)
