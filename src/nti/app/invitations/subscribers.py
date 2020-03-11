@@ -19,22 +19,24 @@ from zope import interface
 
 from zope.i18n import translate
 
-from nti.app.invitations import SITE_INVITATION_SESSION_KEY
+from zope.lifecycleevent.interfaces import IObjectAddedEvent
 
 from nti.app.invitations import MessageFactory as _
+
+from nti.app.invitations import SITE_INVITATION_SESSION_KEY
 from nti.app.invitations import SITE_INVITATION_EMAIL_SESSION_KEY
 
-from nti.app.invitations.interfaces import InvitationRequiredError
 from nti.app.invitations.interfaces import ISiteInvitation
+from nti.app.invitations.interfaces import InvitationRequiredError
 
-from nti.app.invitations.utils import accept_site_invitation_by_code
 from nti.app.invitations.utils import get_invitation_url
+from nti.app.invitations.utils import accept_site_invitation_by_code
 
 from nti.app.pushnotifications.digest_email import _TemplateArgs
 
+from nti.appserver.interfaces import IUserLogonEvent
 from nti.appserver.interfaces import IApplicationSettings
 from nti.appserver.interfaces import IUserCreatedWithRequestEvent
-from nti.appserver.interfaces import IUserLogonEvent
 
 from nti.appserver.logon import create_failure_response
 
@@ -48,14 +50,13 @@ from nti.dataserver.authentication import get_current_request
 
 from nti.dataserver.interfaces import IUser
 
-from nti.dataserver.users.interfaces import IUserProfile,\
-    IWillCreateNewEntityEvent
+from nti.dataserver.users.interfaces import IUserProfile
 from nti.dataserver.users.interfaces import IFriendlyNamed
 
 from nti.dataserver.users.users import User
 
-from nti.invitations.interfaces import IInvitationsContainer
 from nti.invitations.interfaces import IInvitationSentEvent
+from nti.invitations.interfaces import IInvitationsContainer
 from nti.invitations.interfaces import InvitationValidationError
 
 from nti.invitations.utils import get_sent_invitations
@@ -118,7 +119,7 @@ def _validate_site_invitation(user):
             raise response
 
 
-@component.adapter(IUser, IWillCreateNewEntityEvent)
+@component.adapter(IUser, IObjectAddedEvent)
 def _new_user_validate_site_invitation(user, unused_event):
     # Must accept invite early to influence behavior down the line. These users
     # will most likely also hit the login event below, but the second call into
