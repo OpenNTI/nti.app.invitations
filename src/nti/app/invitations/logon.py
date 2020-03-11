@@ -27,6 +27,8 @@ class ChallengeLogonProvider(SchemaConfigured):
 
     def logon_url(self, request):
         settings = component.getUtility(IApplicationSettings)
-        web_root = settings.get('web_app_root', '/NextThoughtWebApp/')[:-1]
+        web_root = settings.get('invitation_redirect_url', '/NextThoughtWebApp/')[:-1]
+        # BWC
+        web_root = web_root or settings.get('web_app_root', '/NextThoughtWebApp/')[:-1]
         app_url = request.application_url + web_root
         return app_url
