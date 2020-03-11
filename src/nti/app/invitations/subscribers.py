@@ -48,7 +48,8 @@ from nti.dataserver.authentication import get_current_request
 
 from nti.dataserver.interfaces import IUser
 
-from nti.dataserver.users.interfaces import IUserProfile
+from nti.dataserver.users.interfaces import IUserProfile,\
+    IWillCreateNewEntityEvent
 from nti.dataserver.users.interfaces import IFriendlyNamed
 
 from nti.dataserver.users.users import User
@@ -80,9 +81,10 @@ def _user_removed(user, unused_event):
         container.remove(invitation)
 
 
-@component.adapter(IUser, IUserLogonEvent)
-def _validate_site_invitation(user, event):
+def _validate_site_invitation(user):
     request = get_current_request()
+    if not request:
+        return
     invitation_code = request.session.get(SITE_INVITATION_SESSION_KEY)
     link_email = request.session.get(SITE_INVITATION_EMAIL_SESSION_KEY)
     if invitation_code is not None:
@@ -114,6 +116,19 @@ def _validate_site_invitation(user, event):
                                                error=str(e),
                                                error_factory=hexc.HTTPUnprocessableEntity)
             raise response
+
+
+@component.adapter(IUser, IWillCreateNewEntityEvent)
+def _new_user_validate_site_invitation(user, unused_event):
+    # Must accept invite early to influence behavior down the line. These users
+    # will most likely also hit the login event below, but the second call into
+    # _validate_site_invitation should be fast, safe, and idempotent.
+    _validate_site_invitation(user)
+
+
+@component.adapter(IUser, IUserLogonEvent)
+def _user_login_validate_site_invitation(user, unused_event):
+    _validate_site_invitation(user)
 
 
 def _get_app_setting(setting_name, default):
