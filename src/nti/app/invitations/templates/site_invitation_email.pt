@@ -24,29 +24,37 @@
                 font-size: 14px;
                 line-height: 20px;
             }
+            .header {
+				adding-left: 0px;
+				padding-right: 0px;
+			}
+			#green-bar {
+				padding-right: 0px;
+				padding-left: 0px;
+				margin-left: 0px;
+				margin-right: 0px;
+			}
+			#logo-bar {
+				margin-top: 47px;
+				margin-bottom: 20px;
+                padding-left: 60px;
+				padding-right: 60px
+			}
         </style>
     </head>
     <!-- For speed when sending large amounts of emails interactively, all styles are inlined below -->
-	<body style="background-color:#F5F5F5; font-family: 'Open Sans', Helvetica, Arial, sans-serif; padding: 20px 0;">
-    <div class="site-inv-container" style="max-width: 750px; margin: auto;
-                                           padding-bottom: 40px; background-color: #FFFFFF">
+	<body style="padding-top: 20px;padding-bottom: 20px;background-color: #F9F9F9; color: #494949; font-family: 'Open Sans', sans-serif, Helvetica, Arial; font-size: 16px; line-height: 24px;">
+    <div class="container" style="max-width: 730px; margin: 0 auto; background-color: #FFFFFF; padding-bottom: 50px;">
         <div metal:use-macro="macro:header">
-        <div id="green-bar"></div>
-        <div id="logo-bar">
-            <img src="http://d2ixlfeu83tci.cloudfront.net/images/email_logo.png" width="100%" height="50"
-            alt="NextThought Logo" />
         </div>
-        </div>
-
-        <div class="content-cont" style="max-width: 500px; margin: 0 auto 40px;width: 70%">
-
+        
+        <div class="content-cont" style="padding-left: 60px;padding-right: 60px;">
             <!-- You're invited -->
             <div tal:condition="options/tagline" metal:use-macro="macro:site_invitation_tagline"></div>
 
             <div tal:condition="not:options/tagline">
-                <div class="tagline" style="
-                                            color: #494949; font-size: 36px; font-weight: 300;
-                                            text-align: left; margin-top: 40px; padding: 0;">
+                <div class="tagline" style="color: #494949; font-size: 36px; font-weight: 300;line-height:36px;
+                                            text-align: left; margin-top: 30px; padding: 0;">
                     <span>You're invited</span>
                 </div>
             </div>
@@ -57,7 +65,7 @@
             <div tal:condition="not:options/brand_message">
                 <div class="brand-message" style="
                            color: #494949; font-size: 14px;
-                           text-align: left; margin-top: 15px;">
+                           text-align: left; margin-top: 20px;">
                 <span>Get started learning on an interactive online platform
                     like no other by clicking the button below
                     or copying and pasting the URL into your browser.</span>
@@ -71,19 +79,19 @@
             </div>
 
             <!-- redeem button -->
-            <div class="site-but-cont" style="margin-top:40px; margin-left: 0; margin-right: 0" tal:condition="options/redemption_link">
+            <div class="site-but-cont" style="margin-top:20px; margin-left: 0; margin-right: 0" tal:condition="options/redemption_link">
                 <a 	href="https://www.nextthought.com" class="but"
                     tal:attributes="href python: options['redemption_link']"
                     style='color:white; text-decoration:none; background-color:#3fb3f6; border-radius:4px;
                            border-style:none; font-size:14px; font-weight:600;
                            margin-bottom:15px; outline:none; text-align: center; line-height: 19px;
-                           padding: 10px 20px'>
+                           padding: 8px 16px'>
                             Accept Invitation
                 </a>
             </div>
 
             <!-- redeem link -->
-            <div class="site-link-cont" style="display: inline-block; margin-top: 27px; margin-left: 0; margin-right: 0;" tal:condition="options/redemption_link">
+            <div class="site-link-cont" style="display: inline-block; margin-top: 20px; margin-left: 0; margin-right: 0;" tal:condition="options/redemption_link">
                 <span class="site-link">
                     <a tal:content="options/redemption_link">
                         https://www.nextthought.com
@@ -92,11 +100,10 @@
             </div>
 
             <!-- Sender message -->
-            <div class="sender-message-cont" style="margin-top: 25px; margin-left: 0; margin-right: 0;" tal:condition="options/sender_content">
+            <div class="sender-message-cont" style="margin-top: 25px; margin-left: 0; margin-right: 0;line-height: 20px;" tal:condition="options/sender_content">
+                <hr style="margin-top:18px; border:1px solid rgba(0,0,0,0.07); border-bottom:0;">
 
-                <hr style="color: #b8b8b8">
-
-                <div class="sender-header" style="margin-top: 45px; margin-bottom: 24px;">
+                <div class="sender-header" style="margin-top: 24px; margin-bottom: 24px;">
                     <div id="avatar" tal:attributes='style options/sender_content/avatar_styles'></div>
                     <span class="avatar-descriptor" style="margin-left: 10px; color: #757474; font-size: 14px; line-height: 19px;">
                         A message from
@@ -115,23 +122,25 @@
                   We are starting to conduct all our training online through NextThought. I'm excited to have you onboard.
               </q>
             </div>
-        </div>
 
-        <!-- Site custom image -->
-        <div tal:condition="options/custom_image_macro" metal:use-macro="macro:site_invitation_image"></div>
 
-        <!-- Help information -->
-        <div class="content-cont" style="max-width: 500px; margin: 40px auto 0;width: 70%">
-            <p class="inv-caption" style="color:#757474; font-size:12px; line-height:17px;
-                                      text-align:center; max-width: 400px;">
-                If you feel this email was sent in error, or this account was created without your consent, you may email
-                <a href="mailto:support@nextthought.com"
-                    tal:attributes="href string:mailto:${options/support_email|default}"
-                    tal:content="options/support_email"
-                    style="color:#757474;">support@nextthought.com</a>.
-            </p>
+            <!-- Site custom image -->
+            <div tal:condition="options/custom_image_macro" metal:use-macro="macro:site_invitation_image"></div>
+
+            <!-- Help information -->
+			<hr style="margin-top:24px; border:1px solid rgba(0,0,0,0.07); border-bottom:0;"/>
+			<div style="margin-top: 24px;font-size: 12px;line-height: 17px;">
+				<span i18n:translate="">
+					If you feel this email was sent in error, or this account was created
+					without your consent, you may email us at
+					<a i18n:name="support_email"
+					href="mailto:support@nextthought.com"
+					tal:content="options/support_email|default"
+					tal:attributes="href string:mailto:${options/support_email|default}"
+					style="text-decoration:underline;color: #494949;">support@nextthought.com</a>
+				</span>
+			</div>
         </div>
     </div>
-
 	</body>
 </html>
