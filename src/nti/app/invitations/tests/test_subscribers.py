@@ -98,7 +98,7 @@ class TestSubscribers(ApplicationLayerTest):
         # Make sure no exceptions are raised without an invitation
         try:
             event = UserLogonEvent(ricky)
-            _validate_site_invitation(ricky, event)
+            _validate_site_invitation(ricky)
         except Exception as e:
             self.fail(u'Unexpected exception in subscriber. %s' % e.message)
 
@@ -113,12 +113,12 @@ class TestSubscribers(ApplicationLayerTest):
 
             self.request.session[SITE_INVITATION_SESSION_KEY] = invitation.code
             with self.assertRaises(hexc.HTTPSeeOther):
-                _validate_site_invitation(lahey, event)
+                _validate_site_invitation(lahey)
 
         # Test valid acceptance
         with mock_dataserver.mock_db_trans(self.ds):
             self.request.session[SITE_INVITATION_SESSION_KEY] = invitation.code
-            _validate_site_invitation(ricky, event)
+            _validate_site_invitation(ricky)
             ricky_invites = get_invitations(receivers=u'ricky')
             assert_that(ricky_invites, has_length(1))
             invite = ricky_invites[0]
@@ -136,7 +136,7 @@ class TestSubscribers(ApplicationLayerTest):
                                         receiver=u'ricky@tpb.net',
                                         target_site=u'dataserver2')
             invitations.add(invitation)
-            _validate_site_invitation(ricky, event)
+            _validate_site_invitation(ricky)
             ricky_invites = get_invitations(receivers=u'ricky')
             assert_that(ricky_invites, has_length(1))
             invite = ricky_invites[0]
@@ -149,10 +149,10 @@ class TestSubscribers(ApplicationLayerTest):
     def test_invitation_required_for_user_creation(self, mock_request):
 
         with mock_dataserver.mock_db_trans(self.ds):
+            mock_request.is_callable().returns(self.request)
             user = self._create_user(u'testuser', external_value={'email': u'user@test.com'})
 
             # Test the subscriber
-            mock_request.is_callable().returns(self.request)
             event = UserCreatedWithRequestEvent(user)
             event.request = self.request
             with self.assertRaises(InvitationRequiredError):

@@ -64,7 +64,8 @@
 
 	<subscriber handler=".subscribers._on_site_invitation_sent" />
 
-	<subscriber handler=".subscribers._validate_site_invitation" />
+    <subscriber handler=".subscribers._new_user_validate_site_invitation" />
+	<subscriber handler=".subscribers._user_login_validate_site_invitation" />
 
 	<!-- Decorators -->
 	<subscriber	factory=".decorators.DFLGetInvitationLinkProvider"
@@ -79,7 +80,7 @@
 				provides="nti.externalization.interfaces.IExternalMappingDecorator"
 				for=".interfaces.ISiteInvitation
 					 pyramid.interfaces.IRequest" />
-	
+
 	<!-- Invitations -->
 	<adapter factory=".invitations.JoinEntityInvitationActor"
 			 provides=".interfaces.IJoinEntityInvitationActor"
