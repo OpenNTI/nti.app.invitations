@@ -91,7 +91,7 @@ class TestInvitationViews(ApplicationLayerTest):
             invitations = component.getUtility(IInvitationsContainer)
             invitation = Invitation(receiver='ossmkitty',
                                     sender=self.default_username,
-                                    accepted=True,
+                                    acceptedTime=90,
                                     code="accepted")
             invitations.add(invitation)
 

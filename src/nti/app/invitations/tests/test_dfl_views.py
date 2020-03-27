@@ -97,6 +97,7 @@ class TestApplicationInvitationDFLViews(ApplicationLayerTest):
         assert_that(res.json_body,
                     has_entry('sender', "sjohnson@nextthought.com"))
         assert_that(res.json_body, has_entry('accepted', is_(False)))
+        assert_that(res.json_body, has_entry('acceptedTime', is_(None)))
         assert_that(res.json_body, has_entry('code', is_(code)))
         assert_that(res.json_body, has_entry('expiryTime', is_(0)))
         assert_that(res.json_body, has_entry('receiver', is_("member@foo")))

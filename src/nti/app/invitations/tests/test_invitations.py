@@ -10,6 +10,7 @@ from __future__ import absolute_import
 from hamcrest import assert_that
 from hamcrest import has_length
 from hamcrest import is_
+from hamcrest import not_none
 
 import time
 from hamcrest import is_not
@@ -97,6 +98,7 @@ class TesInvitations(ApplicationLayerTest):
             result = actor.accept(ricky_user, invitation)
             assert_that(result, is_(True))
             assert_that(invitation.is_accepted(), is_(True))
+            assert_that(invitation.acceptedTime, not_none())
             assert_that(invitation.receiver, is_(ricky_user.username))
             assert_that(invitation.original_receiver, is_(u'ricky@tpb.net'))
 
@@ -122,6 +124,7 @@ class TesInvitations(ApplicationLayerTest):
                 actor.accept(ricky_user, invitation)
 
             assert_that(invitation.is_accepted(), is_(False))
+            assert_that(invitation.acceptedTime, is_(None))
             assert_that(invitation.receiver, is_(u'julian@tpb.net'))
             assert_that(invitation.require_matching_email, is_(True))
 
@@ -137,6 +140,7 @@ class TesInvitations(ApplicationLayerTest):
             result = actor.accept(julian_user, invitation)
             assert_that(result, is_(True))
             assert_that(invitation.is_accepted(), is_(True))
+            assert_that(invitation.acceptedTime, not_none())
             assert_that(invitation.receiver, is_(julian_user.username))
 
         # Test different user email for invite that doesn't require match
@@ -154,6 +158,7 @@ class TesInvitations(ApplicationLayerTest):
 
             assert_that(result, is_(True))
             assert_that(invitation.is_accepted(), is_(True))
+            assert_that(invitation.acceptedTime, not_none())
             assert_that(invitation.receiver, is_(mmouse_user.username))
             assert_that(invitation.require_matching_email, is_(False))
 
@@ -191,6 +196,7 @@ class TesInvitations(ApplicationLayerTest):
             result = actor.accept(ricky_user, invitation)
             assert_that(result, is_(True))
             assert_that(invitation.is_accepted(), is_(False))
+            assert_that(invitation.acceptedTime, is_(None))
             assert_that(invitation.receiver, is_(None))
             assert_that(invitation.sender, is_(u'lahey'))
 
@@ -198,6 +204,7 @@ class TesInvitations(ApplicationLayerTest):
             assert_that(invitations, has_length(1))
             ricky_invite = invitations[0]
             assert_that(ricky_invite.is_accepted(), is_(True))
+            assert_that(ricky_invite.acceptedTime, not_none())
             assert_that(ricky_invite.receiver, is_(ricky_user.username))
             assert_that(ricky_invite.sender, is_(u'lahey'))
 
@@ -258,6 +265,7 @@ class TesInvitations(ApplicationLayerTest):
             result = actor.accept(ricky_user, invitation)
             assert_that(result, is_(True))
             assert_that(invitation.is_accepted(), is_(True))
+            assert_that(invitation.acceptedTime, not_none())
             assert_that(invitation.receiver, is_(ricky_user.username))
             assert_that(invitation.original_receiver, is_(u'ricky@tpb.net'))
 
@@ -285,6 +293,7 @@ class TesInvitations(ApplicationLayerTest):
                 actor.accept(ricky_user, invitation)
 
             assert_that(invitation.is_accepted(), is_(False))
+            assert_that(invitation.acceptedTime, is_(None))
             assert_that(invitation.receiver, is_(u'bobby@tpb.net'))
 
             invitations = get_sent_invitations(u'sjohnson@nextthought.com')
@@ -299,6 +308,7 @@ class TesInvitations(ApplicationLayerTest):
 
             assert_that(result, is_(True))
             assert_that(invitation.is_accepted(), is_(True))
+            assert_that(invitation.acceptedTime, not_none())
             assert_that(invitation.receiver, is_(bobby_user.username))
 
             invitations = get_sent_invitations(u'sjohnson@nextthought.com')
@@ -328,7 +338,7 @@ class TesInvitations(ApplicationLayerTest):
             invitation = SiteInvitation(code=u'Sunnyvale1',
                                         receiver=u'ricky@tpb.net',
                                         sender=u'lahey',
-                                        accepted=True)
+                                        acceptedTime=90)
             with self.assertRaises(InvitationAlreadyAcceptedError):
                 accept_site_invitation(ricky_user, invitation, None)
 
@@ -371,6 +381,7 @@ class TesInvitations(ApplicationLayerTest):
                                                             invite_email=u"ricky@tpb.net")
 
             assert_that(invitation.is_accepted(), is_(True))
+            assert_that(invitation.acceptedTime, not_none())
             assert_that(IUserProfile(receiver).email_verified, is_not(True))
 
 
@@ -382,5 +393,6 @@ class TesInvitations(ApplicationLayerTest):
                                                             invite_email=u"ricky@home.net")
 
             assert_that(invitation.is_accepted(), is_(True))
+            assert_that(invitation.acceptedTime, not_none())
             assert_that(IUserProfile(receiver).email_verified, is_(True))
 

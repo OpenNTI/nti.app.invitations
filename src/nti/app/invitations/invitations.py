@@ -9,6 +9,7 @@ from __future__ import print_function
 from __future__ import absolute_import
 
 import six
+import time
 
 from zope import component
 from zope import interface
@@ -175,7 +176,7 @@ class DefaultSiteInvitationActor(SiteInvitationActorMixin):
     def accept(self, user, invitation=None):
         profile = self.user_profile(user)
         self.check_valid_invitation(profile, invitation, self.link_email)
-        invitation.accepted = True
+        invitation.acceptedTime = time.time()
         invitation.original_receiver = invitation.receiver
         invitation.receiver = getattr(user, 'username', user)  # update
         notify(InvitationAcceptedEvent(invitation, user))
@@ -191,7 +192,7 @@ class DefaultGenericSiteInvitationActor(SiteInvitationActorMixin):
         invitation = SiteInvitation(receiver=getattr(user, 'username', user),
                                     sender=generic_invitation.sender,
                                     target_site=getSite().__name__,
-                                    accepted=True)
+                                    acceptedTime=time.time())
         invitations = component.getUtility(IInvitationsContainer)
         invitations.add(invitation)
         notify(InvitationAcceptedEvent(invitation, user))
@@ -217,7 +218,7 @@ class DefaultSiteAdminInvitationActor(SiteInvitationActorMixin):
     def accept(self, user, invitation=None):
         receiver_profile = self.user_profile(user)
         self.check_valid_invitation(receiver_profile, invitation, self.link_email)
-        invitation.accepted = True
+        invitation.acceptedTime = time.time()
         invitation.original_receiver = invitation.receiver
         invitation.receiver = getattr(user, 'username', user)
         self._make_site_admin(user, getSite())

@@ -11,7 +11,7 @@ import unittest
 from hamcrest import is_not, is_
 from hamcrest import has_length
 from hamcrest import assert_that
-
+from hamcrest import not_none
 does_not = is_not
 
 import fudge
@@ -65,7 +65,7 @@ class TestSubscribers(ApplicationLayerTest):
             invitation = Invitation(code=u'bleach',
                                     receiver=u'ichigo',
                                     sender=u'aizen',
-                                    accepted=False)
+                                    acceptedTime=None)
             component.getUtility(IInvitationsContainer).add(invitation)
 
         with mock_dataserver.mock_db_trans(self.ds):
@@ -124,6 +124,7 @@ class TestSubscribers(ApplicationLayerTest):
             assert_that(ricky_invites, has_length(1))
             invite = ricky_invites[0]
             assert_that(invite.is_accepted(), is_(True))
+            assert_that(invite.acceptedTime, not_none())
             assert_that(invite.receiver, is_(u'ricky'))
             assert_that(invite.sender, is_(u'lahey'))
 
@@ -142,6 +143,7 @@ class TestSubscribers(ApplicationLayerTest):
             assert_that(ricky_invites, has_length(1))
             invite = ricky_invites[0]
             assert_that(invite.is_accepted(), is_(True))
+            assert_that(invite.acceptedTime, not_none())
             assert_that(invite.receiver, is_(u'ricky'))
             assert_that(invite.sender, is_(u'lahey'))
 
