@@ -36,7 +36,6 @@ from nti.app.pushnotifications.digest_email import _TemplateArgs
 
 from nti.appserver.interfaces import IUserLogonEvent
 from nti.appserver.interfaces import IApplicationSettings
-from nti.appserver.interfaces import IUserCreatedWithRequestEvent
 
 from nti.appserver.logon import create_failure_response
 
@@ -52,6 +51,7 @@ from nti.dataserver.interfaces import IUser
 
 from nti.dataserver.users.interfaces import IUserProfile
 from nti.dataserver.users.interfaces import IFriendlyNamed
+from nti.dataserver.users.interfaces import IWillCreateNewEntityEvent
 
 from nti.dataserver.users.users import User
 
@@ -241,9 +241,12 @@ def _on_site_invitation_sent(invitation, event):
                           request=request)
 
 
-@component.adapter(IUser, IUserCreatedWithRequestEvent)
+@component.adapter(IUser, IWillCreateNewEntityEvent)
 def require_invite_for_user_creation(unused_user, event):
+    # Must be called before _validate_site_invitation, since that removes
+    # the session key
     request = getattr(event, 'request', None) or get_current_request()
-    invitation = request.session.get(SITE_INVITATION_SESSION_KEY)
-    if invitation is None:
-        raise InvitationRequiredError()
+    if request is not None:
+        invitation = request.session.get(SITE_INVITATION_SESSION_KEY)
+        if invitation is None:
+            raise InvitationRequiredError()
