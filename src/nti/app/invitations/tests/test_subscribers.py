@@ -11,7 +11,6 @@ import unittest
 from hamcrest import is_not, is_
 from hamcrest import has_length
 from hamcrest import assert_that
-from nti.app.invitations.subscribers import _get_invitations_bcc
 
 does_not = is_not
 
@@ -29,10 +28,10 @@ from nti.app.invitations import SITE_INVITATION_SESSION_KEY
 
 from nti.app.invitations.invitations import SiteInvitation
 
+from nti.app.invitations.subscribers import _get_invitations_bcc
 from nti.app.invitations.subscribers import _validate_site_invitation
 from nti.app.invitations.subscribers import require_invite_for_user_creation
 
-from nti.appserver.interfaces import UserCreatedWithRequestEvent
 from nti.appserver.interfaces import UserLogonEvent
 
 from nti.app.testing.application_webtest import ApplicationLayerTest
@@ -42,6 +41,8 @@ from nti.app.testing.decorators import WithSharedApplicationMockDS
 from nti.app.invitations.interfaces import InvitationRequiredError
 
 from nti.dataserver.tests import mock_dataserver
+
+from nti.dataserver.users.interfaces import WillCreateNewEntityEvent
 
 from nti.dataserver.users.users import User
 
@@ -153,7 +154,7 @@ class TestSubscribers(ApplicationLayerTest):
             user = self._create_user(u'testuser', external_value={'email': u'user@test.com'})
 
             # Test the subscriber
-            event = UserCreatedWithRequestEvent(user)
+            event = WillCreateNewEntityEvent(user)
             event.request = self.request
             with self.assertRaises(InvitationRequiredError):
                 require_invite_for_user_creation(user, event)
