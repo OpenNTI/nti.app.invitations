@@ -471,7 +471,7 @@ class TestSiteInvitationViews(ApplicationLayerTest):
             site_invitation = SiteInvitation(code=u'Sunnyvale1',
                                              receiver=u'ricky@tpb.net',
                                              sender=u'sjohnson',
-                                             accepted=False)
+                                             acceptedTime=None)
 
             assert_that(site_invitation.is_accepted(), is_(False))
             assert_that(self.invitations, has_length(0))
@@ -491,7 +491,7 @@ class TestSiteInvitationViews(ApplicationLayerTest):
             site_invitation = SiteInvitation(code=u'Sunnyvale1',
                                              receiver=u'ricky@tpb.net',
                                              sender=u'sjohnson',
-                                             accepted=False)
+                                             acceptedTime=None)
 
             assert_that(site_invitation.is_accepted(), is_(False))
             assert_that(self.invitations, has_length(0))
@@ -520,7 +520,7 @@ class TestSiteInvitationViews(ApplicationLayerTest):
             site_invitation = SiteInvitation(code=u'Sunnyvale1',
                                              receiver=u'ricky@tpb.net',
                                              sender=u'sjohnson',
-                                             accepted=False)
+                                             acceptedTime=None)
 
             self.invitations.add(site_invitation)
 
@@ -533,7 +533,7 @@ class TestSiteInvitationViews(ApplicationLayerTest):
             site_invitation = SiteInvitation(code=u'Sunnyvale2',
                                              receiver=u'julian@tpb.net',
                                              sender=u'sjohnson',
-                                             accepted=False,
+                                             acceptedTime=None,
                                              site=u'exclude_me')
 
             self.invitations.add(site_invitation)
@@ -548,7 +548,7 @@ class TestSiteInvitationViews(ApplicationLayerTest):
             site_invitation = JoinEntityInvitation(code=u'Sunnyvale3',
                                                    receiver=u'lahey@tpb.net',
                                                    sender=u'sjohnson',
-                                                   accepted=False)
+                                                   acceptedTime=None)
 
             self.invitations.add(site_invitation)
 
@@ -850,7 +850,7 @@ class TestSiteInvitationViews(ApplicationLayerTest):
             inv = SiteInvitation(receiver=u'lahey@tpb.net',
                                  sender=u'lahey',
                                  code=u'Sunnyvale1',
-                                 accepted=True,
+                                 acceptedTime=90,
                                  target_site='dataserver2')
             self.invitations.add(inv)
 
