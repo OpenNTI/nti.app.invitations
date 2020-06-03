@@ -194,6 +194,7 @@ class AcceptInvitationMixin(AbstractView):
     def _validate_invitation(self, invitation, check_user=True):
         request = self.request
         if invitation.is_accepted():
+            logger.info("Invitation is already accepted")
             raise_json_error(request,
                              hexc.HTTPUnprocessableEntity,
                              {
@@ -202,6 +203,7 @@ class AcceptInvitationMixin(AbstractView):
                              },
                              None)
         if IDisabledInvitation.providedBy(invitation):
+            logger.info("Invitation is disabled")
             raise_json_error(request,
                              hexc.HTTPUnprocessableEntity,
                              {
@@ -215,6 +217,8 @@ class AcceptInvitationMixin(AbstractView):
             receiver = invitation.receiver.lower()
             # pylint: disable=no-member
             if receiver not in (self.context.username.lower(), email.lower()):
+                logger.info("Invitation email is invalid (%s) (%s)",
+                            receiver, email)
                 raise_json_error(request,
                                  hexc.HTTPUnprocessableEntity,
                                  {
@@ -227,6 +231,8 @@ class AcceptInvitationMixin(AbstractView):
     def _do_validation(self, invite_code):
         request = self.request
         if not invite_code or invite_code not in self.invitations:
+            logger.info("Invitation code is not found (%s)",
+                        invite_code)
             raise_json_error(request,
                              hexc.HTTPUnprocessableEntity,
                              {
