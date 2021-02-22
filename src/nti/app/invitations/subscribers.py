@@ -151,6 +151,10 @@ def _get_invitations_bcc():
     return tuple(invitations_bcc)
 
 
+def _site_policy():
+    return component.getUtility(ISitePolicyUserEventListener)
+
+
 def send_invitation_email(invitation,
                           sender,
                           receiver_name,
@@ -165,9 +169,9 @@ def send_invitation_email(invitation,
                                   remoteUser=sender,
                                   objs=[invitation])
 
-    template = 'site_invitation_email'
-
-    policy = component.getUtility(ISitePolicyUserEventListener)
+    policy = _site_policy()
+    template = (getattr(policy, 'SITE_INVITATION_EMAIL_TEMPLATE_BASE_NAME', None)
+                or 'site_invitation_email')
 
     # Some sites want a custom macros in the invitation
     # If there is a macro registered then we will render it to
@@ -210,12 +214,15 @@ def send_invitation_email(invitation,
             'avatar_styles': avatar_styles
         }
 
+    subject = (getattr(policy, 'SITE_INVITATION_EMAIL_SUBJECT', None)
+               or u"You're invited to ${site_name}")
+    subject = translate(_(subject,
+                        mapping={'site_name': brand}))
     try:
         mailer = component.getUtility(ITemplatedMailer)
         mailer.queue_simple_html_text_email(
             template,
-            subject=translate(_(u"You're invited to ${title}",
-                                mapping={'title': brand})),
+            subject=subject,
             recipients=[receiver_email],
             bcc=_get_invitations_bcc(),
             template_args=msg_args,
