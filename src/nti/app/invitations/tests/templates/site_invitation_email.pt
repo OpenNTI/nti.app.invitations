@@ -1,0 +1,10 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+	"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+		xmlns:metal="http://xml.zope.org/namespaces/metal"
+		xmlns:tal="http://xml.zope.org/namespaces/tal">
+
+	<body style="padding-top: 20px;padding-bottom: 20px;background-color: #F9F9F9; color: #494949; font-family: 'Open Sans', sans-serif, Helvetica, Arial; font-size: 16px; line-height: 24px;">
+    OVERRIDDEN HTML TEST TEMPLATE
+	</body>
+</html>

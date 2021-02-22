@@ -5,6 +5,8 @@ from __future__ import print_function
 from __future__ import absolute_import
 from __future__ import division
 
+import contextlib
+
 from collections import OrderedDict
 
 import fudge
@@ -45,6 +47,8 @@ from nti.app.testing.decorators import WithSharedApplicationMockDS
 
 from nti.app.testing.testing import ITestMailDelivery
 
+from nti.appserver.policies.interfaces import ISitePolicyUserEventListener
+
 from nti.common.url import safe_add_query_params
 
 from nti.dataserver.tests import mock_dataserver
@@ -60,6 +64,23 @@ ITEMS = StandardExternalFields.ITEMS
 __docformat__ = "restructuredtext en"
 
 logger = __import__('logging').getLogger(__name__)
+
+
+@contextlib.contextmanager
+def modified_site_policy(ds, site_name, **kwargs):
+    with mock_dataserver.mock_db_trans(ds, site_name=site_name):
+        policy = component.queryUtility(ISitePolicyUserEventListener)
+        original_values = {key: getattr(policy, key) for key in kwargs
+                           if hasattr(policy, key)}
+        for key, value in kwargs.items():
+            setattr(policy, key, value)
+    try:
+        yield
+    finally:
+        with mock_dataserver.mock_db_trans(ds, site_name=site_name):
+            policy = component.queryUtility(ISitePolicyUserEventListener)
+            for key, value in original_values.items():
+                setattr(policy, key, value)
 
 
 class TestSiteInvitationViews(ApplicationLayerTest):
@@ -182,6 +203,57 @@ class TestSiteInvitationViews(ApplicationLayerTest):
 
         text_body = text_parts[0].get_payload(decode=True)
         assert_that(text_body, contains_string("TO: good@email.com\n"))
+
+    def _get_decoded_body(self, message, content_type):
+        text_parts = [part for part in message.get_payload()
+                      if part['Content-Type'].startswith(content_type)]
+        assert_that(text_parts, has_length(1))
+
+        decoded_body = text_parts[0].get_payload(decode=True)
+
+        return decoded_body
+
+    @WithSharedApplicationMockDS(testapp=True, users=True)
+    def test_send_site_invitation_email_alt_templates(self):
+        new_template_location = b'nti.app.invitations.tests:templates/site_invitation_email'
+        new_subject = u'Overridden subject'
+        with modified_site_policy(
+                self.ds, 'dataserver2',
+                SITE_INVITATION_EMAIL_TEMPLATE_BASE_NAME=new_template_location,
+                SITE_INVITATION_EMAIL_SUBJECT=new_subject):
+
+            self._send_invitations([{
+                'receiver': 'good@email.com',
+                'receiver_name': 'Q Bert'
+            }])
+
+            mailer = component.getUtility(ITestMailDelivery)
+            assert_that(mailer.queue, has_length(1))
+
+            # Check overridden subject
+            assert_that(mailer.queue[0].subject, is_(new_subject))
+
+            # Text and html parts
+            assert_that(mailer.queue[0].get_payload(), has_length(2))
+
+            text_body = self._get_decoded_body(mailer.queue[0], "text/plain")
+            assert_that(text_body, contains_string("OVERRIDDEN TEXT TEST TEMPLATE"))
+
+            html_body = self._get_decoded_body(mailer.queue[0], "text/html")
+            assert_that(html_body, contains_string("OVERRIDDEN HTML TEST TEMPLATE"))
+
+    @WithSharedApplicationMockDS(testapp=True, users=True)
+    @fudge.patch('nti.app.invitations.subscribers._site_policy')
+    def test_send_site_invitation_email_no_policy(self, get_site_policy):
+        get_site_policy.is_callable().returns(None)
+
+        self._send_invitations([{
+            'receiver': 'good@email.com',
+            'receiver_name': 'Q Bert'
+        }])
+
+        mailer = component.getUtility(ITestMailDelivery)
+        assert_that(mailer.queue, has_length(1))
 
     def _make_fake_csv(self, data):
         fake_csv = tempfile.NamedTemporaryFile(delete=False)
