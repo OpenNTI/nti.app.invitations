@@ -225,7 +225,7 @@ class TestInvitationViews(ApplicationLayerTest):
                           extra_environ=self._make_extra_environ(),
                           status=200)
         assert_that(res.json_body, has_entry('Items', has_length(0)))
-
+        
     @WithSharedApplicationMockDS
     def test_decline_invitations(self):
         with mock_dataserver.mock_db_trans(self.ds):

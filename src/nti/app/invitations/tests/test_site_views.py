@@ -10,6 +10,8 @@ import contextlib
 from collections import OrderedDict
 
 import fudge
+
+from hamcrest import not_
 from hamcrest import assert_that
 from hamcrest import contains_inanyorder
 from hamcrest import contains_string
@@ -21,10 +23,12 @@ from hamcrest import starts_with
 from six.moves import urllib_parse
 
 import csv
-
+import calendar
 import tempfile
 
-from hamcrest import not_
+from datetime import datetime
+from datetime import timedelta
+
 from zope import component
 
 from zope.cachedescriptors.property import Lazy
@@ -585,7 +589,7 @@ class TestSiteInvitationViews(ApplicationLayerTest):
         assert_that(res.json_body['code'], is_(u'InvalidInvitationContentVersion'))
 
     @WithSharedApplicationMockDS(testapp=True, users=True)
-    def test_pending_site_invitations(self):
+    def test_site_invitations(self):
         pending_url = '/dataserver2/Invitations/@@pending-site-invitations'
 
         with mock_dataserver.mock_db_trans(self.ds):
@@ -628,6 +632,94 @@ class TestSiteInvitationViews(ApplicationLayerTest):
                                {'site': 'exclude_me'})
         body = res.json_body
         assert_that(body[ITEMS], has_length(1))
+        
+    @WithSharedApplicationMockDS(testapp=True, users=True)
+    def test_invitations(self):
+        invitations_url = '/dataserver2/Invitations'
+
+        now = datetime.utcnow()
+        yesterday = now - timedelta(days=1)
+        yesterday = calendar.timegm(yesterday.timetuple())
+        tomorrow = now + timedelta(days=1)
+        tomorrow = calendar.timegm(tomorrow.timetuple())
+        with mock_dataserver.mock_db_trans(self.ds):
+            # two pending, one per site
+            site_invitation = SiteInvitation(code=u'Sunnyvale1',
+                                             receiver=u'ricky@tpb.net',
+                                             sender=u'sjohnson',
+                                             acceptedTime=None)
+
+            self.invitations.add(site_invitation)
+            site_invitation = SiteInvitation(code=u'Sunnyvale2',
+                                             receiver=u'julian@tpb.net',
+                                             sender=u'sjohnson',
+                                             acceptedTime=None,
+                                             site=u'exclude_me')
+
+            self.invitations.add(site_invitation)
+            # Three accepted, one per site and one expired but accepted
+            site_invitation = SiteInvitation(code=u'Sunnyvale3',
+                                             receiver=u'ricky2@tpb.net',
+                                             sender=u'sjohnson2',
+                                             acceptedTime=yesterday)
+            self.invitations.add(site_invitation)
+            site_invitation = SiteInvitation(code=u'Sunnyvale4',
+                                             receiver=u'ricky2@tpb.net',
+                                             sender=u'sjohnson2',
+                                             acceptedTime=yesterday,
+                                             site=u'exclude_me')
+            self.invitations.add(site_invitation)
+            site_invitation = SiteInvitation(code=u'Sunnyvale5',
+                                             receiver=u'ricky2@tpb.net',
+                                             sender=u'sjohnson2',
+                                             acceptedTime=yesterday,
+                                             expiryTime=yesterday)
+            # Two expired
+            self.invitations.add(site_invitation)
+            site_invitation = SiteInvitation(code=u'Sunnyvale6',
+                                             receiver=u'ricky2@tpb.net',
+                                             sender=u'sjohnson2',
+                                             acceptedTime=None,
+                                             expiryTime=yesterday)
+            self.invitations.add(site_invitation)
+            site_invitation = SiteInvitation(code=u'Sunnyvale7',
+                                             receiver=u'ricky2@tpb.net',
+                                             sender=u'sjohnson2',
+                                             acceptedTime=None,
+                                             expiryTime=yesterday,
+                                             site=u'exclude_me')
+            self.invitations.add(site_invitation)
+            # Expired in future
+            site_invitation = SiteInvitation(code=u'Sunnyvale8',
+                                             receiver=u'ricky2@tpb.net',
+                                             sender=u'sjohnson2',
+                                             acceptedTime=None,
+                                             expiryTime=tomorrow)
+            self.invitations.add(site_invitation)
+
+        def _get_codes(type_filter=None):
+            inv_url = invitations_url
+            if type_filter:
+                inv_url = '%s?type_filter=%s' % (invitations_url, type_filter)
+            res = self.testapp.get(inv_url).json_body
+            res = res[ITEMS]
+            return [x['code'] for x in res]
+                
+        invite_codes = _get_codes()
+        assert_that(invite_codes, contains_inanyorder('Sunnyvale1',
+                                                      'Sunnyvale3',
+                                                      'Sunnyvale5',
+                                                      'Sunnyvale6',
+                                                      'Sunnyvale8'))
+        
+        invite_codes = _get_codes('pending')
+        assert_that(invite_codes, contains_inanyorder('Sunnyvale1',
+                                                      'Sunnyvale8'))
+        invite_codes = _get_codes('accepted')
+        assert_that(invite_codes, contains_inanyorder('Sunnyvale3',
+                                                      'Sunnyvale5'))
+        invite_codes = _get_codes('expired')
+        assert_that(invite_codes, contains_inanyorder('Sunnyvale6'))
 
     @WithSharedApplicationMockDS(testapp=True, users=True)
     def test_generic_site_invitation(self):
