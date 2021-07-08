@@ -101,7 +101,7 @@ from nti.common.url import safe_add_query_params
 
 from nti.dataserver import authorization as nauth
 
-from nti.dataserver.authorization import is_admin_or_site_admin
+from nti.dataserver.authorization import is_admin_or_site_admin, is_site_admin
 
 from nti.dataserver.interfaces import IUser
 from nti.dataserver.interfaces import IDataserverFolder
@@ -1047,6 +1047,9 @@ class GetSiteInvitationsView(AbstractAuthenticatedView,
                 'User %s failed permissions check for site invitations.',
                 self.remoteUser
             )
+            raise hexc.HTTPForbidden()
+        if self.site and is_site_admin(self.remoteUser):
+            # Site admins cannot filter by site name
             raise hexc.HTTPForbidden()
         return self._do_call()
 
