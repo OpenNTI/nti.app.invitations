@@ -197,6 +197,15 @@ class _DefaultSiteInvitationsLinksProvider(object):
         # TODO we may not want this quite so rigid
         if not is_admin_or_site_admin(self.user):
             return result
+        
+        link = Link(self.ds,
+                    method='GET',
+                    rel=INVITATIONS,
+                    elements=(INVITATIONS,))
+        link.__name__ = INVITATIONS
+        link.__parent__ = InvitationsPathAdapter
+        interface.alsoProvides(link, ILocation)
+        result.append(link)
 
         for name in (REL_SEND_SITE_INVITATION,
                      REL_DELETE_SITE_INVITATIONS):

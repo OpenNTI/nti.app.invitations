@@ -129,7 +129,10 @@ from nti.invitations.interfaces import InvitationValidationError
 from nti.invitations.interfaces import DuplicateInvitationCodeError
 
 from nti.invitations.utils import accept_invitation
+from nti.invitations.utils import get_all_invitations
 from nti.invitations.utils import get_pending_invitations
+from nti.invitations.utils import get_expired_invitations
+from nti.invitations.utils import get_accepted_invitations
 from nti.invitations.utils import get_random_invitation_code
 
 from nti.links import Link
@@ -931,10 +934,10 @@ class AcceptSiteInvitationByCodeView(AcceptSiteInvitationView):
 @view_config(route_name='objects.generic.traversal',
              renderer='rest',
              context=InvitationsPathAdapter,
-             request_method='GET',
-             name=REL_PENDING_SITE_INVITATIONS)
-class GetPendingSiteInvitationsView(AbstractAuthenticatedView,
-                                    BatchingUtilsMixin):
+             request_method='GET')
+class GetSiteInvitationsView(AbstractAuthenticatedView,
+                             BatchingUtilsMixin):
+    
     _default_mimetypes = (SITE_INVITATION_MIMETYPE,
                           SITE_ADMIN_INVITATION_MIMETYPE)
 
@@ -943,28 +946,78 @@ class GetPendingSiteInvitationsView(AbstractAuthenticatedView,
 
     def _do_sort_created_time(self, items, reverse):
         return sorted(items, key=lambda item: item.createdTime, reverse=reverse)
+    
+    @Lazy
+    def _params(self):
+        return CaseInsensitiveDict(self.request.params)
+    
+    @Lazy
+    def site(self):
+        result = self._params.get('site') or getSite().__name__
+        return result
+
+    @Lazy
+    def exclude(self):
+        exclude = self._params.get('exclude', '')
+        exclude = exclude.strip().split(',')
+        return exclude
+    
+    @Lazy
+    def mime_types(self):
+        mimetypes = [mimetype for mimetype in self._default_mimetypes 
+                     if mimetype not in self.exclude]
+        return mimetypes
+
+    @Lazy
+    def filterOn(self):
+        return self._params.get('filterOn', 'receiver')
+    
+    @Lazy
+    def filter_value(self):
+        return self._params.get('filter')
+    
+    @Lazy
+    def type_filter(self):
+        result = self._params.get('type_filter')
+        if result:
+            result = result.lower()
+            if result not in ('pending', 'accepted', 'expired'):
+                raise 
+        return result
+    
+    def get_invitations(self):
+        """
+        Return all invitations, filtered by type (pending, accepted, expired)
+        or all.
+        """
+        if self.type_filter:
+            type_filter = self.type_filter
+            if type_filter == 'pending':
+                result = get_pending_invitations(mimeTypes=self.mime_types,
+                                                 sites=self.site)
+            elif type_filter == 'accepted':
+                result = get_accepted_invitations(mimeTypes=self.mime_types,
+                                                  sites=self.site)
+            else:
+                result = get_expired_invitations(mimeTypes=self.mime_types,
+                                                 sites=self.site)
+            
+        else:
+            result = get_all_invitations(mimeTypes=self.mime_types,
+                                         sites=self.site)
+        return result
 
     def _do_call(self):
-        if not is_admin_or_site_admin(self.remoteUser):
-            return hexc.HTTPForbidden()
-
         result = LocatedExternalDict()
-        site = self.request.params.get('site') or getSite().__name__
-        exclude = self.request.params.get('exclude', '')
-        exclude = exclude.strip().split(',')
-        filterOn = self.request.params.get('filterOn', 'receiver')
-        filter_value = self.request.params.get('filter')
-        mimetypes = [mimetype for mimetype in self._default_mimetypes if mimetype not in exclude]
-        items = get_pending_invitations(mimeTypes=mimetypes,
-                                        sites=site)
+        items = self.get_invitations()
         filtered = False
-        if filter_value:
+        if self.filter_value:
             filtered = True
             total = len(items)
-            items = [x for x in items if filter_value in getattr(x, filterOn, '')]
+            items = [x for x in items if self.filter_value in getattr(x, self.filterOn, '')]
 
-        sort_name = self.request.params.get('sortOn')
-        sort_reverse = self.request.params.get('sortOrder', 'ascending') == 'descending'
+        sort_name = self._params.get('sortOn', 'created_time')
+        sort_reverse = self._params.get('sortOrder', 'ascending') == 'descending'
         if sort_name:
             try:
                 sort_method = getattr(self, '_do_sort_' + sort_name)
@@ -991,11 +1044,23 @@ class GetPendingSiteInvitationsView(AbstractAuthenticatedView,
     def __call__(self):
         if not is_admin_or_site_admin(self.remoteUser):
             logger.exception(
-                'User %s failed permissions check for pending site invitations.',
+                'User %s failed permissions check for site invitations.',
                 self.remoteUser
             )
             raise hexc.HTTPForbidden()
         return self._do_call()
+
+
+@view_config(route_name='objects.generic.traversal',
+             renderer='rest',
+             context=InvitationsPathAdapter,
+             request_method='GET',
+             name=REL_PENDING_SITE_INVITATIONS)
+class GetPendingSiteInvitationsView(GetSiteInvitationsView):
+
+    def get_invitations(self):
+        return get_pending_invitations(mimeTypes=self.mime_types,
+                                       sites=self.site)
 
 
 @view_config(route_name='objects.generic.traversal',
