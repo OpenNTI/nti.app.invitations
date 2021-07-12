@@ -11,14 +11,14 @@ from collections import OrderedDict
 
 import fudge
 
+from hamcrest import is_
 from hamcrest import not_
+from hamcrest import has_length
+from hamcrest import has_entries
+from hamcrest import starts_with
 from hamcrest import assert_that
 from hamcrest import contains_inanyorder
 from hamcrest import contains_string
-from hamcrest import has_entries
-from hamcrest import is_
-from hamcrest import has_length
-from hamcrest import starts_with
 
 from six.moves import urllib_parse
 
@@ -698,10 +698,11 @@ class TestSiteInvitationViews(ApplicationLayerTest):
             self.invitations.add(site_invitation)
 
         def _get_codes(type_filter=None):
+            headers = {'accept': str('application/json')}
             inv_url = invitations_url
             if type_filter:
                 inv_url = '%s?type_filter=%s' % (invitations_url, type_filter)
-            res = self.testapp.get(inv_url).json_body
+            res = self.testapp.get(inv_url, headers=headers).json_body
             res = res[ITEMS]
             return [x['code'] for x in res]
                 

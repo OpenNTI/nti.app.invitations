@@ -10,9 +10,15 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import absolute_import
 
+import six
 import csv
-from itsdangerous import BadSignature
 import time
+
+from datetime import datetime
+
+from io import BytesIO
+
+from itsdangerous import BadSignature
 
 from pyramid import httpexceptions as hexc
 
@@ -23,7 +29,6 @@ from pyramid.view import view_defaults
 
 from requests.structures import CaseInsensitiveDict
 
-import six
 from six.moves import urllib_parse
 
 from z3c.schema.email import isValidMailAddress
@@ -80,7 +85,7 @@ from nti.app.invitations import REL_TRIVIAL_DEFAULT_INVITATION_CODE
 from nti.app.invitations import SITE_INVITATION_EMAIL_SESSION_KEY
 from nti.app.invitations import SIGNED_CONTENT_VERSION_1_0
 
-from nti.app.invitations.interfaces import ISiteInvitation
+from nti.app.invitations.interfaces import ISiteInvitation, ISiteAdminInvitation
 from nti.app.invitations.interfaces import IChallengeLogonProvider
 from nti.app.invitations.interfaces import IInvitationSigner
 from nti.app.invitations.interfaces import IInvitationInfo
@@ -107,7 +112,8 @@ from nti.dataserver.interfaces import IUser
 from nti.dataserver.interfaces import IDataserverFolder
 from nti.dataserver.interfaces import IDynamicSharingTargetFriendsList
 
-from nti.dataserver.users.interfaces import IUserProfile
+from nti.dataserver.users.interfaces import IUserProfile, IFriendlyNamed
+from nti.dataserver.users.interfaces import IProfileDisplayableSupplementalFields
 
 from nti.dataserver.users.users import User
 
@@ -136,6 +142,9 @@ from nti.invitations.utils import get_accepted_invitations
 from nti.invitations.utils import get_random_invitation_code
 
 from nti.links import Link
+
+from nti.mailer.interfaces import IEmailAddressable
+from nti.coremetadata.interfaces import IUsernameSubstitutionPolicy
 
 ITEMS = StandardExternalFields.ITEMS
 LINKS = StandardExternalFields.LINKS
@@ -508,6 +517,25 @@ class DeleteSiteInvitationsView(AbstractAuthenticatedView,
         for invitation in invitations:
             # pylint: disable=no-member
             self.invitations.remove(invitation)
+        return invitations
+
+
+@view_config(route_name='objects.generic.traversal',
+             renderer='rest',
+             context=ISiteInvitation,
+             request_method='DELETE',
+             permission=nauth.ACT_READ)
+class DeleteSiteInvitationView(AbstractAuthenticatedView):
+    """
+    Delete a specific site invitation. If no expiration date, we "soft" delete
+    this by setting an expiration date of now. If already expired, we fully 
+    delete the invitation.
+    """
+
+    def __call__(self):
+        # Better permissioning? Is this container below a site?
+        if not is_admin_or_site_admin(self.remoteUser):
+            return hexc.HTTPForbidden()
         return invitations
 
 
@@ -1064,6 +1092,137 @@ class GetPendingSiteInvitationsView(GetSiteInvitationsView):
     def get_invitations(self):
         return get_pending_invitations(mimeTypes=self.mime_types,
                                        sites=self.site)
+
+
+@view_config(route_name='objects.generic.traversal',
+             request_method='GET',
+             context=InvitationsPathAdapter,
+             accept='text/csv',
+             permission=nauth.ACT_READ)
+class SiteInvitationsCSVView(GetSiteInvitationsView):
+    """
+    Get site invitations in CSV format.
+    """
+
+    def _replace_username(self, username):
+        substituter = component.queryUtility(IUsernameSubstitutionPolicy)
+        if substituter is None:
+            return username
+        result = substituter.replace(username) or username
+        return result
+
+    def _get_email(self, user):
+        addr = IEmailAddressable(user, None)
+        return getattr(addr, 'email', '')
+
+    def _format_time(self, t):
+        try:
+            return datetime.fromtimestamp(t).isoformat() if t else u''
+        except ValueError:
+            logger.debug("Cannot parse time '%s'", t)
+            return str(t)
+
+    def _build_inv_info(self, invitation):
+        sender_username = invitation.sender
+        sender_user = User.get_user(sender_username)
+        sender_email = sender_alias = sender_realname = u''
+        if sender_user: 
+            sender_username = self._replace_username(sender_username)
+            sender_email = self._get_email(sender_user)
+            sender_named = IFriendlyNamed(sender_user)
+            sender_alias = sender_named.alias
+            sender_realname = sender_named.realname
+            
+        rec_username = invitation.receiver_name
+        rec_user = User.get_user(rec_username)
+        rec_email = rec_alias = rec_realname = u''
+        if rec_user: 
+            rec_username = self._replace_username(rec_username)
+            rec_email = self._get_email(rec_user)
+            rec_named = IFriendlyNamed(rec_user)
+            rec_alias = rec_named.alias
+            rec_realname = rec_named.realname
+            
+        sent_time = self._format_time(invitation.sent)
+        expiry_time = self._format_time(invitation.expiryTime)
+        accepted_time = self._format_time(invitation.acceptedTime)
+        
+        result = {
+            'sender username': sender_username,
+            'sender email': sender_email,
+            'sender alias': sender_alias,
+            'sender realname': sender_realname,
+            'target username': rec_username,
+            'target email': rec_email,
+            'target alias': rec_alias,
+            'target realname': rec_realname,
+            'sent time': sent_time,
+            'accepted time': accepted_time,
+            'expiration time': expiry_time,
+            'site admin invitation': ISiteAdminInvitation.providedBy(invitation)
+        }
+        return result
+
+    def _do_call(self):
+        invitations = self.get_invitations()
+        
+        stream = BytesIO()
+        fieldnames = ['sender username', 'sender email', 'sender alias', 
+                      'target username' 'target email', 'target alias',
+                      'sent time', 'accepted time', 'expiration time', 
+                      'site admin invitation']
+
+        csv_writer = csv.DictWriter(stream, fieldnames=fieldnames,
+                                    extrasaction='ignore',
+                                    encoding='utf-8')
+        csv_writer.writeheader()
+        for invitation in invitations:
+            inv_info = self._build_inv_info(invitation)
+            csv_writer.writerow(inv_info)
+
+        response = self.request.response
+        response.body = stream.getvalue()
+        response.content_encoding = 'identity'
+        response.content_type = 'text/csv; charset=UTF-8'
+        response.content_disposition = 'attachment; filename="users_export.csv"'
+        return response
+
+
+@view_config(route_name='objects.generic.traversal',
+             request_method='POST',
+             context=InvitationsPathAdapter,
+             renderer='rest',
+             permission=nauth.ACT_READ,
+             request_param='format=text/csv')
+class SiteInvitationsCSVPOSTView(SiteInvitationsCSVView, 
+                                 ModeledContentUploadRequestUtilsMixin):
+    
+    def readInput(self):
+        if self.request.POST:
+            result = {'codes': self.request.params.getall('codes') or []}
+        elif self.request.body:
+            result = super(SiteInvitationsCSVPOSTView, self).readInput()
+        else:
+            result = self.request.params
+        return CaseInsensitiveDict(result)
+    
+    @Lazy
+    def _params(self):
+        return self.readInput()
+
+    def get_invitations(self):
+        codes = self._params.get('codes', ())
+        if not codes:
+            return super(SiteInvitationsCSVPOSTView, self).get_invitations()()
+        result = []
+        invitations = component.getUtility(IInvitationsContainer)
+        
+        for code in codes:
+            invitation = invitations.get_invitation_by_code(code)
+            if invitation is None:
+                continue
+            result.append(invitation) 
+        return result
 
 
 @view_config(route_name='objects.generic.traversal',
