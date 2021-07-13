@@ -1189,7 +1189,7 @@ class SiteInvitationsCSVView(GetSiteInvitationsView):
         response.body = stream.getvalue()
         response.content_encoding = 'identity'
         response.content_type = 'text/csv; charset=UTF-8'
-        response.content_disposition = 'attachment; filename="users_export.csv"'
+        response.content_disposition = 'attachment; filename="invitations_export.csv"'
         return response
 
 
