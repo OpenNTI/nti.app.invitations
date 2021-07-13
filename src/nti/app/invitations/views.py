@@ -1215,14 +1215,16 @@ class SiteInvitationsCSVPOSTView(SiteInvitationsCSVView,
 
     def get_invitations(self):
         codes = self._params.get('codes', ())
+        included_invites = super(SiteInvitationsCSVPOSTView, self).get_invitations()
         if not codes:
-            return super(SiteInvitationsCSVPOSTView, self).get_invitations()
+            return included_invites 
+        included_invites = set(included_invites)
         result = []
         invitations = component.getUtility(IInvitationsContainer)
         
         for code in codes:
             invitation = invitations.get_invitation_by_code(code)
-            if invitation is None:
+            if invitation is None or invitation not in included_invites:
                 continue
             result.append(invitation) 
         return result

@@ -742,12 +742,25 @@ class TestSiteInvitationViews(ApplicationLayerTest):
                                                'site admin invitation', 'False',
                                                'target email', u'ricky4@tpb.net'))
         
-        headers = {'accept': str('application/json')}
         inv_url = '%s?format=text/csv&sortOn=receiver' % (invitations_url,)
-        csv_res = self.testapp.post(inv_url, headers=headers).body
+        csv_res = self.testapp.post(inv_url).body
         csv_reader = csv.DictReader(StringIO(csv_res))
         csv_reader = tuple(csv_reader)
         assert_that(csv_reader, has_length(5))
+        
+        codes = {'codes':['Sunnyvale6', 'Sunnyvale7']}
+        inv_url = '%s?format=text/csv&sortOn=receiver' % (invitations_url,)
+        csv_res = self.testapp.post(inv_url,
+                                    params=codes,
+                                    content_type='application/x-www-form-urlencoded')
+        csv_reader = csv.DictReader(StringIO(csv_res.body))
+        csv_reader = tuple(csv_reader)
+        assert_that(csv_reader, has_length(1))
+        assert_that(csv_reader[0], has_entries('accepted time', not_none(),
+                                               'sender username', 'sjohnson2',
+                                               'expiration time', not_none(),
+                                               'site admin invitation', 'False',
+                                               'target email', u'ricky5@tpb.net'))
 
     @WithSharedApplicationMockDS(testapp=True, users=True)
     def test_generic_site_invitation(self):
