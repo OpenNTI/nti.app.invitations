@@ -87,7 +87,8 @@ from nti.app.invitations import REL_TRIVIAL_DEFAULT_INVITATION_CODE
 from nti.app.invitations import SITE_INVITATION_EMAIL_SESSION_KEY
 from nti.app.invitations import SIGNED_CONTENT_VERSION_1_0
 
-from nti.app.invitations.interfaces import ISiteInvitation, ISiteAdminInvitation
+from nti.app.invitations.interfaces import ISiteInvitation
+from nti.app.invitations.interfaces import ISiteAdminInvitation
 from nti.app.invitations.interfaces import IChallengeLogonProvider
 from nti.app.invitations.interfaces import IInvitationSigner
 from nti.app.invitations.interfaces import IInvitationInfo
@@ -106,6 +107,8 @@ from nti.common._compat import text_
 
 from nti.common.url import safe_add_query_params
 
+from nti.coremetadata.interfaces import IUsernameSubstitutionPolicy
+
 from nti.dataserver import authorization as nauth
 
 from nti.dataserver.authorization import is_admin_or_site_admin, is_site_admin
@@ -114,8 +117,8 @@ from nti.dataserver.interfaces import IUser
 from nti.dataserver.interfaces import IDataserverFolder
 from nti.dataserver.interfaces import IDynamicSharingTargetFriendsList
 
-from nti.dataserver.users.interfaces import IUserProfile, IFriendlyNamed
-from nti.dataserver.users.interfaces import IProfileDisplayableSupplementalFields
+from nti.dataserver.users.interfaces import IUserProfile
+from nti.dataserver.users.interfaces import IFriendlyNamed
 
 from nti.dataserver.users.users import User
 
@@ -146,7 +149,6 @@ from nti.invitations.utils import get_random_invitation_code
 from nti.links import Link
 
 from nti.mailer.interfaces import IEmailAddressable
-from nti.coremetadata.interfaces import IUsernameSubstitutionPolicy
 
 ITEMS = StandardExternalFields.ITEMS
 LINKS = StandardExternalFields.LINKS
