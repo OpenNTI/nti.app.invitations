@@ -10,9 +10,11 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import absolute_import
 
-import six
 import csv
+import six
 import time
+
+import unicodecsv as ucsv
 
 from datetime import datetime
 
@@ -1135,7 +1137,8 @@ class SiteInvitationsCSVView(GetSiteInvitationsView):
             
         rec_username = invitation.receiver_name
         rec_user = User.get_user(rec_username)
-        rec_email = rec_alias = rec_realname = u''
+        rec_email = invitation.receiver
+        rec_alias = rec_realname = u''
         if rec_user: 
             rec_username = self._replace_username(rec_username)
             rec_email = self._get_email(rec_user)
@@ -1168,13 +1171,13 @@ class SiteInvitationsCSVView(GetSiteInvitationsView):
         
         stream = BytesIO()
         fieldnames = ['sender username', 'sender email', 'sender alias', 
-                      'target username' 'target email', 'target alias',
+                      'target username', 'target email', 'target alias',
                       'sent time', 'accepted time', 'expiration time', 
                       'site admin invitation']
 
-        csv_writer = csv.DictWriter(stream, fieldnames=fieldnames,
-                                    extrasaction='ignore',
-                                    encoding='utf-8')
+        csv_writer = ucsv.DictWriter(stream, fieldnames=fieldnames,
+                                     extrasaction='ignore',
+                                     encoding='utf-8')
         csv_writer.writeheader()
         for invitation in invitations:
             inv_info = self._build_inv_info(invitation)
@@ -1213,7 +1216,7 @@ class SiteInvitationsCSVPOSTView(SiteInvitationsCSVView,
     def get_invitations(self):
         codes = self._params.get('codes', ())
         if not codes:
-            return super(SiteInvitationsCSVPOSTView, self).get_invitations()()
+            return super(SiteInvitationsCSVPOSTView, self).get_invitations()
         result = []
         invitations = component.getUtility(IInvitationsContainer)
         
