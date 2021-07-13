@@ -11,14 +11,15 @@ from collections import OrderedDict
 
 import fudge
 
+from hamcrest import is_
 from hamcrest import not_
+from hamcrest import not_none
+from hamcrest import has_length
+from hamcrest import has_entries
+from hamcrest import starts_with
 from hamcrest import assert_that
 from hamcrest import contains_inanyorder
 from hamcrest import contains_string
-from hamcrest import has_entries
-from hamcrest import is_
-from hamcrest import has_length
-from hamcrest import starts_with
 
 from six.moves import urllib_parse
 
@@ -28,6 +29,8 @@ import tempfile
 
 from datetime import datetime
 from datetime import timedelta
+
+from six.moves import StringIO
 
 from zope import component
 
@@ -645,7 +648,7 @@ class TestSiteInvitationViews(ApplicationLayerTest):
         with mock_dataserver.mock_db_trans(self.ds):
             # two pending, one per site
             site_invitation = SiteInvitation(code=u'Sunnyvale1',
-                                             receiver=u'ricky@tpb.net',
+                                             receiver=u'ricky1@tpb.net',
                                              sender=u'sjohnson',
                                              acceptedTime=None)
 
@@ -664,26 +667,26 @@ class TestSiteInvitationViews(ApplicationLayerTest):
                                              acceptedTime=yesterday)
             self.invitations.add(site_invitation)
             site_invitation = SiteInvitation(code=u'Sunnyvale4',
-                                             receiver=u'ricky2@tpb.net',
+                                             receiver=u'ricky3@tpb.net',
                                              sender=u'sjohnson2',
                                              acceptedTime=yesterday,
                                              site=u'exclude_me')
             self.invitations.add(site_invitation)
             site_invitation = SiteInvitation(code=u'Sunnyvale5',
-                                             receiver=u'ricky2@tpb.net',
+                                             receiver=u'ricky4@tpb.net',
                                              sender=u'sjohnson2',
                                              acceptedTime=yesterday,
                                              expiryTime=yesterday)
             # Two expired
             self.invitations.add(site_invitation)
             site_invitation = SiteInvitation(code=u'Sunnyvale6',
-                                             receiver=u'ricky2@tpb.net',
+                                             receiver=u'ricky5@tpb.net',
                                              sender=u'sjohnson2',
                                              acceptedTime=None,
                                              expiryTime=yesterday)
             self.invitations.add(site_invitation)
             site_invitation = SiteInvitation(code=u'Sunnyvale7',
-                                             receiver=u'ricky2@tpb.net',
+                                             receiver=u'ricky6@tpb.net',
                                              sender=u'sjohnson2',
                                              acceptedTime=None,
                                              expiryTime=yesterday,
@@ -691,17 +694,18 @@ class TestSiteInvitationViews(ApplicationLayerTest):
             self.invitations.add(site_invitation)
             # Expired in future
             site_invitation = SiteInvitation(code=u'Sunnyvale8',
-                                             receiver=u'ricky2@tpb.net',
+                                             receiver=u'ricky7@tpb.net',
                                              sender=u'sjohnson2',
                                              acceptedTime=None,
                                              expiryTime=tomorrow)
             self.invitations.add(site_invitation)
 
-        def _get_codes(type_filter=None):
+        def _get_codes(type_filter=None, return_csv=False):
+            headers = {'accept': str('application/json')}
             inv_url = invitations_url
             if type_filter:
                 inv_url = '%s?type_filter=%s' % (invitations_url, type_filter)
-            res = self.testapp.get(inv_url).json_body
+            res = self.testapp.get(inv_url, headers=headers).json_body
             res = res[ITEMS]
             return [x['code'] for x in res]
                 
@@ -720,6 +724,43 @@ class TestSiteInvitationViews(ApplicationLayerTest):
                                                       'Sunnyvale5'))
         invite_codes = _get_codes('expired')
         assert_that(invite_codes, contains_inanyorder('Sunnyvale6'))
+        
+        headers = {'accept': str('text/csv')}
+        inv_url = '%s?type_filter=%s&sortOn=receiver' % (invitations_url, 'accepted')
+        csv_res = self.testapp.get(inv_url, headers=headers).body
+        csv_reader = csv.DictReader(StringIO(csv_res))
+        csv_reader = tuple(csv_reader)
+        assert_that(csv_reader, has_length(2))
+        assert_that(csv_reader[0], has_entries('accepted time', not_none(),
+                                               'sender username', 'sjohnson2',
+                                               'expiration time', '',
+                                               'site admin invitation', 'False',
+                                               'target email', u'ricky2@tpb.net'))
+        assert_that(csv_reader[1], has_entries('accepted time', not_none(),
+                                               'sender username', 'sjohnson2',
+                                               'expiration time', not_none(),
+                                               'site admin invitation', 'False',
+                                               'target email', u'ricky4@tpb.net'))
+        
+        inv_url = '%s?format=text/csv&sortOn=receiver' % (invitations_url,)
+        csv_res = self.testapp.post(inv_url).body
+        csv_reader = csv.DictReader(StringIO(csv_res))
+        csv_reader = tuple(csv_reader)
+        assert_that(csv_reader, has_length(5))
+        
+        codes = {'codes':['Sunnyvale6', 'Sunnyvale7']}
+        inv_url = '%s?format=text/csv&sortOn=receiver' % (invitations_url,)
+        csv_res = self.testapp.post(inv_url,
+                                    params=codes,
+                                    content_type='application/x-www-form-urlencoded')
+        csv_reader = csv.DictReader(StringIO(csv_res.body))
+        csv_reader = tuple(csv_reader)
+        assert_that(csv_reader, has_length(1))
+        assert_that(csv_reader[0], has_entries('accepted time', not_none(),
+                                               'sender username', 'sjohnson2',
+                                               'expiration time', not_none(),
+                                               'site admin invitation', 'False',
+                                               'target email', u'ricky5@tpb.net'))
 
     @WithSharedApplicationMockDS(testapp=True, users=True)
     def test_generic_site_invitation(self):
