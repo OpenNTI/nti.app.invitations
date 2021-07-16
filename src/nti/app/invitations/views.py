@@ -1080,7 +1080,7 @@ class GetSiteInvitationsView(AbstractAuthenticatedView,
                 self.remoteUser
             )
             raise hexc.HTTPForbidden()
-        if self.site and is_site_admin(self.remoteUser):
+        if self._params.get('site') and is_site_admin(self.remoteUser):
             # Site admins cannot filter by site name
             raise hexc.HTTPForbidden()
         return self._do_call()
