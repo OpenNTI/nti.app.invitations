@@ -761,6 +761,23 @@ class TestSiteInvitationViews(ApplicationLayerTest):
                                                'expiration time', not_none(),
                                                'site admin invitation', 'False',
                                                'target email', u'ricky5@tpb.net'))
+        
+        # Delete pending
+        headers = {'accept': str('application/json')}
+        inv_url = '%s?type_filter=%s' % (invitations_url, 'pending')
+        res = self.testapp.get(inv_url, headers=headers).json_body
+        res = res[ITEMS]
+        assert_that(res, has_length(2))
+        for inv_ext in res:
+            delete_rel = self.require_link_href_with_rel(inv_ext, 'delete')
+            self.testapp.delete(delete_rel)
+        
+        invite_codes = _get_codes('pending')
+        assert_that(invite_codes, has_length(0))
+        invite_codes = _get_codes('expired')
+        assert_that(invite_codes, contains_inanyorder('Sunnyvale6',
+                                                      'Sunnyvale1',
+                                                      'Sunnyvale8'))
 
     @WithSharedApplicationMockDS(testapp=True, users=True)
     def test_generic_site_invitation(self):
@@ -946,6 +963,7 @@ class TestSiteInvitationViews(ApplicationLayerTest):
     @WithSharedApplicationMockDS(testapp=True, users=True)
     def test_delete_invitations(self):
         emails = []
+        codes = []
         with mock_dataserver.mock_db_trans(self.ds):
             for i in range(5):
                 email = "test%s@test.com" % i
@@ -953,6 +971,7 @@ class TestSiteInvitationViews(ApplicationLayerTest):
                 inv = SiteInvitation(receiver=email,
                                      sender="sjohnson@nextthought.com")
                 self.invitations.add(inv)
+                codes.append(inv.code)
 
             assert_that(self.invitations, has_length(5))
 
@@ -960,6 +979,16 @@ class TestSiteInvitationViews(ApplicationLayerTest):
 
         res = self.testapp.post_json(url,
                                      {'emails': emails},
+                                     status=200)
+
+        # Soft delete
+        assert_that(res.json_body, has_length(5))
+        with mock_dataserver.mock_db_trans(self.ds):
+            assert_that(self.invitations, has_length(5))
+            
+        # Full delete via codes instead of emails
+        res = self.testapp.post_json(url,
+                                     {'codes': codes},
                                      status=200)
 
         assert_that(res.json_body, has_length(5))

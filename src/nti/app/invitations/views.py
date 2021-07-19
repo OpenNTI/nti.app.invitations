@@ -13,6 +13,7 @@ from __future__ import absolute_import
 import csv
 import six
 import time
+import calendar
 
 import unicodecsv as ucsv
 
@@ -41,6 +42,8 @@ from zope import interface
 from zope.cachedescriptors.property import Lazy
 
 from zope.component.hooks import getSite
+
+from zope.lifecycleevent import ObjectModifiedEvent
 
 from zope.location.interfaces import IContained
 
@@ -496,6 +499,27 @@ class SendDFLInvitationView(AbstractAuthenticatedView,
         return self._do_call()
 
 
+
+def _delete_invitation(invitation, container=None):
+    """
+    Logic for deleting an invitation; we soft delete by setting an
+    `expiryTime`. If already expired, we fully delete.
+    """
+    if invitation.is_expired():
+        if container is None:
+            container = component.getUtility(IInvitationsContainer)
+        container.remove(invitation)
+        logger.info("Deleting invitation (%s)", invitation.code)
+    else:
+        now = datetime.utcnow()
+        ts = calendar.timegm(now.timetuple())
+        # Our index normalizes to the minute, so stagger this back
+        # a bit to avoid confusing result sets when querying.
+        invitation.expiryTime = ts - 60
+        notify(ObjectModifiedEvent(invitation))
+        logger.info("Soft deleting invitation (%s)", invitation.code)
+
+
 @view_config(route_name='objects.generic.traversal',
              renderer='rest',
              context=InvitationsPathAdapter,
@@ -515,12 +539,16 @@ class DeleteSiteInvitationsView(AbstractAuthenticatedView,
 
         values = self.readInput()
         emails = values.get('emails')
-        invitations = get_pending_invitations(receivers=emails,
-                                              mimeTypes=(SITE_ADMIN_INVITATION_MIMETYPE,
-                                                         SITE_INVITATION_MIMETYPE))
+        codes = values.get('codes')
+        if emails:
+            invitations = get_pending_invitations(receivers=emails,
+                                                  mimeTypes=(SITE_ADMIN_INVITATION_MIMETYPE,
+                                                             SITE_INVITATION_MIMETYPE))
+        elif codes:
+            invitations = [self.invitations.get_invitation_by_code(x) for x in codes]
         for invitation in invitations:
-            # pylint: disable=no-member
-            self.invitations.remove(invitation)
+            if invitation is not None:
+                _delete_invitation(invitation, self.invitations)
         return invitations
 
 
@@ -540,7 +568,8 @@ class DeleteSiteInvitationView(AbstractAuthenticatedView):
         # Better permissioning? Is this container below a site?
         if not is_admin_or_site_admin(self.remoteUser):
             return hexc.HTTPForbidden()
-        return invitations
+        _delete_invitation(self.context)
+        return hexc.HTTPNoContent()
 
 
 @view_config(route_name='objects.generic.traversal',
