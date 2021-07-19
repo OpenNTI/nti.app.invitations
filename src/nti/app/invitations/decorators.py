@@ -8,7 +8,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import absolute_import
 
-from nti.app.invitations.utils import get_invitation_url
 from pyramid.interfaces import IRequest
 
 from zope import component
@@ -16,8 +15,11 @@ from zope import interface
 
 from zope.location.interfaces import ILocation
 
+from nti.app.invitations import INVITATIONS
 from nti.app.invitations import REL_ACCEPT_INVITATIONS
 from nti.app.invitations import REL_TRIVIAL_DEFAULT_INVITATION_CODE
+
+from nti.app.invitations.utils import get_invitation_url
 
 from nti.app.invitations.interfaces import ISiteInvitation
 
@@ -28,13 +30,16 @@ from nti.appserver.pyramid_authorization import is_writable
 
 from nti.dataserver.authorization import is_admin_or_site_admin
 
-from nti.dataserver.interfaces import IUser
+from nti.dataserver.interfaces import IUser 
+from nti.dataserver.interfaces import IDataserverFolder
 from nti.dataserver.interfaces import IDynamicSharingTargetFriendsList
 
 from nti.externalization.interfaces import StandardExternalFields
 from nti.externalization.interfaces import IExternalMappingDecorator
 
 from nti.links.links import Link
+
+from nti.traversal.traversal import find_interface
 
 LINKS = StandardExternalFields.LINKS
 
@@ -77,9 +82,11 @@ class SiteInvitationLinkProvider(AbstractAuthenticatedRequestAwareDecorator):
         _links.append(
             Link(redemption_link, rel='redeem')
         )
-        _links.append(
-            Link(context, rel='delete', elements=('@@decline',))
-        )
+        ds2 = find_interface(context, IDataserverFolder, strict=False)
+        if ds2 is not None:
+            _links.append(
+                Link(ds2, rel='delete', elements=(INVITATIONS, context.code))
+            )
 
     def _do_decorate_external(self, context, result):
         if is_admin_or_site_admin(self.remoteUser):

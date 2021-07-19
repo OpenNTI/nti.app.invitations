@@ -13,6 +13,7 @@ from __future__ import absolute_import
 import csv
 import six
 import time
+import calendar
 
 import unicodecsv as ucsv
 
@@ -41,6 +42,8 @@ from zope import interface
 from zope.cachedescriptors.property import Lazy
 
 from zope.component.hooks import getSite
+
+from zope.lifecycleevent import ObjectModifiedEvent
 
 from zope.location.interfaces import IContained
 
@@ -540,7 +543,21 @@ class DeleteSiteInvitationView(AbstractAuthenticatedView):
         # Better permissioning? Is this container below a site?
         if not is_admin_or_site_admin(self.remoteUser):
             return hexc.HTTPForbidden()
-        return invitations
+        invitation = self.context
+        if invitation.expiryTime:
+            container = component.getUtility(IInvitationsContainer)
+            container.remove(invitation)
+            logger.info("Deleting invitation (%s)", invitation.code)
+        else:
+            # We default to 0 - so we want that case down this path.
+            now = datetime.utcnow()
+            ts = calendar.timegm(now.timetuple())
+            # Our index normalizes to the minute, so stagger this back
+            # a bit to avoid confusing result sets when querying.
+            invitation.expiryTime = ts - 60
+            notify(ObjectModifiedEvent(invitation))
+            logger.info("Soft deleting invitation (%s)", invitation.code)
+        return hexc.HTTPNoContent()
 
 
 @view_config(route_name='objects.generic.traversal',

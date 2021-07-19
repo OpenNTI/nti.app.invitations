@@ -761,6 +761,22 @@ class TestSiteInvitationViews(ApplicationLayerTest):
                                                'expiration time', not_none(),
                                                'site admin invitation', 'False',
                                                'target email', u'ricky5@tpb.net'))
+        
+        # Delete pending
+        headers = {'accept': str('application/json')}
+        inv_url = '%s?type_filter=%s' % (invitations_url, 'pending')
+        res = self.testapp.get(inv_url, headers=headers).json_body
+        res = res[ITEMS]
+        assert_that(res, has_length(2))
+        for inv_ext in res:
+            delete_rel = self.require_link_href_with_rel(inv_ext, 'delete')
+            self.testapp.delete(delete_rel)
+        
+        invite_codes = _get_codes('pending')
+        assert_that(invite_codes, has_length(0))
+        invite_codes = _get_codes('expired')
+        assert_that(invite_codes, contains_inanyorder('Sunnyvale6',
+                                                      'Sunnyvale1'))
 
     @WithSharedApplicationMockDS(testapp=True, users=True)
     def test_generic_site_invitation(self):
