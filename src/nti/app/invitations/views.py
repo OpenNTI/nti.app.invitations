@@ -14,6 +14,7 @@ import csv
 import six
 import time
 import calendar
+import isodate
 
 import unicodecsv as ucsv
 
@@ -1165,7 +1166,7 @@ class SiteInvitationsCSVView(GetSiteInvitationsView):
 
     def _format_time(self, t):
         try:
-            return datetime.fromtimestamp(t).isoformat() if t else u''
+            return isodate.datetime_isoformat(datetime.fromtimestamp(t)) if t else u''
         except ValueError:
             logger.debug("Cannot parse time '%s'", t)
             return str(t)
