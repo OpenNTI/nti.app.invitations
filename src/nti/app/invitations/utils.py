@@ -10,7 +10,7 @@ from __future__ import absolute_import
 
 from itsdangerous import URLSafeSerializer
 from nti.common.cypher import get_plaintext
-from nti.dataserver.users.utils import force_email_verification
+
 from nti.dataserver.users.utils import reindex_email_verification
 
 from six.moves import urllib_parse
@@ -40,13 +40,17 @@ from nti.invitations.interfaces import InvitationExpiredError
 from nti.invitations.interfaces import InvitationDisabledError
 from nti.invitations.interfaces import InvitationAlreadyAcceptedError
 
-from nti.invitations.utils import get_invitation_actor
+from nti.invitations.utils import get_invitations
+from nti.invitations.utils import get_invitation_actor 
 from nti.invitations.utils import get_pending_invitations
 
 logger = __import__('logging').getLogger(__name__)
 
 
-def pending_site_invitation_for_email(email):
+def get_pending_site_invitation_for_email(email):
+    """
+    Get any open (pending) invitations to the given email addr.
+    """
     current_site = getattr(getSite(), '__name__', None)
     pending_invitations = get_pending_invitations(receivers=email,
                                                   mimeTypes=(SITE_INVITATION_MIMETYPE,
@@ -54,6 +58,20 @@ def pending_site_invitation_for_email(email):
     for pending_invite in pending_invitations:
         if pending_invite.target_site == current_site:
             return pending_invite
+pending_site_invitation_for_email = get_pending_site_invitation_for_email
+
+
+def get_site_invitation_for_email(email):
+    """
+    Get all invitations with the given email addr as a receiver.
+    """
+    current_site = getattr(getSite(), '__name__', None)
+    user_invitations = get_invitations(receivers=email,
+                                       mimeTypes=(SITE_INVITATION_MIMETYPE,
+                                                  SITE_ADMIN_INVITATION_MIMETYPE))
+    for user_invite in user_invitations:
+        if user_invite.target_site == current_site:
+            return user_invite
 
 
 def get_site_invitation_actor(invitation, user, link_email):

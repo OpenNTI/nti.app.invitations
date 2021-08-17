@@ -102,7 +102,7 @@ from nti.app.invitations.invitations import GenericSiteInvitation
 from nti.app.invitations.traversal import InvitationInfoPathAdapter
 
 from nti.app.invitations.utils import accept_site_invitation_by_code
-from nti.app.invitations.utils import pending_site_invitation_for_email
+from nti.app.invitations.utils import get_site_invitation_for_email
 
 from nti.appserver.interfaces import IApplicationSettings
 
@@ -114,7 +114,8 @@ from nti.coremetadata.interfaces import IUsernameSubstitutionPolicy
 
 from nti.dataserver import authorization as nauth
 
-from nti.dataserver.authorization import is_admin_or_site_admin, is_site_admin
+from nti.dataserver.authorization import is_site_admin
+from nti.dataserver.authorization import is_admin_or_site_admin
 
 from nti.dataserver.interfaces import IUser
 from nti.dataserver.interfaces import IDataserverFolder
@@ -503,9 +504,12 @@ class SendDFLInvitationView(AbstractAuthenticatedView,
 def _delete_invitation(invitation, container=None):
     """
     Logic for deleting an invitation; we soft delete by setting an
-    `expiryTime`. If already expired, we fully delete.
+    `expiryTime`. If already expired, we fully delete. If accepted
+    already, we log and ignore.
     """
-    if invitation.is_expired():
+    if invitation.is_accepted():
+        logger.info("Will not delete accepted invitation (%s)", invitation.code)
+    elif invitation.is_expired():
         if container is None:
             container = component.getUtility(IInvitationsContainer)
         container.remove(invitation)
@@ -688,11 +692,19 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
                 None
             )
 
+        # We ignore users already accepted unless *only* (1) specific
+        # user was invited. 
         challenge = []
-        for invitation in values['invitations']:
+        new_invitations = []
+        invites = values['invitations']
+        for invitation in invites:
             if get_users_by_email_in_sites(invitation['receiver']):
                 challenge.append(invitation)
-        if challenge and not force:
+            else:
+                new_invitations.append(invitation)
+        # XXX Is there ever a valid reason to send an invite to an
+        # email owned by an existing user?
+        if challenge and len(invites) == 1 and not force:
             self._handle_challenge(challenge,
                                    code=u'ExistingAccountEmail',
                                    message=_(
@@ -702,6 +714,7 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
                                                                                          u'invitations',
                                                                                          len(challenge)))
                                    ))
+        values['invitations'] = new_invitations
         return values
 
     def _handle_challenge(self, challenge_invitations, code, message):
@@ -743,16 +756,18 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
             ext_values['target_site'] = getSite().__name__
             invitation = self.readCreateUpdateContentObject(self.remoteUser, externalValue=ext_values)
             email = ext_values['receiver']
-            pending_invitation = pending_site_invitation_for_email(email)
+            # We should only have "new" invitations here (not accepted already)
+            user_invitation = get_site_invitation_for_email(email)
             # Check if this user already has an invite to this site
-            if pending_invitation is not None:
-                if pending_invitation.mime_type == mimetype or force:
-                    old_code = pending_invitation.code
+            if user_invitation is not None:
+                if user_invitation.mime_type == mimetype or force:
+                    # If same type, copy code (revisit this?)
+                    old_code = user_invitation.code
                     invitation.code = old_code
-                    self.invitations.remove(pending_invitation)
+                    self.invitations.remove(user_invitation)
                 else:
                     # only challenge invitations that change the user role without the force param
-                    challenge_invitations.append(pending_invitation)
+                    challenge_invitations.append(user_invitation)
                     continue
             items.append(invitation)
             self.invitations.add(invitation)
