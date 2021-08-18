@@ -705,16 +705,21 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
                 new_invitations.append(invitation)
         # XXX Is there ever a valid reason to send an invite to an
         # email owned by an existing user?
-        if challenge and len(invites) == 1 and not force:
-            self._handle_challenge(challenge,
-                                   code=u'ExistingAccountEmail',
-                                   message=_(
-                                       u'%s %s will be sent to an email address'
-                                       u' already associated with an account.' %
-                                       (len(challenge), self.request.localizer.pluralize(u'invitation',
-                                                                                         u'invitations',
-                                                                                         len(challenge)))
-                                   ))
+        if challenge and len(invites) == 1:
+            # XXX: Ideally we separate out this direct invite
+            # case from the bulk, alas.
+            if force:
+                new_invitations = challenge
+            else:
+                self._handle_challenge(challenge,
+                                       code=u'ExistingAccountEmail',
+                                       message=_(
+                                           u'%s %s will be sent to an email address'
+                                           u' already associated with an account.' %
+                                           (len(challenge), self.request.localizer.pluralize(u'invitation',
+                                                                                             u'invitations',
+                                                                                             len(challenge)))
+                                       ))
         values['invitations'] = new_invitations
         return values
 
@@ -758,14 +763,17 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
             invitation = self.readCreateUpdateContentObject(self.remoteUser, externalValue=ext_values)
             email = ext_values['receiver']
             # We should only have "new" invitations here (not accepted already)
+            # However, in direct-user and force override, we allow it.
             user_invitation = get_site_invitation_for_email(email)
             # Check if this user already has an invite to this site
             if user_invitation is not None:
                 if user_invitation.mime_type == mimetype or force:
                     # If same type, copy code (revisit this?)
-                    old_code = user_invitation.code
-                    invitation.code = old_code
-                    self.invitations.remove(user_invitation)
+                    # Make sure we do not delete accepeted invites.
+                    if not user_invitation.is_accepted():
+                        old_code = user_invitation.code
+                        invitation.code = old_code
+                        self.invitations.remove(user_invitation)
                 else:
                     # only challenge invitations that change the user role without the force param
                     challenge_invitations.append(user_invitation)
