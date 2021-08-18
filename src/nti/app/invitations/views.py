@@ -1194,6 +1194,7 @@ class SiteInvitationsCSVView(GetSiteInvitationsView):
         rec_alias = rec_realname = rec_username = u''
         if rec_user: 
             rec_username = self._replace_username(rec_user.username)
+            rec_email = self._get_email(rec_user)
             rec_named = IFriendlyNamed(rec_user)
             rec_alias = rec_named.alias
             rec_realname = rec_named.realname
