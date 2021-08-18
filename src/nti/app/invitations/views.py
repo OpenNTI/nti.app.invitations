@@ -1188,13 +1188,12 @@ class SiteInvitationsCSVView(GetSiteInvitationsView):
             sender_alias = sender_named.alias
             sender_realname = sender_named.realname
             
-        rec_username = invitation.receiver_name
+        rec_username = invitation.receiver
         rec_user = User.get_user(rec_username)
-        rec_email = invitation.receiver
-        rec_alias = rec_realname = u''
+        rec_email = invitation.original_receiver
+        rec_alias = rec_realname = rec_username = u''
         if rec_user: 
-            rec_username = self._replace_username(rec_username)
-            rec_email = self._get_email(rec_user)
+            rec_username = self._replace_username(rec_user.username)
             rec_named = IFriendlyNamed(rec_user)
             rec_alias = rec_named.alias
             rec_realname = rec_named.realname
