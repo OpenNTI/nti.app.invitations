@@ -1091,14 +1091,9 @@ class GetSiteInvitationsView(AbstractAuthenticatedView,
             result = get_all_invitations(mimeTypes=self.mime_types,
                                          sites=self.site)
         return result
-
-    def _do_call(self):
-        result = LocatedExternalDict()
-        items = self.get_invitations()
-        filtered = False
+    
+    def filter_and_sort_invitations(self, items):
         if self.filter_value:
-            filtered = True
-            total = len(items)
             items = [x for x in items if self.filter_value in getattr(x, self.filterOn, '')]
 
         sort_name = self._params.get('sortOn', 'created_time')
@@ -1109,14 +1104,17 @@ class GetSiteInvitationsView(AbstractAuthenticatedView,
                 items = sort_method(items, sort_reverse)
             except AttributeError:
                 pass
-        result[ITEMS] = items
+        return items
 
-        if not filtered:
-            result[TOTAL] = result[ITEM_COUNT] = len(items)
-        else:
-            result[TOTAL] = total
-            result[ITEM_COUNT] = len(items)
-            result["FilteredTotalItemCount"] = len(items)
+    def _do_call(self):
+        result = LocatedExternalDict()
+        items = self.get_invitations()
+        filtered_items = self.filter_and_sort_invitations(items)
+        result[ITEMS] = filtered_items
+
+        result[TOTAL] = len(items)
+        result[ITEM_COUNT] = len(filtered_items)
+        result["FilteredTotalItemCount"] = len(filtered_items)
         result.__name__ = self.request.view_name
         result.__parent__ = self.request.context
         batch_size, batch_start = self._get_batch_size_start()
@@ -1223,6 +1221,7 @@ class SiteInvitationsCSVView(GetSiteInvitationsView):
 
     def _do_call(self):
         invitations = self.get_invitations()
+        invitations = self.filter_and_sort_invitations(invitations)
         
         stream = BytesIO()
         fieldnames = ['sender username', 'sender email', 'sender alias', 
