@@ -766,14 +766,15 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
             # However, in direct-user and force override, we allow it.
             user_invitation = get_site_invitation_for_email(email)
             # Check if this user already has an invite to this site
-            if user_invitation is not None:
+            if          user_invitation is not None \
+                and not user_invitation.is_accepted() \
+                and not user_invitation.is_expired():
                 if user_invitation.mime_type == mimetype or force:
-                    # If same type, copy code (revisit this?)
-                    # Make sure we do not delete accepeted invites.
-                    if not user_invitation.is_accepted():
-                        old_code = user_invitation.code
-                        invitation.code = old_code
-                        self.invitations.remove(user_invitation)
+                    # If same type, copy code (revisit this?) - only for existing
+                    # pending invitations.
+                    old_code = user_invitation.code
+                    invitation.code = old_code
+                    self.invitations.remove(user_invitation)
                 else:
                     # only challenge invitations that change the user role without the force param
                     challenge_invitations.append(user_invitation)
