@@ -1057,10 +1057,6 @@ class GetSiteInvitationsView(AbstractAuthenticatedView,
         return mimetypes
 
     @Lazy
-    def filterOn(self):
-        return self._params.get('filterOn', 'receiver')
-    
-    @Lazy
     def filter_value(self):
         return self._params.get('filter')
     
@@ -1070,7 +1066,7 @@ class GetSiteInvitationsView(AbstractAuthenticatedView,
         if result:
             result = result.lower()
             if result not in ('pending', 'accepted', 'expired'):
-                raise 
+                raise hexc.HTTPUnprocessableEntity(u'Invalid type_filter param')
         return result
     
     def get_invitations(self):
@@ -1095,10 +1091,25 @@ class GetSiteInvitationsView(AbstractAuthenticatedView,
                                          sites=self.site)
         return result
     
-    def filter_and_sort_invitations(self, items):
+    def _filter_invitations(self, invitations):
         if self.filter_value:
-            items = [x for x in items if self.filter_value in getattr(x, self.filterOn, '')]
-
+            val = self.filter_value
+            def _include(invite):
+                rec_user = User.get_user(invite.receiver)
+                fn = IFriendlyNamed(rec_user, '')
+                realname = getattr(fn, 'realname', '')
+                alias = getattr(fn, 'alias', '')
+                # username, target email, user real name
+                return (invite.receiver and val in invite.receiver.lower()) \
+                    or (invite.original_receiver and val in invite.original_receiver.lower()) \
+                    or (alias and val in alias.lower()) \
+                    or (realname and val in realname.lower())
+            invitations = [x for x in invitations if _include(x)]
+        return invitations
+    
+    
+    def filter_and_sort_invitations(self, items):
+        items = self._filter_invitations(items)
         sort_name = self._params.get('sortOn', 'created_time')
         sort_reverse = self._params.get('sortOrder', 'ascending') == 'descending'
         if sort_name:

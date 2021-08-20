@@ -14,6 +14,7 @@ import fudge
 from hamcrest import is_
 from hamcrest import not_
 from hamcrest import not_none
+from hamcrest import contains
 from hamcrest import has_length
 from hamcrest import has_entries
 from hamcrest import starts_with
@@ -67,8 +68,6 @@ from nti.invitations.interfaces import IInvitationsContainer
 from nti.ntiids.oids import to_external_ntiid_oid
 
 ITEMS = StandardExternalFields.ITEMS
-
-__docformat__ = "restructuredtext en"
 
 logger = __import__('logging').getLogger(__name__)
 
@@ -661,19 +660,26 @@ class TestSiteInvitationViews(ApplicationLayerTest):
 
             self.invitations.add(site_invitation)
             # Three accepted, one per site and one expired but accepted
+            # `receiver` turns into username of actual user
+            self._create_user(u'ricky_user2', external_value={'email': u'ricky2@tpb.net'})
+            self._create_user(u'ricky_user3', external_value={'email': u'ricky3@tpb.net'})
+            self._create_user(u'ricky_user4', external_value={'email': u'ricky4@tpb.net'})
             site_invitation = SiteInvitation(code=u'Sunnyvale3',
-                                             receiver=u'ricky2@tpb.net',
+                                             original_receiver=u'ricky2@tpb.net',
+                                             receiver=u'ricky_user2',
                                              sender=u'sjohnson2',
                                              acceptedTime=yesterday)
             self.invitations.add(site_invitation)
             site_invitation = SiteInvitation(code=u'Sunnyvale4',
-                                             receiver=u'ricky3@tpb.net',
+                                             original_receiver=u'ricky3@tpb.net',
+                                             receiver=u'ricky_user3',
                                              sender=u'sjohnson2',
                                              acceptedTime=yesterday,
                                              site=u'exclude_me')
             self.invitations.add(site_invitation)
             site_invitation = SiteInvitation(code=u'Sunnyvale5',
-                                             receiver=u'ricky4@tpb.net',
+                                             original_receiver=u'ricky4@tpb.net',
+                                             receiver=u'ricky_user4',
                                              sender=u'sjohnson2',
                                              acceptedTime=yesterday,
                                              expiryTime=yesterday)
@@ -700,12 +706,15 @@ class TestSiteInvitationViews(ApplicationLayerTest):
                                              expiryTime=tomorrow)
             self.invitations.add(site_invitation)
 
-        def _get_codes(type_filter=None, return_csv=False):
+        def _get_codes(type_filter=None, invite_filter=None, return_csv=False):
             headers = {'accept': str('application/json')}
             inv_url = invitations_url
+            params = {}
             if type_filter:
-                inv_url = '%s?type_filter=%s' % (invitations_url, type_filter)
-            res = self.testapp.get(inv_url, headers=headers).json_body
+                params['type_filter'] = type_filter
+            if invite_filter:
+                params['filter'] = invite_filter
+            res = self.testapp.get(inv_url, params=params, headers=headers).json_body
             res = res[ITEMS]
             return [x['code'] for x in res]
                 
@@ -719,9 +728,19 @@ class TestSiteInvitationViews(ApplicationLayerTest):
         invite_codes = _get_codes('pending')
         assert_that(invite_codes, contains_inanyorder('Sunnyvale1',
                                                       'Sunnyvale8'))
+        invite_codes = _get_codes('pending', invite_filter='ricky1')
+        assert_that(invite_codes, contains('Sunnyvale1'))
+        invite_codes = _get_codes('pending', invite_filter='does_not_exist')
+        assert_that(invite_codes, has_length(0))
+        
         invite_codes = _get_codes('accepted')
         assert_that(invite_codes, contains_inanyorder('Sunnyvale3',
                                                       'Sunnyvale5'))
+        invite_codes = _get_codes('accepted', invite_filter='ricky_user4')
+        assert_that(invite_codes, contains('Sunnyvale5'))
+        invite_codes = _get_codes('accepted', invite_filter='ricky2@tpb.net')
+        assert_that(invite_codes, contains('Sunnyvale3'))
+        
         invite_codes = _get_codes('expired')
         assert_that(invite_codes, contains_inanyorder('Sunnyvale6'))
         
@@ -734,11 +753,13 @@ class TestSiteInvitationViews(ApplicationLayerTest):
         assert_that(csv_reader[0], has_entries('accepted time', not_none(),
                                                'sender username', 'sjohnson2',
                                                'expiration time', '',
+                                               'target username', 'ricky_user2',
                                                'site admin invitation', 'False',
                                                'target email', u'ricky2@tpb.net'))
         assert_that(csv_reader[1], has_entries('accepted time', not_none(),
                                                'sender username', 'sjohnson2',
                                                'expiration time', not_none(),
+                                               'target username', 'ricky_user4',
                                                'site admin invitation', 'False',
                                                'target email', u'ricky4@tpb.net'))
         
