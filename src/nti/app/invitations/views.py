@@ -788,10 +788,9 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
                 if 'message' not in ext_values:
                     ext_values['message'] = message
                 ext_values['code'] = get_random_invitation_code()
-            if not ext_values:
-                # Accepted that we tried to resend
-                continue
-
+            
+            # XXX: we may have receiver with no message and mimetype - that's ok?
+            # We default mimetype and we'll have no message.                        
             ext_values['target_site'] = getSite().__name__
             invitation = self.readCreateUpdateContentObject(self.remoteUser, externalValue=ext_values)
             items.append(invitation)
