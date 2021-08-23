@@ -749,38 +749,51 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
         force = self.request.params.get('force')
         values = self.preflight_input(force=force)
         # Default to a regular site invitation
-        mimetype = values.get('mime_type') or values.get('mimeType') or SITE_INVITATION_MIMETYPE
+        mimetype = values.get('mime_type') or values.get('mimeType')
         message = values.get('message')
         result = LocatedExternalDict()
         items = []
         challenge_invitations = []
         # pylint: disable=no-member
         for ext_values in values['invitations']:
-            ext_values[MIMETYPE] = mimetype
-            ext_values['message'] = message
-            ext_values['code'] = get_random_invitation_code()
-            ext_values['target_site'] = getSite().__name__
-            invitation = self.readCreateUpdateContentObject(self.remoteUser, externalValue=ext_values)
             email = ext_values['receiver']
-            # We should only have "new" invitations here (not accepted already)
-            # However, in direct-user and force override, we allow it.
-            user_invitation = get_site_invitation_for_email(email)
             # Check if this user already has an invite to this site
             # We are only *accepted* here if this is a direct invite that was already 
             # confirmed (e.g. forced).
-            if user_invitation is not None and not user_invitation.is_accepted():
-                if user_invitation.is_expired():
-                    # Expired just delete
-                    self.invitations.remove(user_invitation)
-                elif user_invitation.mime_type == mimetype or force:
-                    # Pending only - if same type, copy code (revisit this?)
-                    old_code = user_invitation.code
-                    invitation.code = old_code
-                    self.invitations.remove(user_invitation)
-                else:
-                    # only challenge invitations that change the user role without the force param
+            user_invitation = get_site_invitation_for_email(email)
+            if user_invitation is not None:
+                if      mimetype \
+                    and not force \
+                    and user_invitation.mime_type != mimetype:
+                    # Only challenge invitations that change the user role without the force param
                     challenge_invitations.append(user_invitation)
                     continue
+
+                # Issue a new invite with existing mimetype
+                ext_values[MIMETYPE] = user_invitation.mime_type
+                # Prefer given message if we have one
+                ext_values['message'] = message or user_invitation.message
+                if     user_invitation.is_expired() \
+                    or user_invitation.is_accepted():
+                    ext_values['code'] = get_random_invitation_code()
+                else:
+                    # Pending, re-use code
+                    ext_values['code'] = user_invitation.code
+                if not user_invitation.is_accepted():
+                    self.invitations.remove(user_invitation)
+            else:
+                # New invites
+                if MIMETYPE not in ext_values:
+                    ext_values[MIMETYPE] = mimetype or SITE_INVITATION_MIMETYPE
+                if 'message' not in ext_values:
+                    ext_values['message'] = message
+                ext_values['code'] = get_random_invitation_code()
+            if not ext_values:
+                # Accepted that we tried to resend
+                continue
+
+            ext_values['target_site'] = getSite().__name__
+            invitation = self.readCreateUpdateContentObject(self.remoteUser, externalValue=ext_values)
             items.append(invitation)
             self.invitations.add(invitation)
             self._notify(invitation, email)
