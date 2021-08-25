@@ -1214,10 +1214,12 @@ class SiteInvitationsCSVView(GetSiteInvitationsView):
             sender_alias = sender_named.alias
             sender_realname = sender_named.realname
             
+        # May be username of (accepted) invite or the email the invitation was 
+        # sent to. 
         rec_username = invitation.receiver
         rec_user = User.get_user(rec_username)
-        rec_email = invitation.original_receiver
-        rec_alias = rec_realname = rec_username = u''
+        invitation_email = invitation.original_receiver or rec_username
+        rec_alias = rec_realname = rec_username = rec_email = u''
         if rec_user: 
             rec_username = self._replace_username(rec_user.username)
             rec_email = self._get_email(rec_user)
@@ -1234,6 +1236,7 @@ class SiteInvitationsCSVView(GetSiteInvitationsView):
             'sender email': sender_email,
             'sender alias': sender_alias,
             'sender realname': sender_realname,
+            'invitation email': invitation_email,
             'target username': rec_username,
             'target email': rec_email,
             'target alias': rec_alias,
@@ -1250,7 +1253,7 @@ class SiteInvitationsCSVView(GetSiteInvitationsView):
         invitations = self.filter_and_sort_invitations(invitations)
         
         stream = BytesIO()
-        fieldnames = ['sender username', 'sender email', 'sender alias', 
+        fieldnames = ['sender username', 'sender email', 'sender alias', 'invitation email',
                       'target username', 'target email', 'target alias',
                       'sent time', 'accepted time', 'expiration time', 
                       'site admin invitation']
