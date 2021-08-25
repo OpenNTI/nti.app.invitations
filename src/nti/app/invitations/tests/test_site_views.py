@@ -755,12 +755,14 @@ class TestSiteInvitationViews(ApplicationLayerTest):
                                                'expiration time', '',
                                                'target username', 'ricky_user2',
                                                'site admin invitation', 'False',
+                                               'invitation email', u'ricky2@tpb.net',
                                                'target email', u'ricky2@tpb.net'))
         assert_that(csv_reader[1], has_entries('accepted time', not_none(),
                                                'sender username', 'sjohnson2',
                                                'expiration time', not_none(),
                                                'target username', 'ricky_user4',
                                                'site admin invitation', 'False',
+                                               'invitation email', u'ricky4@tpb.net',
                                                'target email', u'ricky4@tpb.net'))
         
         inv_url = '%s?format=text/csv&sortOn=receiver' % (invitations_url,)
@@ -781,7 +783,8 @@ class TestSiteInvitationViews(ApplicationLayerTest):
                                                'sender username', 'sjohnson2',
                                                'expiration time', not_none(),
                                                'site admin invitation', 'False',
-                                               'target email', u'ricky5@tpb.net'))
+                                               'invitation email', u'ricky5@tpb.net',
+                                               'target email', u''))
         
         # Delete pending
         headers = {'accept': str('application/json')}
