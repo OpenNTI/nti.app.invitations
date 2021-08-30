@@ -1105,7 +1105,7 @@ class GetSiteInvitationsView(AbstractAuthenticatedView,
     
     def _filter_invitations(self, invitations):
         if self.filter_value:
-            val = self.filter_value
+            val = self.filter_value.lower()
             def _include(invite):
                 rec_user = User.get_user(invite.receiver)
                 fn = IFriendlyNamed(rec_user, '')
