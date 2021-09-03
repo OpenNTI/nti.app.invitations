@@ -706,15 +706,14 @@ class TestSiteInvitationViews(ApplicationLayerTest):
                                              expiryTime=tomorrow)
             self.invitations.add(site_invitation)
 
-        def _get_codes(type_filter=None, invite_filter=None, return_csv=False):
-            headers = {'accept': str('application/json')}
+        def _get_codes(type_filter=None, invite_filter=None):
             inv_url = invitations_url
             params = {}
             if type_filter:
                 params['type_filter'] = type_filter
             if invite_filter:
                 params['filter'] = invite_filter
-            res = self.testapp.get(inv_url, params=params, headers=headers).json_body
+            res = self.testapp.get(inv_url, params=params).json_body
             res = res[ITEMS]
             return [x['code'] for x in res]
                 
@@ -787,9 +786,8 @@ class TestSiteInvitationViews(ApplicationLayerTest):
                                                'target email', u''))
         
         # Delete pending
-        headers = {'accept': str('application/json')}
         inv_url = '%s?type_filter=%s' % (invitations_url, 'pending')
-        res = self.testapp.get(inv_url, headers=headers).json_body
+        res = self.testapp.get(inv_url).json_body
         res = res[ITEMS]
         assert_that(res, has_length(2))
         for inv_ext in res:

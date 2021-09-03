@@ -1034,6 +1034,7 @@ class AcceptSiteInvitationByCodeView(AcceptSiteInvitationView):
 @view_config(route_name='objects.generic.traversal',
              renderer='rest',
              context=InvitationsPathAdapter,
+             accept='application/json',
              request_method='GET')
 class GetSiteInvitationsView(AbstractAuthenticatedView,
                              BatchingUtilsMixin):
