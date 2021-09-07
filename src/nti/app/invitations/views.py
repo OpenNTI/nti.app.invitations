@@ -769,8 +769,9 @@ class SendSiteInvitationCodeView(AbstractAuthenticatedView,
                     challenge_invitations.append(user_invitation)
                     continue
 
-                # Issue a new invite with existing mimetype
-                ext_values[MIMETYPE] = user_invitation.mime_type
+                # Issue a new invite with mimetype or existing mimetype
+                # This is where we can update the invitation type
+                ext_values[MIMETYPE] = mimetype or user_invitation.mime_type
                 # Prefer given message if we have one
                 ext_values['message'] = message or user_invitation.message
                 if     user_invitation.is_expired() \
