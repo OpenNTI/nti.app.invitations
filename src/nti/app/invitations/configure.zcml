@@ -2,7 +2,8 @@
 <configure	xmlns="http://namespaces.zope.org/zope"
 			xmlns:i18n="http://namespaces.zope.org/i18n"
 			xmlns:zcml="http://namespaces.zope.org/zcml"
-            xmlns:ext="http://nextthought.com/ntp/ext">
+			xmlns:inv="http://nextthought.com/ntp/invitations"
+			xmlns:ext="http://nextthought.com/ntp/ext">
 
 	<include package="zope.component" file="meta.zcml" />
 	<include package="zope.security" file="meta.zcml" />
@@ -103,6 +104,16 @@
 
 	<!-- Signer -->
 	<include package="nti.app.invitations" file="meta.zcml" />
+
+	<configure zcml:condition="have testmode">
+	  <configure zcml:condition="not-have in-buildout">
+	    <!--Invitation signer usually comes from a zcml file in buildout's package-includes
+	        but when running isolated tests we need one of these registered.-->
+	    <inv:registerInvitationSigner
+		secret="PUYIESYbVRYVDQA="
+		salt="nti-invitations-testing" />
+	  </configure>
+	</configure>
 
 	<!-- Adapters -->
 	<adapter factory=".adapters.invitation_info"
